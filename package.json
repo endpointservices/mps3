@@ -1,0 +1,25 @@
+{
+  "name": "mps3",
+  "description": "Provide clientside multiplayer and optimistic updates over any s3-compatible store",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": {
+    "name": "Tom Larkworthy"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-vm-modules ./node_modules/.bin/jest"
+  },
+  "devDependencies": {
+    "@types/jest": "^29",
+    "jest": "^29",
+    "typescript": "^5"
+  },
+  "jest": {
+    "verbose": true,
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      ".test.ts"
+    ]
+  }
+}
