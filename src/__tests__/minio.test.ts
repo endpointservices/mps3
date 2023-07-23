@@ -43,7 +43,7 @@ describe("mps3", () => {
     });
   });
 
-  test("can read your write (number)", async () => {
+  test("Can read your write (number)", async () => {
     console.log("can read your write (number)");
     const rnd = Math.random();
     await mps3.put("test", rnd);
