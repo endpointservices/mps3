@@ -1,6 +1,6 @@
-import { S3 } from "@aws-sdk/client-s3";
-import { expect, test, describe, beforeAll } from "bun:test";
-import { MPS3 } from "mps3";
+import { PutObjectCommandInput, S3 } from "@aws-sdk/client-s3";
+import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
+import { MPS3, uuidRegex } from "mps3";
 
 describe("mps3", () => {
   let mps3: MPS3;
@@ -14,40 +14,67 @@ describe("mps3", () => {
         secretAccessKey: "ZOAmumEzdsUUcVlQ",
       },
       forcePathStyle: true,
-      // logger: console,
+      //logger: console,
     });
 
     try {
       console.log("creating bucket");
       await s3.createBucket({
-        Bucket: "test",
+        Bucket: "test5",
       });
     } catch (e) {}
 
     try {
       console.log("enable version");
       await s3.putBucketVersioning({
-        Bucket: "test",
+        Bucket: "test5",
         VersioningConfiguration: {
           Status: "Enabled",
         },
       });
+
+      let status = undefined;
+      while (status !== "Enabled") {
+        status = (await s3.getBucketVersioning({ Bucket: "test5" })).Status;
+      }
     } catch (e) {
       console.error(e);
     }
-
-    console.log("enable version");
     mps3 = new MPS3({
-      defaultBucket: "test",
+      defaultBucket: "test5",
       api: s3,
     });
   });
 
+  beforeEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  });
+
+  test("Version test", async () => {
+    const command: PutObjectCommandInput = {
+      Bucket: "test5",
+      Key: "key",
+      ContentType: "application/json",
+      Body: "cool",
+    };
+
+    const fileUpdate = await mps3.config.api.putObject(command);
+    expect(fileUpdate.VersionId).toMatch(uuidRegex);
+  });
+
   test("Can read your write (number)", async () => {
-    console.log("can read your write (number)");
     const rnd = Math.random();
-    await mps3.put("test", rnd);
-    const read = await mps3.get("test");
+    await mps3.put("test5", rnd);
+    const read = await mps3.get("test5");
+    expect(read).toEqual(rnd);
+  });
+
+  test("Can read your write (number)", async () => {
+    const rnd = Math.random();
+    await mps3.put("test5", rnd, {
+      manifests: [],
+    });
+    const read = await mps3.get("test5");
     expect(read).toEqual(rnd);
   });
 });

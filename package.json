@@ -11,10 +11,11 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.370.0",
-    "bun": "^0.7.0"
+    "aws4fetch": "^1.0.17"
   },
   "devDependencies": {
-    "bun-types": "^0.7.0"
+    "@aws-sdk/client-s3": "3.370.0",
+    "bun-types": "^0.7.0",
+    "bun": "^0.7.0"
   }
 }

@@ -3,12 +3,16 @@ import {
   PutObjectCommandInput,
   S3,
 } from "@aws-sdk/client-s3";
+import { file } from "bun";
 
 export interface MPS3Config {
   defaultBucket: string;
   defaultManifest?: Ref;
   api: S3;
 }
+
+export const uuidRegex =
+  /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
 
 export interface FileState {
   version: string;
@@ -93,7 +97,7 @@ export class Manifest {
   constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
     this.service = service;
     this.ref = ref;
-    this.poller = setInterval(() => this.poll(), 1000);
+    // this.poller = setInterval(() => this.poll(), 1000);
   }
 
   async get(): Promise<ManifestState> {
@@ -153,6 +157,17 @@ export class Subscriber {
   }
 }
 
+export async function sha256(message: string) {
+  // encode as UTF-8
+  const msgBuffer = new TextEncoder().encode(message);
+
+  // hash the message
+  const arrayBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+
+  // convert ArrayBuffer to base64-encoded string
+  return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+}
+
 export class MPS3 {
   config: MPS3Config;
   manifests = new Map<ResolvedRef, Manifest>();
@@ -187,14 +202,25 @@ export class MPS3 {
         this.defaultManifest.bucket,
       key: typeof ref === "string" ? ref : ref.key,
     };
+    const content: string = JSON.stringify(value);
+    const checksum = await sha256(content);
     const command: PutObjectCommandInput = {
       Bucket: contentRef.bucket,
       Key: contentRef.key,
-      Body: JSON.stringify(value),
+      ContentType: "application/json",
+      Body: content,
+      ChecksumSHA256: checksum,
     };
 
     const fileUpdate = await this.config.api.putObject(command);
 
+    if (
+      fileUpdate.VersionId === undefined ||
+      !fileUpdate.VersionId.match(uuidRegex)
+    ) {
+      console.error(fileUpdate);
+      throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
+    }
     console.log(command);
     console.log(fileUpdate);
 
@@ -205,11 +231,6 @@ export class MPS3 {
         ...ref,
       };
       const manifest = this.getOrCreateManifest(manifestRef);
-      if (!fileUpdate.VersionId) {
-        throw Error(
-          `Bucket ${manifestRef.bucket} is not version enabled! ${fileUpdate}`
-        );
-      }
       manifest.updateContent(contentRef, fileUpdate.VersionId);
     });
   }
