@@ -20,6 +20,8 @@ export interface FileState {
 
 export interface ManifestState {
   version: number;
+  // TODO: the manifest should just be URLs which corresponde to the s3 URLs
+  // this would scale beyond the s3 usecase and include regional endpoints etc.
   buckets: {
     [bucketKey: string]: {
       files: {
@@ -43,16 +45,15 @@ const isManifest = (obj: any): obj is ManifestState => {
   return (
     obj.version !== undefined &&
     typeof obj.version === "number" &&
-    obj.files !== undefined &&
-    typeof obj.files === "object" &&
+    obj.buckets !== undefined &&
+    typeof obj.buckets === "object" &&
     Object.values(obj.buckets).every(
       (bucket: any) =>
         typeof bucket === "object" &&
         bucket.files !== undefined &&
         typeof bucket.files === "object" &&
-        Object.values(obj.files).every(
-          (file: any) =>
-            file.version !== undefined && typeof file.version === "string"
+        Object.values(bucket.files).every(
+          (file: any) => typeof file === "object"
         )
     )
   );
@@ -97,7 +98,7 @@ export class Manifest {
   constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
     this.service = service;
     this.ref = ref;
-    // this.poller = setInterval(() => this.poll(), 1000);
+    this.poller = setInterval(() => this.poll(), 1000);
   }
 
   async get(): Promise<ManifestState> {
@@ -117,11 +118,13 @@ export class Manifest {
   }
 
   async poll() {
+    console.log("polling", this.subscribers);
     const state = await this.get();
     this.subscribers.forEach((subscriber) => {
       files(state).forEach(async (file) => {
+        console.log("match?", file.ref, subscriber.ref);
         if (eq(file.ref, subscriber.ref)) {
-          const fileContent = await this.service.get(this.ref);
+          const fileContent = await this.service.get(file.ref);
           subscriber.handler(fileContent);
         }
       });
@@ -130,7 +133,6 @@ export class Manifest {
 
   async updateContent(ref: ResolvedRef, version: string) {
     const state = await this.get();
-    state.buckets[ref.bucket] = state.buckets[ref.bucket] || {};
     state.buckets[ref.bucket] = state.buckets[ref.bucket] || {
       files: {},
     };
@@ -221,8 +223,6 @@ export class MPS3 {
       console.error(fileUpdate);
       throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
     }
-    console.log(command);
-    console.log(fileUpdate);
 
     const manifests = options?.manifests || [this.defaultManifest];
     manifests.map((ref) => {
@@ -231,7 +231,7 @@ export class MPS3 {
         ...ref,
       };
       const manifest = this.getOrCreateManifest(manifestRef);
-      manifest.updateContent(contentRef, fileUpdate.VersionId);
+      manifest.updateContent(contentRef, fileUpdate.VersionId!);
     });
   }
 
@@ -278,6 +278,7 @@ export class MPS3 {
     };
     const manifest = this.getOrCreateManifest(manifestRef);
     const subscriber = new Subscriber(keyRef, manifest, handler);
+    manifest.subscribers.add(subscriber);
     return () => {
       throw new Error("Not implemented");
     };

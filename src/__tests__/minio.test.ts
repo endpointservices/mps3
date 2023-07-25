@@ -46,10 +46,6 @@ describe("mps3", () => {
     });
   });
 
-  beforeEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  });
-
   test("Version test", async () => {
     const command: PutObjectCommandInput = {
       Bucket: "test5",
@@ -76,5 +72,14 @@ describe("mps3", () => {
     });
     const read = await mps3.get("test5");
     expect(read).toEqual(rnd);
+  });
+
+  test("Subscribe to changes", async (done) => {
+    const rnd = Math.random();
+    await mps3.subscribe("sub", (value) => {
+      expect(value).toEqual(rnd);
+      done();
+    });
+    mps3.put("sub", rnd);
   });
 });

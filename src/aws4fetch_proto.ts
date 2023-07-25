@@ -53,37 +53,7 @@ export const run = async () => {
   });
   console.log(res);
   console.log("called");
-
-  // On node
-  /*
-  {
-    '$metadata': {
-        httpStatusCode: 200,
-        requestId: '17747B269B2DB505',
-        extendedRequestId: 'dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8',
-        cfId: undefined,
-        attempts: 1,
-        totalRetryDelay: 0
-    },
-    ETag: '"d41d8cd98f00b204e9800998ecf8427e"',
-    VersionId: '0c6245b2-6e75-4705-b861-ae2d9e2307cf'
-    }
-    */
-  /* on bun */
-  /*
-    {
-    $metadata: {
-        httpStatusCode: 200,
-        requestId: "17747B383E61D15D",
-        extendedRequestId: "dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8",
-        cfId: undefined,
-        attempts: 1,
-        totalRetryDelay: 0
-    },
-    ETag: "\"d41d8cd98f00b204e9800998ecf8427e\"",
-    VersionId: "9a7381ab-27e3-42ad-92ea-5e0ddb831e2a"
-    }
-   */
 };
-
 run();
+
+setTimeout(() => {}, 1000);
