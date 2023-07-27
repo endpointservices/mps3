@@ -15,11 +15,11 @@ export interface MPS3Config {
 export const uuidRegex =
   /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
 
-export interface FileState {
+interface FileState {
   version: string;
 }
 
-export interface ManifestState {
+interface ManifestState {
   version: number;
   // TODO: the manifest should just be URLs which corresponde to the s3 URLs
   // this would scale beyond the s3 usecase and include regional endpoints etc.
@@ -78,7 +78,7 @@ export interface ResolvedRef extends Ref {
   key: string;
 }
 
-export class Manifest {
+class Manifest {
   service: MPS3;
   ref: ResolvedRef;
   subscribers = new Set<Subscriber>();
@@ -150,7 +150,7 @@ export class Manifest {
   }
 }
 
-export class Subscriber {
+class Subscriber {
   manifest: Manifest;
   ref: ResolvedRef;
   handler: (value: any) => void;
@@ -165,7 +165,7 @@ export class Subscriber {
   }
 }
 
-export async function sha256(message: string) {
+async function sha256(message: string) {
   // encode as UTF-8
   const msgBuffer = new TextEncoder().encode(message);
 

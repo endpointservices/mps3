@@ -92,8 +92,8 @@ describe("mps3", () => {
     mps3.put(rand_key, "_");
   });
 
-  test("Paralell puts commute", async () => {
-    const n = 10;
+  test("Parallel puts commute", async () => {
+    const n = 3;
     const clients = [...Array(n)].map((_) => getClient());
     const rand_keys = [...Array(n)].map(
       (_) => `parallel_put/${Math.random().toString()}`

@@ -8,14 +8,16 @@
   },
   "type": "module",
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "build": "bun build src/mps3.ts --outdir ./build"
   },
   "dependencies": {
     "aws4fetch": "^1.0.17"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "3.370.0",
+    "bun": "^0.7.0",
     "bun-types": "^0.7.0",
-    "bun": "^0.7.0"
+    "rome": "^12.1.3"
   }
 }
