@@ -3,10 +3,9 @@ import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, uuidRegex } from "mps3";
 
 describe("mps3", () => {
-  let mps3: MPS3, mps3_other: MPS3;
-
+  let s3: S3;
   beforeAll(async () => {
-    const s3 = new S3({
+    s3 = new S3({
       region: "us-east-1",
       endpoint: "http://127.0.0.1:9000 ", // for docker, http://minio:9000
       credentials: {
@@ -40,18 +39,22 @@ describe("mps3", () => {
     } catch (e) {
       console.error(e);
     }
-    mps3 = new MPS3({
+  });
+
+  const getClient = () =>
+    new MPS3({
       defaultBucket: "test5",
       api: s3,
     });
 
-    mps3_other = new MPS3({
-      defaultBucket: "test5",
-      api: s3,
-    });
+  test("Read unknown key resolves to undefined", async () => {
+    const mps3 = getClient();
+    const read = await mps3.get("unused_key");
+    expect(read).toEqual(undefined);
   });
 
   test("Can read your write (number)", async () => {
+    const mps3 = getClient();
     const rnd = Math.random();
     await mps3.put("rw", rnd);
     const read = await mps3.get("rw");
@@ -59,6 +62,7 @@ describe("mps3", () => {
   });
 
   test("Subscribe to changes (single client, unseeen key)", async (done) => {
+    const mps3 = getClient();
     const rand_key = `subscribe_single_client/${Math.random().toString()}`;
     const rnd = Math.random();
     expect(mps3.subscriberCount).toEqual(0);
@@ -74,6 +78,8 @@ describe("mps3", () => {
   });
 
   test("Subscribe to changes (cross-client, unseeen key)", async (done) => {
+    const mps3 = getClient();
+    const mps3_other = getClient();
     const rand_key = `subscribe_multi_client/${Math.random().toString()}`;
     expect(mps3.subscriberCount).toEqual(0);
     expect(mps3_other.subscriberCount).toEqual(0);
@@ -84,5 +90,23 @@ describe("mps3", () => {
       done();
     });
     mps3.put(rand_key, "_");
+  });
+
+  test("Paralell puts commute", async () => {
+    const n = 10;
+    const clients = [...Array(n)].map((_) => getClient());
+    const rand_keys = [...Array(n)].map(
+      (_) => `parallel_put/${Math.random().toString()}`
+    );
+
+    // put in parallel
+    await Promise.all(rand_keys.map((key, i) => clients[i].put(key, i)));
+
+    // read in parallel
+    const reads = await Promise.all(
+      rand_keys.map((key, i) => clients[i].get(key))
+    );
+
+    expect(reads).toEqual([...Array(n)].map((_, i) => i));
   });
 });

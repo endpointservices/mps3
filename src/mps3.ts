@@ -209,6 +209,7 @@ export class MPS3 {
       key: typeof ref === "string" ? ref : ref.key,
     };
     const version = await manifest.getVersion(contentRef);
+    if (version === undefined) return undefined;
     return this._getObject({
       ref: contentRef,
       version: version,
@@ -266,6 +267,7 @@ export class MPS3 {
       throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
     }
     const versionId = fileUpdate.VersionId;
+
     await Promise.all(
       manifests.map((ref) => {
         const manifestRef: ResolvedRef = {
@@ -283,7 +285,7 @@ export class MPS3 {
     value: any;
   }): Promise<PutObjectCommandOutput> {
     console.log(`putObject ${url(args.ref)}`);
-    const content: string = JSON.stringify(args.value);
+    const content: string = JSON.stringify(args.value, null, 2);
     const checksum = await sha256(content);
     const command: PutObjectCommandInput = {
       Bucket: args.ref.bucket,
