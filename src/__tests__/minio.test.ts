@@ -3,7 +3,7 @@ import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, uuidRegex } from "mps3";
 
 describe("mps3", () => {
-  let mps3: MPS3;
+  let mps3: MPS3, mps3_other: MPS3;
 
   beforeAll(async () => {
     const s3 = new S3({
@@ -44,42 +44,45 @@ describe("mps3", () => {
       defaultBucket: "test5",
       api: s3,
     });
-  });
 
-  test("Version test", async () => {
-    const command: PutObjectCommandInput = {
-      Bucket: "test5",
-      Key: "key",
-      ContentType: "application/json",
-      Body: "cool",
-    };
-
-    const fileUpdate = await mps3.config.api.putObject(command);
-    expect(fileUpdate.VersionId).toMatch(uuidRegex);
-  });
-
-  test("Can read your write (number)", async () => {
-    const rnd = Math.random();
-    await mps3.put("test5", rnd);
-    const read = await mps3.get("test5");
-    expect(read).toEqual(rnd);
-  });
-
-  test("Can read your write (number)", async () => {
-    const rnd = Math.random();
-    await mps3.put("test5", rnd, {
-      manifests: [],
+    mps3_other = new MPS3({
+      defaultBucket: "test5",
+      api: s3,
     });
-    const read = await mps3.get("test5");
+  });
+
+  test("Can read your write (number)", async () => {
+    const rnd = Math.random();
+    await mps3.put("rw", rnd);
+    const read = await mps3.get("rw");
     expect(read).toEqual(rnd);
   });
 
-  test("Subscribe to changes", async (done) => {
+  test("Subscribe to changes (single client, unseeen key)", async (done) => {
+    const rand_key = `subscribe_single_client/${Math.random().toString()}`;
     const rnd = Math.random();
-    await mps3.subscribe("sub", (value) => {
+    expect(mps3.subscriberCount).toEqual(0);
+    const unsubscribe = await mps3.subscribe(rand_key, (value) => {
+      expect(mps3.subscriberCount).toEqual(1);
       expect(value).toEqual(rnd);
+      unsubscribe();
+      expect(mps3.subscriberCount).toEqual(0);
       done();
     });
-    mps3.put("sub", rnd);
+    mps3.put(rand_key, rnd);
+    expect(mps3.subscriberCount).toEqual(1);
+  });
+
+  test("Subscribe to changes (cross-client, unseeen key)", async (done) => {
+    const rand_key = `subscribe_multi_client/${Math.random().toString()}`;
+    expect(mps3.subscriberCount).toEqual(0);
+    expect(mps3_other.subscriberCount).toEqual(0);
+
+    const unsubscribe = await mps3_other.subscribe(rand_key, (value) => {
+      expect(value).toEqual("_");
+      unsubscribe();
+      done();
+    });
+    mps3.put(rand_key, "_");
   });
 });

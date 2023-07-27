@@ -9,6 +9,3 @@ services:
       MINIO_ROOT_USER: 'mps3'
       MINIO_ROOT_PASSWORD: 'ZOAmumEzdsUUcVlQ'
     command: minio server /data/minio --console-address ":9090"
-volumes:
-  minio:
-    driver: local

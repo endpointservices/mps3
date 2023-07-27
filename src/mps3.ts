@@ -1,9 +1,10 @@
 import {
   GetObjectCommandInput,
   PutObjectCommandInput,
+  PutObjectCommandOutput,
   S3,
 } from "@aws-sdk/client-s3";
-import { file } from "bun";
+import { OMap } from "OMap";
 
 export interface MPS3Config {
   defaultBucket: string;
@@ -22,12 +23,8 @@ export interface ManifestState {
   version: number;
   // TODO: the manifest should just be URLs which corresponde to the s3 URLs
   // this would scale beyond the s3 usecase and include regional endpoints etc.
-  buckets: {
-    [bucketKey: string]: {
-      files: {
-        [bucketKey: string]: FileState;
-      };
-    };
+  files: {
+    [url: string]: FileState;
   };
 }
 
@@ -45,16 +42,13 @@ const isManifest = (obj: any): obj is ManifestState => {
   return (
     obj.version !== undefined &&
     typeof obj.version === "number" &&
-    obj.buckets !== undefined &&
-    typeof obj.buckets === "object" &&
-    Object.values(obj.buckets).every(
-      (bucket: any) =>
-        typeof bucket === "object" &&
-        bucket.files !== undefined &&
-        typeof bucket.files === "object" &&
-        Object.values(bucket.files).every(
-          (file: any) => typeof file === "object"
-        )
+    obj.files !== undefined &&
+    typeof obj.files === "object" &&
+    Object.values(obj.files).every(
+      (file: any) =>
+        typeof file === "object" &&
+        file.version !== undefined &&
+        typeof file.version === "string"
     )
   );
 };
@@ -64,23 +58,18 @@ export interface Ref {
   key: string;
 }
 
+const url = (ref: Ref): string => `${ref.bucket}/${ref.key}`;
+const parseUrl = (url: string): ResolvedRef => {
+  const [bucket, ...key] = url.split("/");
+  return {
+    bucket,
+    key: key.join("/"),
+  };
+};
 const eq = (a: Ref, b: Ref) => a.bucket === b.bucket && a.key === b.key;
 const files = (state: ManifestState): Set<File> =>
-  Object.entries(state.buckets).reduce(
-    (set, [bucketKey, bucket]) =>
-      Object.entries(bucket.files).reduce(
-        (set, [fileKey, file]) =>
-          set.add(
-            new File(
-              {
-                bucket: bucketKey,
-                key: fileKey,
-              },
-              file
-            )
-          ),
-        set
-      ),
+  Object.entries(state.files).reduce(
+    (set, [url, file]) => set.add(new File(parseUrl(url), file)),
     new Set<File>()
   );
 
@@ -98,15 +87,15 @@ export class Manifest {
   constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
     this.service = service;
     this.ref = ref;
-    this.poller = setInterval(() => this.poll(), 1000);
   }
-
   async get(): Promise<ManifestState> {
-    const response = await this.service.get(this.ref);
+    const response = await this.service._getObject({
+      ref: this.ref,
+    });
     if (response === undefined) {
       return {
         version: 0,
-        buckets: {},
+        files: {},
       };
     }
     if (isManifest(response)) {
@@ -118,11 +107,17 @@ export class Manifest {
   }
 
   async poll() {
-    console.log("polling", this.subscribers);
+    if (this.subscriberCount === 0 && this.poller) {
+      clearInterval(this.poller);
+      this.poller = undefined;
+    }
+    if (this.subscriberCount > 0 && !this.poller) {
+      this.poller = setInterval(() => this.poll(), 1000);
+    }
+
     const state = await this.get();
     this.subscribers.forEach((subscriber) => {
       files(state).forEach(async (file) => {
-        console.log("match?", file.ref, subscriber.ref);
         if (eq(file.ref, subscriber.ref)) {
           const fileContent = await this.service.get(file.ref);
           subscriber.handler(fileContent);
@@ -132,15 +127,26 @@ export class Manifest {
   }
 
   async updateContent(ref: ResolvedRef, version: string) {
+    console.log(`update_content ${url(ref)} => ${version}`);
     const state = await this.get();
-    state.buckets[ref.bucket] = state.buckets[ref.bucket] || {
-      files: {},
-    };
-    state.buckets[ref.bucket].files[ref.key] = {
+
+    state.files[url(ref)] = {
       version: version,
     };
 
-    await this.service.put(this.ref, state);
+    return this.service._putObject({
+      ref: this.ref,
+      value: state,
+    });
+  }
+
+  async getVersion(ref: ResolvedRef): Promise<string | undefined> {
+    const state = await this.get();
+    return state.files[url(ref)]?.version;
+  }
+
+  get subscriberCount(): number {
+    return this.subscribers.size;
   }
 }
 
@@ -172,7 +178,7 @@ export async function sha256(message: string) {
 
 export class MPS3 {
   config: MPS3Config;
-  manifests = new Map<ResolvedRef, Manifest>();
+  manifests = new OMap<ResolvedRef, Manifest>(url);
   defaultManifest: ResolvedRef;
 
   constructor(config: MPS3Config) {
@@ -190,13 +196,11 @@ export class MPS3 {
     return this.manifests.get(ref)!;
   }
 
-  public async put(
-    ref: string | Ref,
-    value: any,
-    options?: {
-      manifests: Ref[];
-    }
-  ) {
+  public async get(ref: string | Ref) {
+    const manifestRef: ResolvedRef = {
+      ...this.defaultManifest,
+    };
+    const manifest = this.getOrCreateManifest(manifestRef);
     const contentRef: ResolvedRef = {
       bucket:
         (<Ref>ref).bucket ||
@@ -204,17 +208,55 @@ export class MPS3 {
         this.defaultManifest.bucket,
       key: typeof ref === "string" ? ref : ref.key,
     };
-    const content: string = JSON.stringify(value);
-    const checksum = await sha256(content);
-    const command: PutObjectCommandInput = {
-      Bucket: contentRef.bucket,
-      Key: contentRef.key,
-      ContentType: "application/json",
-      Body: content,
-      ChecksumSHA256: checksum,
+    const version = await manifest.getVersion(contentRef);
+    return this._getObject({
+      ref: contentRef,
+      version: version,
+    });
+  }
+
+  async _getObject(args: { ref: ResolvedRef; version?: string }): Promise<any> {
+    const command: GetObjectCommandInput = {
+      Bucket: args.ref.bucket,
+      Key: args.ref.key,
+      ...(args.version && { VersionId: args.version }),
+    };
+    try {
+      const response = await this.config.api.getObject(command);
+      if (!response.Body) return undefined;
+      else {
+        const payload = await response.Body.transformToString("utf-8");
+        console.log(
+          `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}\n${payload}`
+        );
+        return JSON.parse(payload);
+      }
+    } catch (err: any) {
+      if (err.name === "NoSuchKey") return undefined;
+      else throw err;
+    }
+  }
+
+  public async put(
+    ref: string | Ref,
+    value: any,
+    options: {
+      manifests?: Ref[];
+    } = {}
+  ) {
+    const manifests = options?.manifests || [this.defaultManifest];
+    const contentRef: ResolvedRef = {
+      bucket:
+        (<Ref>ref).bucket ||
+        this.config.defaultBucket ||
+        this.defaultManifest.bucket,
+      key: typeof ref === "string" ? ref : ref.key,
     };
 
-    const fileUpdate = await this.config.api.putObject(command);
+    const fileUpdate = await this._putObject({
+      ref: contentRef,
+      value,
+    });
 
     if (
       fileUpdate.VersionId === undefined ||
@@ -223,40 +265,40 @@ export class MPS3 {
       console.error(fileUpdate);
       throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
     }
-
-    const manifests = options?.manifests || [this.defaultManifest];
-    manifests.map((ref) => {
-      const manifestRef: ResolvedRef = {
-        ...this.defaultManifest,
-        ...ref,
-      };
-      const manifest = this.getOrCreateManifest(manifestRef);
-      manifest.updateContent(contentRef, fileUpdate.VersionId!);
-    });
+    const versionId = fileUpdate.VersionId;
+    await Promise.all(
+      manifests.map((ref) => {
+        const manifestRef: ResolvedRef = {
+          ...this.defaultManifest,
+          ...ref,
+        };
+        const manifest = this.getOrCreateManifest(manifestRef);
+        return manifest.updateContent(contentRef, versionId);
+      })
+    );
   }
 
-  public async get(ref: string | Ref) {
-    const contentRef: ResolvedRef = {
-      bucket:
-        (<Ref>ref).bucket ||
-        this.config.defaultBucket ||
-        this.defaultManifest.bucket,
-      key: typeof ref === "string" ? ref : ref.key,
+  async _putObject(args: {
+    ref: ResolvedRef;
+    value: any;
+  }): Promise<PutObjectCommandOutput> {
+    console.log(`putObject ${url(args.ref)}`);
+    const content: string = JSON.stringify(args.value);
+    const checksum = await sha256(content);
+    const command: PutObjectCommandInput = {
+      Bucket: args.ref.bucket,
+      Key: args.ref.key,
+      ContentType: "application/json",
+      Body: content,
+      ChecksumSHA256: checksum,
     };
-    const command: GetObjectCommandInput = {
-      Bucket: contentRef.bucket,
-      Key: contentRef.key,
-    };
-    try {
-      const response = await this.config.api.getObject(command);
-      if (!response.Body) return undefined;
-      else {
-        return JSON.parse(await response.Body.transformToString("utf-8"));
-      }
-    } catch (err: any) {
-      if (err.name === "NoSuchKey") return undefined;
-      else throw err;
-    }
+
+    const response = await this.config.api.putObject(command);
+    console.log(
+      `PUT ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}\n${content}`
+    );
+
+    return response;
   }
 
   public subscribe(
@@ -279,8 +321,17 @@ export class MPS3 {
     const manifest = this.getOrCreateManifest(manifestRef);
     const subscriber = new Subscriber(keyRef, manifest, handler);
     manifest.subscribers.add(subscriber);
+    manifest.poll();
+    // TODO send initial state
     return () => {
-      throw new Error("Not implemented");
+      manifest.subscribers.delete(subscriber);
     };
+  }
+
+  get subscriberCount(): number {
+    return [...this.manifests.values()].reduce(
+      (count, manifest) => count + manifest.subscriberCount,
+      0
+    );
   }
 }
