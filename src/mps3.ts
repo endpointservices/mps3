@@ -119,7 +119,10 @@ class Manifest {
     this.subscribers.forEach((subscriber) => {
       files(state).forEach(async (file) => {
         if (eq(file.ref, subscriber.ref)) {
-          const fileContent = await this.service.get(file.ref);
+          const fileContent = await this.service._getObject({
+            ref: file.ref,
+            version: file.version,
+          });
           subscriber.handler(fileContent);
         }
       });
