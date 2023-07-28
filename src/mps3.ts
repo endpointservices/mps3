@@ -98,8 +98,32 @@ class Manifest {
         files: {},
       };
     }
+
     if (isManifest(response)) {
-      return response;
+      const latestState: ManifestState = response;
+      /*
+      const previousVersions = await this.service.config.api.listObjectVersions({
+        Bucket: this.ref.bucket,
+        Prefix: this.ref.key,
+        VersionIdMarker: latestState.
+      });
+      previousVersions.Versions?.flatMap(async (previousVersion) => {
+        const versionRaw = await this.service._getObject({
+          ref: {
+            bucket: this.ref.bucket,
+            key: previousVersion.Key!
+          }
+        });
+  
+        if (isManifest(versionRaw)) {
+          return [versionRaw];
+        } else {
+          console.error("Invalid manifest", response);
+          throw new Error("Invalid manifest");
+        }
+      });*/
+
+      return latestState;
     } else {
       console.error("Invalid manifest", response);
       throw new Error("Invalid manifest");
