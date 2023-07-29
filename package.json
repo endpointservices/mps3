@@ -1,16 +1,17 @@
 {
   "name": "mps3",
   "description": "Provide clientside multiplayer and optimistic updates over any s3-compatible store",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "license": "MIT",
   "author": {
     "name": "Tom Larkworthy"
   },
+  "main": "dist/mps3.js",
   "type": "module",
   "scripts": {
     "test": "bun test",
     "build": "bun build src/mps3.ts --outdir ./dist",
-    "main": "./dist/mps3.js"
+    "publish": "./dist/mps3.js"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "3.370.0",
