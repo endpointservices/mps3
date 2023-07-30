@@ -46,7 +46,7 @@ describe("mps3", () => {
       defaultBucket: "test5",
       api: s3,
     });
-  /*
+
   test("Read unknown key resolves to undefined", async () => {
     const mps3 = getClient();
     const read = await mps3.get("unused_key");
@@ -90,7 +90,7 @@ describe("mps3", () => {
       done();
     });
     mps3.put(rand_key, "_");
-  });*/
+  });
 
   // TODO, but with parrallel puts on a blank manifest
   test("Parallel puts commute (warm manifest)", async () => {
@@ -135,9 +135,11 @@ describe("mps3", () => {
 
     // read in parallel
     const reads = await Promise.all(
-      rand_keys.map((key, i) => clients[n - i - 1].get(key, {
-        manifest: manifests[0]
-      }))
+      rand_keys.map((key, i) =>
+        clients[n - i - 1].get(key, {
+          manifest: manifests[0],
+        })
+      )
     );
 
     expect(reads).toEqual([...Array(n)].map((_, i) => i));
