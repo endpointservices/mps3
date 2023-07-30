@@ -100,6 +100,30 @@ describe("mps3", () => {
     mps3.put(rand_key, "_");
   });
 
+  test("Subscribe get committed initial value first", async (done) => {
+    const mps3 = getClient();
+    const rnd = Math.random();
+    await mps3.put("subscribe_initial", rnd);
+
+    const unsubscribe = await mps3.subscribe("subscribe_initial", (value) => {
+      expect(value).toEqual(rnd);
+      unsubscribe();
+      done();
+    });
+  });
+
+  test("Subscribe get optimistic initial value first", async (done) => {
+    const mps3 = getClient();
+    const rnd = Math.random();
+    mps3.put("subscribe_initial", rnd);
+
+    const unsubscribe = await mps3.subscribe("subscribe_initial", (value) => {
+      expect(value).toEqual(rnd);
+      unsubscribe();
+      done();
+    });
+  });
+
   // TODO, but with parrallel puts on a blank manifest
   test("Parallel puts commute (warm manifest)", async () => {
     await getClient().put("null", null);
