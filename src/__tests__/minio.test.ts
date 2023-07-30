@@ -53,6 +53,14 @@ describe("mps3", () => {
     expect(read).toEqual(undefined);
   });
 
+  test("Delete key by setting to undefined", async () => {
+    const mps3 = getClient();
+    await mps3.put("delete", "");
+    await mps3.put("delete", undefined);
+    const read = await mps3.get("delete");
+    expect(read).toEqual(undefined);
+  });
+
   test("Can read your write (number)", async () => {
     const mps3 = getClient();
     const rnd = Math.random();

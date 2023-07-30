@@ -1,4 +1,6 @@
 import {
+  DeleteObjectCommandInput,
+  DeleteObjectCommandOutput,
   GetObjectAclCommandOutput,
   GetObjectCommandInput,
   GetObjectCommandOutput,
@@ -232,21 +234,28 @@ class Manifest {
     });
   }
 
-  async updateContent(ref: ResolvedRef, version: string) {
+  async updateContent(ref: ResolvedRef, version: string | undefined) {
     console.log(`update_content ${url(ref)} => ${version}`);
     const state = await this.get();
     const fileUrl = url(ref);
-    const fileState = {
-      version: version,
-    };
-    state.files[fileUrl] = fileState;
-
-    state.update = {
-      files: {
-        [fileUrl]: fileState,
-      },
-    };
-
+    if (version) {
+      const fileState = {
+        version: version,
+      };
+      state.files[fileUrl] = fileState;
+      state.update = {
+        files: {
+          [fileUrl]: fileState,
+        },
+      };
+    } else {
+      delete state.files[fileUrl];
+      state.update = {
+        files: {
+          [fileUrl]: null,
+        },
+      };
+    }
     return this.service._putObject({
       ref: this.ref,
       value: state,
@@ -399,19 +408,27 @@ export class MPS3 {
       key: typeof ref === "string" ? ref : ref.key,
     };
 
-    const fileUpdate = await this._putObject({
-      ref: contentRef,
-      value,
-    });
+    let versionId: string | undefined;
+    if (value !== undefined) {
+      const fileUpdate = await this._putObject({
+        ref: contentRef,
+        value,
+      });
 
-    if (
-      fileUpdate.VersionId === undefined ||
-      !fileUpdate.VersionId.match(uuidRegex)
-    ) {
-      console.error(fileUpdate);
-      throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
+      if (
+        fileUpdate.VersionId === undefined ||
+        !fileUpdate.VersionId.match(uuidRegex)
+      ) {
+        console.error(fileUpdate);
+        throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
+      }
+      versionId = fileUpdate.VersionId;
+    } else {
+      const fileUpdate = await this._deleteObject({
+        ref: contentRef,
+      });
+      versionId = undefined;
     }
-    const versionId = fileUpdate.VersionId;
 
     await Promise.all(
       manifests.map((ref) => {
@@ -445,6 +462,20 @@ export class MPS3 {
       `PUT ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}\n${content}`
     );
 
+    return response;
+  }
+
+  async _deleteObject(args: {
+    ref: ResolvedRef;
+  }): Promise<DeleteObjectCommandOutput> {
+    const command: DeleteObjectCommandInput = {
+      Bucket: args.ref.bucket,
+      Key: args.ref.key,
+    };
+    const response = await this.config.api.putObject(command);
+    console.log(
+      `DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
+    );
     return response;
   }
 
