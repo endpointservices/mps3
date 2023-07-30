@@ -1,9 +1,12 @@
 import {
+  GetObjectAclCommandOutput,
   GetObjectCommandInput,
+  GetObjectCommandOutput,
   PutObjectCommandInput,
   PutObjectCommandOutput,
   S3,
 } from "@aws-sdk/client-s3";
+import { apply } from "json-merge-patch";
 import { OMap } from "OMap";
 
 export interface MPS3Config {
@@ -19,6 +22,8 @@ interface FileState {
   version: string;
 }
 
+type Merge = any;
+
 interface ManifestState {
   version: number;
   // TODO: the manifest should just be URLs which corresponde to the s3 URLs
@@ -26,6 +31,14 @@ interface ManifestState {
   files: {
     [url: string]: FileState;
   };
+  // The previous state this was based on
+  // Writes made after this version will not have been included
+  previous?: {
+    url: string;
+    version: string;
+  };
+  // JSON-merge-patch update that the last operation was
+  update: Merge;
 }
 
 class File implements FileState {
@@ -89,44 +102,110 @@ class Manifest {
     this.ref = ref;
   }
   async get(): Promise<ManifestState> {
-    const response = await this.service._getObject({
-      ref: this.ref,
-    });
-    if (response === undefined) {
-      return {
-        version: 0,
-        files: {},
-      };
-    }
-
-    if (isManifest(response)) {
-      const latestState: ManifestState = response;
-      /*
-      const previousVersions = await this.service.config.api.listObjectVersions({
-        Bucket: this.ref.bucket,
-        Prefix: this.ref.key,
-        VersionIdMarker: latestState.
+    try {
+      const response = await this.service._getObject2<ManifestState>({
+        ref: this.ref,
       });
-      previousVersions.Versions?.flatMap(async (previousVersion) => {
-        const versionRaw = await this.service._getObject({
-          ref: {
-            bucket: this.ref.bucket,
-            key: previousVersion.Key!
-          }
-        });
-  
-        if (isManifest(versionRaw)) {
-          return [versionRaw];
-        } else {
-          console.error("Invalid manifest", response);
-          throw new Error("Invalid manifest");
-        }
-      });*/
+      if (response.data === undefined) {
+        return {
+          version: 0,
+          files: {},
+          update: {},
+        };
+      }
 
-      return latestState;
-    } else {
-      console.error("Invalid manifest", response);
-      throw new Error("Invalid manifest");
+      if (isManifest(response.data)) {
+        const latestState: ManifestState = response.data;
+
+        // First we confirm no versions were written while this one was in flight
+        const previousVersion =
+          await this.service.config.api.listObjectVersions({
+            Bucket: this.ref.bucket,
+            Prefix: this.ref.key,
+            KeyMarker: this.ref.key,
+            VersionIdMarker: response.VersionId,
+            MaxKeys: 1, // Note we only look one version back
+          });
+
+        if (
+          previousVersion.Versions === undefined ||
+          previousVersion.Versions?.length == 0 ||
+          previousVersion.Versions[0].VersionId ===
+            latestState.previous?.version
+        ) {
+          // If that one key is the base the state was generated from, we're good
+          // The is the common case for low load
+          latestState.previous = {
+            url: url(this.ref),
+            version: response.VersionId!,
+          };
+          return latestState;
+        } else {
+          // There have been some additional writes
+          const previousVersions =
+            await this.service.config.api.listObjectVersions({
+              Bucket: this.ref.bucket,
+              Prefix: this.ref.key,
+              KeyMarker: this.ref.key,
+              VersionIdMarker: response.VersionId,
+              MaxKeys: 10,
+            });
+
+          if (previousVersions.Versions === undefined)
+            throw new Error("No versions returned");
+
+          const start = previousVersions.Versions?.findIndex(
+            (version) => version.VersionId === latestState.previous?.version
+          );
+
+          if (start === undefined)
+            throw new Error("Can't find previous state in search window");
+
+          const baseStateRead = await this.service._getObject2<ManifestState>({
+            ref: this.ref,
+            version: latestState.previous?.version,
+          });
+
+          if (baseStateRead.data === undefined)
+            throw new Error("Can't find base state");
+
+          let state: ManifestState = baseStateRead.data;
+
+          // Play the missing patches over the base state, oldest first
+          console.log("replay state");
+          for (let index = start - 1; index >= 0; index--) {
+            const missingState = await this.service._getObject2<ManifestState>({
+              ref: this.ref,
+              version: previousVersions.Versions[index].VersionId,
+            });
+            const patch = missingState.data?.update;
+
+            console.log("patch state", patch);
+            state = apply(state, patch);
+          }
+          // include latest
+          state = apply(state, response.data.update);
+          // reflect the catchup
+          state.previous = {
+            url: url(this.ref),
+            version: response.VersionId!,
+          };
+          console.log("resolved data", JSON.stringify(state));
+          return state;
+        }
+      } else {
+        throw new Error("Invalid manifest");
+      }
+    } catch (err: any) {
+      if (err.name === "NoSuchKey") {
+        return {
+          version: 0,
+          files: {},
+          update: {},
+        };
+      } else {
+        throw err;
+      }
     }
   }
 
@@ -156,9 +235,16 @@ class Manifest {
   async updateContent(ref: ResolvedRef, version: string) {
     console.log(`update_content ${url(ref)} => ${version}`);
     const state = await this.get();
-
-    state.files[url(ref)] = {
+    const fileUrl = url(ref);
+    const fileState = {
       version: version,
+    };
+    state.files[fileUrl] = fileState;
+
+    state.update = {
+      files: {
+        [fileUrl]: fileState,
+      },
     };
 
     return this.service._putObject({
@@ -223,9 +309,15 @@ export class MPS3 {
     return this.manifests.get(ref)!;
   }
 
-  public async get(ref: string | Ref) {
+  public async get(
+    ref: string | Ref,
+    options: {
+      manifest?: Ref;
+    } = {}
+  ) {
     const manifestRef: ResolvedRef = {
       ...this.defaultManifest,
+      ...options.manifest,
     };
     const manifest = this.getOrCreateManifest(manifestRef);
     const contentRef: ResolvedRef = {
@@ -263,6 +355,32 @@ export class MPS3 {
       if (err.name === "NoSuchKey") return undefined;
       else throw err;
     }
+  }
+
+  async _getObject2<T>(args: {
+    ref: ResolvedRef;
+    version?: string;
+  }): Promise<GetObjectCommandOutput & { data: T | undefined }> {
+    const command: GetObjectCommandInput = {
+      Bucket: args.ref.bucket,
+      Key: args.ref.key,
+      ...(args.version && { VersionId: args.version }),
+    };
+    const response = {
+      ...(await this.config.api.getObject(command)),
+      data: <T | undefined>undefined,
+    };
+    if (response.Body) {
+      response.data = <T>(
+        JSON.parse(await response.Body.transformToString("utf-8"))
+      );
+      console.log(
+        `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${
+          response.VersionId
+        }\n${JSON.stringify(response.data)}`
+      );
+    }
+    return response;
   }
 
   public async put(
