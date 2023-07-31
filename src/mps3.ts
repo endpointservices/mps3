@@ -1,7 +1,6 @@
 import {
   DeleteObjectCommandInput,
   DeleteObjectCommandOutput,
-  GetObjectAclCommandOutput,
   GetObjectCommandInput,
   GetObjectCommandOutput,
   PutObjectCommandInput,
@@ -41,6 +40,11 @@ interface ManifestState {
   };
   // JSON-merge-patch update that the last operation was
   update: Merge;
+}
+
+interface HttpCacheEntry<T> {
+  etag: string;
+  data: T;
 }
 
 class File implements FileState {
@@ -98,6 +102,7 @@ class Manifest {
   ref: ResolvedRef;
   subscribers = new Set<Subscriber>();
   poller?: Timer;
+  cache?: HttpCacheEntry<ManifestState>;
 
   constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
     this.service = service;
@@ -107,7 +112,13 @@ class Manifest {
     try {
       const response = await this.service._getObject2<ManifestState>({
         ref: this.ref,
+        ifNoneMatch: this.cache?.etag,
       });
+
+      if (response.$metadata.httpStatusCode === 304) {
+        return this.cache?.data!;
+      }
+
       if (response.data === undefined) {
         return {
           version: 0,
@@ -141,6 +152,12 @@ class Manifest {
             url: url(this.ref),
             version: response.VersionId!,
           };
+
+          this.cache = {
+            etag: response.ETag!,
+            data: latestState,
+          };
+
           return latestState;
         } else {
           // There have been some additional writes
@@ -191,6 +208,11 @@ class Manifest {
           state.previous = {
             url: url(this.ref),
             version: response.VersionId!,
+          };
+
+          this.cache = {
+            etag: response.ETag!,
+            data: state,
           };
           console.log("resolved data", JSON.stringify(state));
           return state;
@@ -369,27 +391,42 @@ export class MPS3 {
   async _getObject2<T>(args: {
     ref: ResolvedRef;
     version?: string;
+    ifNoneMatch?: string;
   }): Promise<GetObjectCommandOutput & { data: T | undefined }> {
     const command: GetObjectCommandInput = {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
+      IfNoneMatch: args.ifNoneMatch,
       ...(args.version && { VersionId: args.version }),
     };
-    const response = {
-      ...(await this.config.api.getObject(command)),
-      data: <T | undefined>undefined,
-    };
-    if (response.Body) {
-      response.data = <T>(
-        JSON.parse(await response.Body.transformToString("utf-8"))
-      );
-      console.log(
-        `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${
-          response.VersionId
-        }\n${JSON.stringify(response.data)}`
-      );
+    try {
+      const response = {
+        ...(await this.config.api.getObject(command)),
+        data: <T | undefined>undefined,
+      };
+      if (response.Body) {
+        response.data = <T>(
+          JSON.parse(await response.Body.transformToString("utf-8"))
+        );
+        console.log(
+          `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${
+            response.VersionId
+          }\n${JSON.stringify(response.data)}`
+        );
+      }
+      return response;
+    } catch (err: any) {
+      if (err?.name === "304") {
+        return {
+          $metadata: {
+            httpStatusCode: 304,
+          },
+          data: undefined,
+        };
+      } else {
+        throw err;
+      }
     }
-    return response;
   }
 
   public async put(

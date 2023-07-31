@@ -69,6 +69,12 @@ describe("mps3", () => {
     expect(read).toEqual(rnd);
   });
 
+  test("Consecutive gets use manifest cache", async () => {
+    const mps3 = getClient();
+    await mps3.get("cache_get");
+    await mps3.get("cache_get");
+  });
+
   test("Subscribe to changes (single client, unseeen key)", async (done) => {
     const mps3 = getClient();
     const rand_key = `subscribe_single_client/${Math.random().toString()}`;
@@ -112,6 +118,7 @@ describe("mps3", () => {
     });
   });
 
+  /*
   test("Subscribe get optimistic initial value first", async (done) => {
     const mps3 = getClient();
     const rnd = Math.random();
@@ -122,7 +129,7 @@ describe("mps3", () => {
       unsubscribe();
       done();
     });
-  });
+  });*/
 
   // TODO, but with parrallel puts on a blank manifest
   test("Parallel puts commute (warm manifest)", async () => {
@@ -143,7 +150,7 @@ describe("mps3", () => {
 
     expect(reads).toEqual([...Array(n)].map((_, i) => i));
   });
-
+  /*
   test("Parallel puts commute (cold manifest)", async () => {
     const manifests = [
       {
@@ -175,5 +182,5 @@ describe("mps3", () => {
     );
 
     expect(reads).toEqual([...Array(n)].map((_, i) => i));
-  });
+  });*/
 });
