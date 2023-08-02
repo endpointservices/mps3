@@ -1,6 +1,6 @@
-import { PutObjectCommandInput, S3 } from "@aws-sdk/client-s3";
+import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
-import { MPS3, uuidRegex } from "mps3";
+import { MPS3 } from "mps3";
 
 describe("mps3", () => {
   let s3: S3;

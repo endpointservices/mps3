@@ -9,6 +9,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { apply } from "json-merge-patch";
 import { OMap } from "OMap";
+import { uuidRegex } from "regex";
 
 export interface MPS3Config {
   defaultBucket: string;
@@ -16,8 +17,6 @@ export interface MPS3Config {
   api: S3;
 }
 
-export const uuidRegex =
-  /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
 
 interface FileState {
   version: string;
