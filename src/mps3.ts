@@ -431,7 +431,7 @@ export class MPS3 {
       manifests?: Ref[];
     } = {}
   ) {
-    return this.putAll(new Map([[ref, value]]));
+    return this.putAll(new Map([[ref, value]]), options);
   }
 
   public async putAll(
