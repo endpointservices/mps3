@@ -255,28 +255,25 @@ class Manifest {
     });
   }
 
-  async updateContent(ref: ResolvedRef, version: string | undefined) {
-    console.log(`update_content ${url(ref)} => ${version}`);
+  async updateContent(update: Map<ResolvedRef, string | undefined>) {
     const state = await this.get();
-    const fileUrl = url(ref);
-    if (version) {
-      const fileState = {
-        version: version,
-      };
-      state.files[fileUrl] = fileState;
-      state.update = {
-        files: {
-          [fileUrl]: fileState,
-        },
-      };
-    } else {
-      delete state.files[fileUrl];
-      state.update = {
-        files: {
-          [fileUrl]: null,
-        },
-      };
+    state.update = {
+      files: {},
+    };
+    for (let [ref, version] of update) {
+      const fileUrl = url(ref);
+      if (version) {
+        const fileState = {
+          version: version,
+        };
+        state.files[fileUrl] = fileState;
+        state.update.files[fileUrl] = fileState;
+      } else {
+        delete state.files[fileUrl];
+        state.update.files[fileUrl] = null;
+      }
     }
+
     return this.service._putObject({
       ref: this.ref,
       value: state,
@@ -427,7 +424,6 @@ export class MPS3 {
       }
     }
   }
-
   public async put(
     ref: string | Ref,
     value: any,
@@ -435,36 +431,57 @@ export class MPS3 {
       manifests?: Ref[];
     } = {}
   ) {
+    return this.putAll(new Map([[ref, value]]));
+  }
+
+  public async putAll(
+    values: Map<string | Ref, any>,
+    options: {
+      manifests?: Ref[];
+    } = {}
+  ) {
     const manifests = options?.manifests || [this.defaultManifest];
-    const contentRef: ResolvedRef = {
-      bucket:
-        (<Ref>ref).bucket ||
-        this.config.defaultBucket ||
-        this.defaultManifest.bucket,
-      key: typeof ref === "string" ? ref : ref.key,
-    };
+    const contentVersions: Map<ResolvedRef, string | undefined> = new Map();
+    const contentOperations: Promise<void>[] = [];
+    values.forEach((value, ref) => {
+      const contentRef: ResolvedRef = {
+        bucket:
+          (<Ref>ref).bucket ||
+          this.config.defaultBucket ||
+          this.defaultManifest.bucket,
+        key: typeof ref === "string" ? ref : ref.key,
+      };
 
-    let versionId: string | undefined;
-    if (value !== undefined) {
-      const fileUpdate = await this._putObject({
-        ref: contentRef,
-        value,
-      });
-
-      if (
-        fileUpdate.VersionId === undefined ||
-        !fileUpdate.VersionId.match(uuidRegex)
-      ) {
-        console.error(fileUpdate);
-        throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
+      if (value !== undefined) {
+        contentOperations.push(
+          this._putObject({
+            ref: contentRef,
+            value,
+          }).then((fileUpdate) => {
+            if (
+              fileUpdate.VersionId === undefined ||
+              !fileUpdate.VersionId.match(uuidRegex)
+            ) {
+              console.error(fileUpdate);
+              throw Error(
+                `Bucket ${contentRef.bucket} is not version enabled!`
+              );
+            }
+            contentVersions.set(contentRef, fileUpdate.VersionId);
+          })
+        );
+      } else {
+        contentOperations.push(
+          this._deleteObject({
+            ref: contentRef,
+          }).then((_) => {
+            contentVersions.set(contentRef, undefined);
+          })
+        );
       }
-      versionId = fileUpdate.VersionId;
-    } else {
-      const fileUpdate = await this._deleteObject({
-        ref: contentRef,
-      });
-      versionId = undefined;
-    }
+    });
+
+    await Promise.all(contentOperations);
 
     await Promise.all(
       manifests.map((ref) => {
@@ -473,7 +490,7 @@ export class MPS3 {
           ...ref,
         };
         const manifest = this.getOrCreateManifest(manifestRef);
-        return manifest.updateContent(contentRef, versionId);
+        return manifest.updateContent(contentVersions);
       })
     );
   }

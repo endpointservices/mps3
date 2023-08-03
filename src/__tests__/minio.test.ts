@@ -7,7 +7,7 @@ describe("mps3", () => {
   beforeAll(async () => {
     s3 = new S3({
       region: "us-east-1",
-      endpoint: "http://127.0.0.1:9000 ", // for docker, http://minio:9000
+      endpoint: "http://127.0.0.1:9102 ", // for docker, http://minio:9102
       credentials: {
         accessKeyId: "mps3",
         secretAccessKey: "ZOAmumEzdsUUcVlQ",
@@ -31,11 +31,6 @@ describe("mps3", () => {
           Status: "Enabled",
         },
       });
-
-      let status = undefined;
-      while (status !== "Enabled") {
-        status = (await s3.getBucketVersioning({ Bucket: "test5" })).Status;
-      }
     } catch (e) {
       console.error(e);
     }
