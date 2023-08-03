@@ -17,6 +17,15 @@ export interface MPS3Config {
   api: S3;
 }
 
+export type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [x: string]: JSONValue }
+  | Array<JSONValue>;
+
+export type DeleteValue = undefined;
 
 interface FileState {
   version: string;
@@ -255,7 +264,7 @@ class Manifest {
     });
   }
 
-  async updateContent(update: Map<ResolvedRef, string | undefined>) {
+  async updateContent(update: Map<ResolvedRef, string | DeleteValue>) {
     const state = await this.get();
     state.update = {
       files: {},
@@ -426,7 +435,7 @@ export class MPS3 {
   }
   public async put(
     ref: string | Ref,
-    value: any,
+    value: JSONValue | DeleteValue,
     options: {
       manifests?: Ref[];
     } = {}
@@ -435,7 +444,7 @@ export class MPS3 {
   }
 
   public async putAll(
-    values: Map<string | Ref, any>,
+    values: Map<string | Ref, JSONValue | DeleteValue>,
     options: {
       manifests?: Ref[];
     } = {}
