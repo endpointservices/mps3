@@ -64,6 +64,20 @@ describe("mps3", () => {
     expect(read).toEqual(rnd);
   });
 
+  test("Can read your write uses cache", async (done) => {
+    const mps3 = getClient();
+    const rnd = Math.random();
+    const promise = mps3.put("rw", rnd); // no await
+    let has_read = false;
+    promise.then(() => {
+      expect(has_read).toEqual(true);
+      done();
+    });
+    const read = await mps3.get("rw");
+    has_read = true;
+    expect(read).toEqual(rnd);
+  });
+
   test("Consecutive gets use manifest cache", async () => {
     const mps3 = getClient();
     await mps3.get("cache_get");

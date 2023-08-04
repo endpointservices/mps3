@@ -1,21 +1,35 @@
 export class OMap<K, V> {
   key: (key: K) => string;
-  store: Map<string, V> = new Map();
+  vals: Map<string, V>;
+  keys: Map<string, K>;
 
-  constructor(key: (key: K) => string) {
+  constructor(key: (key: K) => string, values?: Iterable<readonly [K, V]>) {
     this.key = key;
+    this.vals = new Map();
+    this.keys = new Map();
+    if (values) {
+      for (const [k, v] of values) {
+        this.set(k, v);
+      }
+    }
   }
   set(key: K, value: V): this {
-    this.store.set(this.key(key), value);
+    const k = this.key(key);
+    this.vals.set(k, value);
+    this.keys.set(k, key);
     return this;
   }
   get(key: K): V | undefined {
-    return this.store.get(this.key(key));
+    return this.vals.get(this.key(key));
   }
   has(key: K): boolean {
-    return this.store.has(this.key(key));
+    return this.vals.has(this.key(key));
   }
   values(): IterableIterator<V> {
-    return this.store.values();
+    return this.vals.values();
+  }
+
+  forEach(callback: (value: V, key: K) => void) {
+    return this.vals.forEach((v, k, map) => callback(v, this.keys.get(k)!));
   }
 }

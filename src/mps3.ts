@@ -112,6 +112,13 @@ class Manifest {
   poller?: Timer;
   cache?: HttpCacheEntry<ManifestState>;
 
+  // Pending writes iterate in insertion order
+  // The key, promise, indicated the pending IO operations
+  pendingWrites: Map<
+    Promise<void>,
+    OMap<ResolvedRef, JSONValue | DeleteValue>
+  > = new Map();
+
   constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
     this.service = service;
     this.ref = ref;
@@ -350,7 +357,7 @@ export class MPS3 {
     options: {
       manifest?: Ref;
     } = {}
-  ) {
+  ): Promise<JSONValue | undefined> {
     const manifestRef: ResolvedRef = {
       ...this.defaultManifest,
       ...options.manifest,
@@ -363,6 +370,19 @@ export class MPS3 {
         this.defaultManifest.bucket,
       key: typeof ref === "string" ? ref : ref.key,
     };
+    console.log("checking cache");
+    let inCache = false;
+    let cachedValue = undefined;
+    for (let [operation, values] of manifest.pendingWrites) {
+      if (values.has(contentRef)) {
+        inCache = true;
+        cachedValue = values.get(contentRef);
+      }
+    }
+    if (inCache) {
+      return cachedValue;
+    }
+
     const version = await manifest.getVersion(contentRef);
     if (version === undefined) return undefined;
     return this._getObject({
@@ -371,7 +391,10 @@ export class MPS3 {
     });
   }
 
-  async _getObject(args: { ref: ResolvedRef; version?: string }): Promise<any> {
+  async _getObject(args: {
+    ref: ResolvedRef;
+    version?: string;
+  }): Promise<JSONValue | DeleteValue> {
     const command: GetObjectCommandInput = {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
@@ -449,18 +472,51 @@ export class MPS3 {
       manifests?: Ref[];
     } = {}
   ) {
-    const manifests = options?.manifests || [this.defaultManifest];
+    const resolvedValues = new OMap<ResolvedRef, JSONValue | DeleteValue>(
+      url,
+      [...values].map(([ref, value]) => [
+        {
+          bucket:
+            (<Ref>ref).bucket ||
+            this.config.defaultBucket ||
+            this.defaultManifest.bucket,
+          key: typeof ref === "string" ? ref : ref.key,
+        },
+        value,
+      ])
+    );
+
+    const manifests: ResolvedRef[] = (
+      options?.manifests || [this.defaultManifest]
+    ).map((ref) => ({
+      ...this.defaultManifest,
+      ...ref,
+    }));
+
+    const operation = this._putAll(resolvedValues, {
+      manifests,
+    });
+
+    manifests.forEach((manifestRef) => {
+      const manifest = this.getOrCreateManifest(manifestRef);
+      manifest.pendingWrites.set(operation, resolvedValues);
+      operation.catch(() => {
+        manifest.pendingWrites.delete(operation);
+      });
+    });
+
+    return operation;
+  }
+
+  async _putAll(
+    values: OMap<ResolvedRef, JSONValue | DeleteValue>,
+    options: {
+      manifests: ResolvedRef[];
+    }
+  ) {
     const contentVersions: Map<ResolvedRef, string | undefined> = new Map();
     const contentOperations: Promise<void>[] = [];
-    values.forEach((value, ref) => {
-      const contentRef: ResolvedRef = {
-        bucket:
-          (<Ref>ref).bucket ||
-          this.config.defaultBucket ||
-          this.defaultManifest.bucket,
-        key: typeof ref === "string" ? ref : ref.key,
-      };
-
+    values.forEach((value, contentRef) => {
       if (value !== undefined) {
         contentOperations.push(
           this._putObject({
@@ -493,12 +549,8 @@ export class MPS3 {
     await Promise.all(contentOperations);
 
     await Promise.all(
-      manifests.map((ref) => {
-        const manifestRef: ResolvedRef = {
-          ...this.defaultManifest,
-          ...ref,
-        };
-        const manifest = this.getOrCreateManifest(manifestRef);
+      options.manifests.map((ref) => {
+        const manifest = this.getOrCreateManifest(ref);
         return manifest.updateContent(contentVersions);
       })
     );
