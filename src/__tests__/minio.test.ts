@@ -89,12 +89,18 @@ describe("mps3", () => {
     const rand_key = `subscribe_single_client/${Math.random().toString()}`;
     const rnd = Math.random();
     expect(mps3.subscriberCount).toEqual(0);
-    const unsubscribe = await mps3.subscribe(rand_key, (value) => {
+    let callbackCount = 0;
+    const unsubscribe = mps3.subscribe(rand_key, (value) => {
       expect(mps3.subscriberCount).toEqual(1);
-      expect(value).toEqual(rnd);
-      unsubscribe();
-      expect(mps3.subscriberCount).toEqual(0);
-      done();
+      if (callbackCount === 0) {
+        expect(value).toEqual(undefined);
+        callbackCount++;
+      } else if (callbackCount === 1) {
+        expect(value).toEqual(rnd);
+        unsubscribe();
+        expect(mps3.subscriberCount).toEqual(0);
+        done();
+      }
     });
     mps3.put(rand_key, rnd);
     expect(mps3.subscriberCount).toEqual(1);
@@ -106,11 +112,16 @@ describe("mps3", () => {
     const rand_key = `subscribe_multi_client/${Math.random().toString()}`;
     expect(mps3.subscriberCount).toEqual(0);
     expect(mps3_other.subscriberCount).toEqual(0);
-
-    const unsubscribe = await mps3_other.subscribe(rand_key, (value) => {
-      expect(value).toEqual("_");
-      unsubscribe();
-      done();
+    let callbackCount = 0;
+    const unsubscribe = mps3_other.subscribe(rand_key, (value) => {
+      if (callbackCount === 0) {
+        expect(value).toEqual(undefined);
+        callbackCount++;
+      } else if (callbackCount === 1) {
+        expect(value).toEqual("_");
+        unsubscribe();
+        done();
+      }
     });
     mps3.put(rand_key, "_");
   });
@@ -120,14 +131,13 @@ describe("mps3", () => {
     const rnd = Math.random();
     await mps3.put("subscribe_initial", rnd);
 
-    const unsubscribe = await mps3.subscribe("subscribe_initial", (value) => {
+    const unsubscribe = mps3.subscribe("subscribe_initial", (value) => {
       expect(value).toEqual(rnd);
       unsubscribe();
       done();
     });
   });
 
-  /*
   test("Subscribe get optimistic initial value first", async (done) => {
     const mps3 = getClient();
     const rnd = Math.random();
@@ -138,7 +148,7 @@ describe("mps3", () => {
       unsubscribe();
       done();
     });
-  });*/
+  });
 
   // TODO, but with parrallel puts on a blank manifest
   test("Parallel puts commute (warm manifest)", async () => {

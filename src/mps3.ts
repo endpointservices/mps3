@@ -370,7 +370,6 @@ export class MPS3 {
         this.defaultManifest.bucket,
       key: typeof ref === "string" ? ref : ref.key,
     };
-    console.log("checking cache");
     let inCache = false;
     let cachedValue = undefined;
     for (let [operation, values] of manifest.pendingWrites) {
@@ -595,7 +594,7 @@ export class MPS3 {
 
   public subscribe(
     key: string,
-    handler: (value: any) => void,
+    handler: (value: JSONValue | DeleteValue) => void,
     options?: {
       bucket?: string;
       manifest?: Ref;
@@ -613,8 +612,15 @@ export class MPS3 {
     const manifest = this.getOrCreateManifest(manifestRef);
     const subscriber = new Subscriber(keyRef, manifest, handler);
     manifest.subscribers.add(subscriber);
-    manifest.poll();
-    // TODO send initial state
+    this.get(keyRef, {
+      manifest: manifestRef,
+    }).then((initial) => {
+      queueMicrotask(() => {
+        handler(initial);
+        manifest.poll();
+      });
+    });
+
     return () => {
       manifest.subscribers.delete(subscriber);
     };
