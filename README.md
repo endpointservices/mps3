@@ -8,9 +8,13 @@ You can use this library over S3, R2 or self hosted solutions like Minio
 ## Features
 
 - Optimistic updates
-- Offline-first
+- Pluggable authentication
 - Atomic bulk s3 operations
 - Multiplayer
+- Sha256 Checksums
+
+coming soon
+- Offline first
 
 ## How it works
 

@@ -102,6 +102,10 @@ export class Manifest {
   }
 
   async get(): Promise<ManifestState> {
+    return this.getLatest().then((state) => state || this.cache?.data!)
+  }
+
+  async getLatest(): Promise<ManifestState | undefined> {
     try {
       const response = await this.service._getObject2<ManifestState>({
         ref: this.ref,
@@ -109,7 +113,7 @@ export class Manifest {
       });
 
       if (response.$metadata.httpStatusCode === 304) {
-        return this.cache?.data!;
+        return undefined;
       }
 
       if (response.data === undefined) {
@@ -242,7 +246,9 @@ export class Manifest {
     if (this.subscriberCount > 0 && !this.poller) {
       this.poller = setInterval(() => this.poll(), 1000);
     }
-    const state = await this.get();
+    const state = await this.getLatest();
+    if (state === undefined) return;
+    
     console.log(`poll ${JSON.stringify(state)}`);
     this.subscribers.forEach(async (subscriber) => {
       const fileState: FileState | undefined =
