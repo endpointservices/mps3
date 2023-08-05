@@ -157,79 +157,100 @@ var require_merge = __commonJS((exports, module) => {
   };
 });
 
+// src/OMap.ts
+class OMap {
+  key;
+  vals;
+  keys;
+  constructor(key, values) {
+    this.key = key;
+    this.vals = new Map;
+    this.keys = new Map;
+    if (values) {
+      for (const [k, v] of values) {
+        this.set(k, v);
+      }
+    }
+  }
+  set(key, value) {
+    const k = this.key(key);
+    this.vals.set(k, value);
+    this.keys.set(k, key);
+    return this;
+  }
+  get(key) {
+    return this.vals.get(this.key(key));
+  }
+  has(key) {
+    return this.vals.has(this.key(key));
+  }
+  values() {
+    return this.vals.values();
+  }
+  forEach(callback) {
+    return this.vals.forEach((v, k, map) => callback(v, this.keys.get(k)));
+  }
+}
+
+// src/types.ts
+var url = (ref) => `${ref.bucket}/${ref.key}`;
+
 // node_modules/json-merge-patch/index.js
 var $apply = require_apply();
 var $generate = require_generate();
 var $merge = require_merge();
 
-// src/OMap.ts
-class OMap {
-  key;
-  store = new Map;
-  constructor(key) {
-    this.key = key;
-  }
-  set(key, value) {
-    this.store.set(this.key(key), value);
-    return this;
-  }
-  get(key) {
-    return this.store.get(this.key(key));
-  }
-  has(key) {
-    return this.store.has(this.key(key));
-  }
-  values() {
-    return this.store.values();
-  }
-}
-
-// src/mps3.ts
-async function sha256(message) {
-  const msgBuffer = new TextEncoder().encode(message);
-  const arrayBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-}
-var uuidRegex = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
-
-class File {
-  ref;
-  version;
-  constructor(ref, state) {
-    this.ref = ref;
-    this.version = state.version;
-  }
-}
+// src/manifest.ts
 var isManifest = (obj) => {
   if (!obj)
     return false;
   return obj.version !== undefined && typeof obj.version === "number" && obj.files !== undefined && typeof obj.files === "object" && Object.values(obj.files).every((file) => typeof file === "object" && file.version !== undefined && typeof file.version === "string");
 };
-var url = (ref) => `${ref.bucket}/${ref.key}`;
-var parseUrl = (url2) => {
-  const [bucket, ...key] = url2.split("/");
-  return {
-    bucket,
-    key: key.join("/")
-  };
-};
-var eq = (a, b) => a.bucket === b.bucket && a.key === b.key;
-var files = (state) => Object.entries(state.files).reduce((set, [url2, file]) => set.add(new File(parseUrl(url2), file)), new Set);
+
+class Subscriber {
+  ref;
+  handler;
+  constructor(ref, handler) {
+    this.ref = ref;
+    this.handler = handler;
+  }
+}
 
 class Manifest {
   service;
   ref;
   subscribers = new Set;
   poller;
+  cache;
+  pendingWrites = new Map;
+  writtenOperations = new Map;
   constructor(service, ref, options) {
     this.service = service;
     this.ref = ref;
   }
+  observeVersionId(versionId) {
+    console.log(`observeVersionId ${versionId} in ${[
+      ...this.writtenOperations.keys()
+    ]} pending ${this.pendingWrites.size}`);
+    if (this.writtenOperations.has(versionId)) {
+      console.log(`clearing pending write for observeVersionId ${versionId}`);
+      const operation = this.writtenOperations.get(versionId);
+      this.pendingWrites.delete(operation);
+      this.writtenOperations.delete(versionId);
+    }
+  }
   async get() {
+    return this.getLatest().then((state) => state || this.cache?.data);
+  }
+  async getLatest() {
     try {
       const response = await this.service._getObject2({
-        ref: this.ref
+        ref: this.ref,
+        ifNoneMatch: this.cache?.etag
       });
+      if (response.$metadata.httpStatusCode === 304) {
+        return;
+      }
       if (response.data === undefined) {
         return {
           version: 0,
@@ -251,6 +272,13 @@ class Manifest {
             url: url(this.ref),
             version: response.VersionId
           };
+          this.cache = {
+            etag: response.ETag,
+            data: latestState
+          };
+          if (previousVersion.Versions && previousVersion.Versions[0])
+            this.observeVersionId(previousVersion.Versions[0].VersionId);
+          this.observeVersionId(response.VersionId);
           return latestState;
         } else {
           const previousVersions = await this.service.config.api.listObjectVersions({
@@ -272,6 +300,7 @@ class Manifest {
           if (baseStateRead.data === undefined)
             throw new Error("Can't find base state");
           let state = baseStateRead.data;
+          this.observeVersionId(baseStateRead.VersionId);
           console.log("replay state");
           for (let index = start - 1;index >= 0; index--) {
             const missingState = await this.service._getObject2({
@@ -279,13 +308,19 @@ class Manifest {
               version: previousVersions.Versions[index].VersionId
             });
             const patch = missingState.data?.update;
-            console.log("patch state", patch);
+            this.observeVersionId(missingState.VersionId);
             state = $apply(state, patch);
           }
+          this.observeVersionId(response.VersionId);
           state = $apply(state, response.data.update);
+          state.update = $apply(state.update, response.data.update);
           state.previous = {
             url: url(this.ref),
             version: response.VersionId
+          };
+          this.cache = {
+            etag: response.ETag,
+            data: state
           };
           console.log("resolved data", JSON.stringify(state));
           return state;
@@ -313,55 +348,80 @@ class Manifest {
     if (this.subscriberCount > 0 && !this.poller) {
       this.poller = setInterval(() => this.poll(), 1000);
     }
-    const state = await this.get();
-    this.subscribers.forEach((subscriber) => {
-      files(state).forEach(async (file) => {
-        if (eq(file.ref, subscriber.ref)) {
-          const fileContent = await this.service._getObject({
-            ref: file.ref,
-            version: file.version
-          });
-          subscriber.handler(fileContent);
-        }
-      });
+    const state = await this.getLatest();
+    if (state === undefined)
+      return;
+    console.log(`poll ${JSON.stringify(state)}`);
+    this.subscribers.forEach(async (subscriber) => {
+      const fileState = state.update.files[url(subscriber.ref)];
+      if (fileState) {
+        const fileContent = await this.service._getObject({
+          ref: subscriber.ref,
+          version: fileState.version
+        });
+        subscriber.handler(fileContent);
+      } else {
+        subscriber.handler(undefined);
+      }
     });
   }
-  async updateContent(ref, version) {
-    console.log(`update_content ${url(ref)} => ${version}`);
-    const state = await this.get();
-    const fileUrl = url(ref);
-    const fileState = {
-      version
-    };
-    state.files[fileUrl] = fileState;
-    state.update = {
-      files: {
-        [fileUrl]: fileState
+  async updateContent(values, write) {
+    this.pendingWrites.set(write, values);
+    console.log(`updateContent pending ${this.pendingWrites.size}`);
+    try {
+      const update = await write;
+      const state = await this.get();
+      state.update = {
+        files: {}
+      };
+      for (let [ref, version] of update) {
+        const fileUrl = url(ref);
+        if (version) {
+          const fileState = {
+            version
+          };
+          state.files[fileUrl] = fileState;
+          state.update.files[fileUrl] = fileState;
+        } else {
+          delete state.files[fileUrl];
+          state.update.files[fileUrl] = null;
+        }
       }
-    };
-    return this.service._putObject({
-      ref: this.ref,
-      value: state
-    });
+      const response = await this.service._putObject({
+        ref: this.ref,
+        value: state
+      });
+      this.writtenOperations.set(response.VersionId, write);
+      this.poll();
+      return response;
+    } catch (err) {
+      console.error(err);
+      this.pendingWrites.delete(write);
+      throw err;
+    }
   }
   async getVersion(ref) {
     const state = await this.get();
     return state.files[url(ref)]?.version;
+  }
+  subscribe(keyRef, handler) {
+    const sub = new Subscriber(keyRef, handler);
+    this.subscribers.add(sub);
+    return () => this.subscribers.delete(sub);
   }
   get subscriberCount() {
     return this.subscribers.size;
   }
 }
 
-class Subscriber {
-  manifest;
-  ref;
-  handler;
-  constructor(ref, manifest, handler) {
-    this.manifest = manifest;
-    this.ref = ref;
-    this.handler = handler;
-  }
+// src/regex.ts
+var uuidRegex = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
+
+// src/mps3.ts
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const arrayBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 }
 
 class MPS3 {
@@ -391,6 +451,18 @@ class MPS3 {
       bucket: ref.bucket || this.config.defaultBucket || this.defaultManifest.bucket,
       key: typeof ref === "string" ? ref : ref.key
     };
+    let inCache = false;
+    let cachedValue = undefined;
+    for (let [operation, values] of manifest.pendingWrites) {
+      if (values.has(contentRef)) {
+        inCache = true;
+        cachedValue = values.get(contentRef);
+      }
+    }
+    if (inCache) {
+      console.log(`get (cached) ${url(contentRef)}`);
+      return cachedValue;
+    }
     const version = await manifest.getVersion(contentRef);
     if (version === undefined)
       return;
@@ -425,40 +497,84 @@ class MPS3 {
     const command = {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
+      IfNoneMatch: args.ifNoneMatch,
       ...args.version && { VersionId: args.version }
     };
-    const response = {
-      ...await this.config.api.getObject(command),
-      data: undefined
-    };
-    if (response.Body) {
-      response.data = JSON.parse(await response.Body.transformToString("utf-8"));
-      console.log(`GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}\n${JSON.stringify(response.data)}`);
+    try {
+      const response = {
+        ...await this.config.api.getObject(command),
+        data: undefined
+      };
+      if (response.Body) {
+        response.data = JSON.parse(await response.Body.transformToString("utf-8"));
+        console.log(`GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}\n${JSON.stringify(response.data)}`);
+      }
+      return response;
+    } catch (err) {
+      if (err?.name === "304") {
+        return {
+          $metadata: {
+            httpStatusCode: 304
+          },
+          data: undefined
+        };
+      } else {
+        throw err;
+      }
     }
-    return response;
+  }
+  async delete(ref, options = {}) {
+    return this.putAll(new Map([[ref, undefined]]), options);
   }
   async put(ref, value, options = {}) {
-    const manifests = options?.manifests || [this.defaultManifest];
-    const contentRef = {
-      bucket: ref.bucket || this.config.defaultBucket || this.defaultManifest.bucket,
-      key: typeof ref === "string" ? ref : ref.key
-    };
-    const fileUpdate = await this._putObject({
-      ref: contentRef,
+    return this.putAll(new Map([[ref, value]]), options);
+  }
+  async putAll(values, options = {}) {
+    const resolvedValues = new OMap(url, [...values].map(([ref, value]) => [
+      {
+        bucket: ref.bucket || this.config.defaultBucket || this.defaultManifest.bucket,
+        key: typeof ref === "string" ? ref : ref.key
+      },
       value
+    ]));
+    const manifests = (options?.manifests || [this.defaultManifest]).map((ref) => ({
+      ...this.defaultManifest,
+      ...ref
+    }));
+    return this._putAll(resolvedValues, {
+      manifests
     });
-    if (fileUpdate.VersionId === undefined || !fileUpdate.VersionId.match(uuidRegex)) {
-      console.error(fileUpdate);
-      throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
-    }
-    const versionId = fileUpdate.VersionId;
-    await Promise.all(manifests.map((ref2) => {
-      const manifestRef = {
-        ...this.defaultManifest,
-        ...ref2
-      };
-      const manifest = this.getOrCreateManifest(manifestRef);
-      return manifest.updateContent(contentRef, versionId);
+  }
+  async _putAll(values, options) {
+    const contentVersions = new Promise(async (resolve) => {
+      const results = new Map;
+      const contentOperations = [];
+      values.forEach((value, contentRef) => {
+        if (value !== undefined) {
+          contentOperations.push(this._putObject({
+            ref: contentRef,
+            value
+          }).then((fileUpdate) => {
+            if (fileUpdate.VersionId === undefined || !fileUpdate.VersionId.match(uuidRegex)) {
+              console.error(fileUpdate);
+              throw Error(`Bucket ${contentRef.bucket} is not version enabled!`);
+            }
+            results.set(contentRef, fileUpdate.VersionId);
+          }));
+        } else {
+          contentOperations.push(this._deleteObject({
+            ref: contentRef
+          }).then((_) => {
+            results.set(contentRef, undefined);
+          }));
+        }
+      });
+      await Promise.all(contentOperations);
+      resolve(results);
+    });
+    await Promise.all(options.manifests.map((ref) => {
+      const manifest = this.getOrCreateManifest(ref);
+      return manifest.updateContent(values, contentVersions);
     }));
   }
   async _putObject(args) {
@@ -476,6 +592,15 @@ class MPS3 {
     console.log(`PUT ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}\n${content}`);
     return response;
   }
+  async _deleteObject(args) {
+    const command = {
+      Bucket: args.ref.bucket,
+      Key: args.ref.key
+    };
+    const response = await this.config.api.putObject(command);
+    console.log(`DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`);
+    return response;
+  }
   subscribe(key, handler, options) {
     const manifestRef = {
       ...this.defaultManifest,
@@ -486,18 +611,21 @@ class MPS3 {
       bucket: options?.bucket || this.config.defaultBucket || manifestRef.bucket
     };
     const manifest = this.getOrCreateManifest(manifestRef);
-    const subscriber = new Subscriber(keyRef, manifest, handler);
-    manifest.subscribers.add(subscriber);
-    manifest.poll();
-    return () => {
-      manifest.subscribers.delete(subscriber);
-    };
+    const unsubscribe = manifest.subscribe(keyRef, handler);
+    this.get(keyRef, {
+      manifest: manifestRef
+    }).then((initial) => {
+      queueMicrotask(() => {
+        handler(initial);
+        manifest.poll();
+      });
+    });
+    return unsubscribe;
   }
   get subscriberCount() {
     return [...this.manifests.values()].reduce((count, manifest) => count + manifest.subscriberCount, 0);
   }
 }
 export {
-  uuidRegex,
   MPS3
 };

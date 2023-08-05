@@ -135,8 +135,9 @@ export class Manifest {
         if (
           previousVersion.Versions === undefined ||
           previousVersion.Versions?.length == 0 ||
-          previousVersion.Versions[0].VersionId ===
-            latestState.previous?.version
+          (previousVersion.Versions[0].VersionId ===
+            latestState.previous?.version &&
+            latestState.previous?.version !== undefined)
         ) {
           // If that one key is the base the state was generated from, we're good
           // The is the common case for low load
@@ -169,12 +170,19 @@ export class Manifest {
           if (previousVersions.Versions === undefined)
             throw new Error("No versions returned");
 
-          const start = previousVersions.Versions?.findIndex(
-            (version) => version.VersionId === latestState.previous?.version
-          );
+          const start =
+            latestState.previous?.version === undefined
+              ? previousVersions.Versions.length
+              : previousVersions.Versions?.findIndex(
+                  (version) =>
+                    version.VersionId === latestState.previous?.version
+                );
 
-          if (start === undefined)
-            throw new Error("Can't find previous state in search window");
+          if (start === -1) {
+            throw new Error(
+              `Can't find previous state ${latestState.previous?.version} in search window`
+            );
+          }
 
           const baseStateRead = await this.service._getObject2<ManifestState>({
             ref: this.ref,

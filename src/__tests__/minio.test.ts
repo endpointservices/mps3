@@ -42,6 +42,41 @@ describe("mps3", () => {
       api: s3,
     });
 
+  
+
+  test("Parallel puts commute (cold manifest)", async () => {
+    const manifests = [
+      {
+        key: Math.random().toString(),
+      },
+    ];
+    const n = 3;
+    const clients = [...Array(n)].map((_) => getClient());
+    const rand_keys = [...Array(n)].map(
+      (_, i) => `parallel_put/${i}_${Math.random().toString()}`
+    );
+
+    // put in parallel
+    await Promise.all(
+      rand_keys.map((key, i) =>
+        clients[i].put(key, i, {
+          manifests,
+        })
+      )
+    );
+
+    // read in parallel
+    const reads = await Promise.all(
+      rand_keys.map((key, i) =>
+        clients[n - i - 1].get(key, {
+          manifest: manifests[0],
+        })
+      )
+    );
+
+    expect(reads).toEqual([...Array(n)].map((_, i) => i));
+  });
+
   test("Can see other's mutations after populating cache", async () => {
     const mps3 = getClient();
     const rnd = Math.random();
@@ -183,37 +218,4 @@ describe("mps3", () => {
 
     expect(reads).toEqual([...Array(n)].map((_, i) => i));
   });
-  /*
-  test("Parallel puts commute (cold manifest)", async () => {
-    const manifests = [
-      {
-        key: Math.random().toString(),
-      },
-    ];
-    const n = 3;
-    const clients = [...Array(n)].map((_) => getClient());
-    const rand_keys = [...Array(n)].map(
-      (_, i) => `parallel_put/${i}_${Math.random().toString()}`
-    );
-
-    // put in parallel
-    await Promise.all(
-      rand_keys.map((key, i) =>
-        clients[i].put(key, i, {
-          manifests,
-        })
-      )
-    );
-
-    // read in parallel
-    const reads = await Promise.all(
-      rand_keys.map((key, i) =>
-        clients[n - i - 1].get(key, {
-          manifest: manifests[0],
-        })
-      )
-    );
-
-    expect(reads).toEqual([...Array(n)].map((_, i) => i));
-  });*/
 });
