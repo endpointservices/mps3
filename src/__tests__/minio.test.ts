@@ -37,11 +37,12 @@ describe("mps3", () => {
 
   test("Subscription deduplicate undefined", async (done) => {
     const mps3 = getClient();
+    const listener = getClient();
     const rnd = Math.random();
     await mps3.delete("dedupe", undefined);
 
     let notifications = 0;
-    getClient().subscribe("dedupe", (value) => {
+    listener.subscribe("dedupe", (value) => {
       if (notifications === 0) expect(value).toEqual(undefined);
       if (notifications === 1) {
         expect(value).toEqual(rnd);
@@ -50,7 +51,9 @@ describe("mps3", () => {
       notifications++;
     });
     await mps3.delete("dedupe");
+    await listener.refresh();
     await mps3.put("dedupe", rnd);
+    await listener.refresh();
   });
 
   test("Can see other's mutations after populating cache", async () => {

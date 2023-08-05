@@ -76,7 +76,7 @@ export class MPS3 {
       }
     }
     if (inCache) {
-      console.log(`get (cached) ${url(contentRef)}`)
+      console.log(`get (cached) ${url(contentRef)}`);
       return cachedValue;
     }
 
@@ -327,6 +327,11 @@ export class MPS3 {
     return unsubscribe;
   }
 
+  refresh(): Promise<unknown> {
+    return Promise.all(
+      [...this.manifests.values()].map((manifest) => manifest.poll())
+    );
+  }
   get subscriberCount(): number {
     return [...this.manifests.values()].reduce(
       (count, manifest) => count + manifest.subscriberCount,
