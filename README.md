@@ -1,16 +1,23 @@
 # mps3
-Multiplayer over s3-compatible storage
+Multiplayer over any s3-compatible storage. Written to provide a fast path for multiplayer without vendor locking. Designed with orthogonality:
+- pluggable storage thanks to the de factor standardization of the s3 API.
+- pluggable auth through axios interceptors (including off-the-shelf solutions like aws4-axios).
 
+You can use this library over S3, R2 or self hosted solutions like Minio
 
-## Algorithms
+## Features
 
+- Optimistic updates
+- Atomic bulk s3 operations
+- Multiplayer
 
-### The Manifest
+## How it works
 
-Contains 
+Manifest files the metadata required to resolve snapshot state.
 - all files and their version
-- the previous JSON-merge-patch (used to resolve concurrent writes)
+- the update operation (used to resolve concurrent writes)
 - ref to the previous manifest the update was based on
+
 
 ### Avoiding mid-air collision
 
