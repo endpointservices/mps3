@@ -94,11 +94,6 @@ export class Manifest {
       this.pendingWrites.delete(operation);
       this.writtenOperations.delete(versionId);
     }
-    console.log(
-      `observeVersionId ${versionId} in ${[
-        ...this.writtenOperations.keys(),
-      ]} pending ${this.pendingWrites.size}`
-    );
   }
 
   async get(): Promise<ManifestState> {
@@ -247,8 +242,8 @@ export class Manifest {
       this.poller = setInterval(() => this.poll(), 1000);
     }
     const state = await this.getLatest();
-    if (state === undefined) return;
-    
+    if (state === undefined) return; // no changes
+
     console.log(`poll ${JSON.stringify(state)}`);
     this.subscribers.forEach(async (subscriber) => {
       const fileState: FileState | undefined =
@@ -296,7 +291,7 @@ export class Manifest {
         value: state,
       });
       this.writtenOperations.set(response.VersionId!, write);
-      console.log(`writtenOperations ${[...this.writtenOperations.keys()]}`);
+      this.poll();
       return response;
     } catch (err) {
       console.error(err);

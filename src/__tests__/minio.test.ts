@@ -48,13 +48,10 @@ describe("mps3", () => {
     await mps3.put("rw", rnd);
     await getClient().delete("rw");
 
-    await new Promise((resolve) => {
-      mps3.subscribe("rw", (val) => {
-        console.log(val);
-        if (val === undefined) resolve(val);
-      });
-    });
-    console.log("deleted");
+    // pending cache masks server until committed
+    while ((await mps3.get("rw")) !== undefined) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
     const read = await mps3.get("rw");
     expect(read).toEqual(undefined);
   });
