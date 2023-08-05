@@ -76,6 +76,7 @@ export class MPS3 {
       }
     }
     if (inCache) {
+      console.log(`get (cached) ${url(contentRef)}`)
       return cachedValue;
     }
 
@@ -152,6 +153,16 @@ export class MPS3 {
       }
     }
   }
+
+  public async delete(
+    ref: string | Ref,
+    options: {
+      manifests?: Ref[];
+    } = {}
+  ) {
+    return this.putAll(new Map([[ref, undefined]]), options);
+  }
+
   public async put(
     ref: string | Ref,
     value: JSONValue | DeleteValue,
@@ -189,19 +200,9 @@ export class MPS3 {
       ...ref,
     }));
 
-    const operation = this._putAll(resolvedValues, {
+    return this._putAll(resolvedValues, {
       manifests,
     });
-
-    manifests.forEach((manifestRef) => {
-      const manifest = this.getOrCreateManifest(manifestRef);
-      manifest.pendingWrites.set(operation, resolvedValues);
-      operation.catch(() => {
-        manifest.pendingWrites.delete(operation);
-      });
-    });
-
-    return operation;
   }
 
   async _putAll(
@@ -210,44 +211,47 @@ export class MPS3 {
       manifests: ResolvedRef[];
     }
   ) {
-    const contentVersions: Map<ResolvedRef, string | undefined> = new Map();
-    const contentOperations: Promise<void>[] = [];
-    values.forEach((value, contentRef) => {
-      if (value !== undefined) {
-        contentOperations.push(
-          this._putObject({
-            ref: contentRef,
-            value,
-          }).then((fileUpdate) => {
-            if (
-              fileUpdate.VersionId === undefined ||
-              !fileUpdate.VersionId.match(uuidRegex)
-            ) {
-              console.error(fileUpdate);
-              throw Error(
-                `Bucket ${contentRef.bucket} is not version enabled!`
-              );
-            }
-            contentVersions.set(contentRef, fileUpdate.VersionId);
-          })
-        );
-      } else {
-        contentOperations.push(
-          this._deleteObject({
-            ref: contentRef,
-          }).then((_) => {
-            contentVersions.set(contentRef, undefined);
-          })
-        );
-      }
-    });
-
-    await Promise.all(contentOperations);
+    const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
+      new Promise(async (resolve) => {
+        const results = new Map<ResolvedRef, string | DeleteValue>();
+        const contentOperations: Promise<any>[] = [];
+        values.forEach((value, contentRef) => {
+          if (value !== undefined) {
+            contentOperations.push(
+              this._putObject({
+                ref: contentRef,
+                value,
+              }).then((fileUpdate) => {
+                if (
+                  fileUpdate.VersionId === undefined ||
+                  !fileUpdate.VersionId.match(uuidRegex)
+                ) {
+                  console.error(fileUpdate);
+                  throw Error(
+                    `Bucket ${contentRef.bucket} is not version enabled!`
+                  );
+                }
+                results.set(contentRef, fileUpdate.VersionId);
+              })
+            );
+          } else {
+            contentOperations.push(
+              this._deleteObject({
+                ref: contentRef,
+              }).then((_) => {
+                results.set(contentRef, undefined);
+              })
+            );
+          }
+        });
+        await Promise.all(contentOperations);
+        resolve(results);
+      });
 
     await Promise.all(
       options.manifests.map((ref) => {
         const manifest = this.getOrCreateManifest(ref);
-        return manifest.updateContent(contentVersions);
+        return manifest.updateContent(values, contentVersions);
       })
     );
   }

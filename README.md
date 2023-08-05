@@ -8,6 +8,7 @@ You can use this library over S3, R2 or self hosted solutions like Minio
 ## Features
 
 - Optimistic updates
+- Offline-first
 - Atomic bulk s3 operations
 - Multiplayer
 

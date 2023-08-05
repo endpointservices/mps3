@@ -42,6 +42,23 @@ describe("mps3", () => {
       api: s3,
     });
 
+  test("Can see other's mutations after populating cache", async () => {
+    const mps3 = getClient();
+    const rnd = Math.random();
+    await mps3.put("rw", rnd);
+    await getClient().delete("rw");
+
+    await new Promise((resolve) => {
+      mps3.subscribe("rw", (val) => {
+        console.log(val);
+        if (val === undefined) resolve(val);
+      });
+    });
+    console.log("deleted");
+    const read = await mps3.get("rw");
+    expect(read).toEqual(undefined);
+  });
+
   test("Read unknown key resolves to undefined", async () => {
     const mps3 = getClient();
     const read = await mps3.get("unused_key");

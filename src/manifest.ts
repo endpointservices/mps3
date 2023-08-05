@@ -1,6 +1,14 @@
 import { OMap } from "OMap";
 import { MPS3 } from "mps3";
-import { DeleteValue, JSONValue, ResolvedRef, eq, parseUrl, url } from "types";
+import {
+  DeleteValue,
+  JSONValue,
+  Operation,
+  ResolvedRef,
+  VersionId,
+  parseUrl,
+  url,
+} from "types";
 import { apply } from "json-merge-patch";
 
 interface FileState {
@@ -30,20 +38,6 @@ interface HttpCacheEntry<T> {
   etag: string;
   data: T;
 }
-
-class File implements FileState {
-  ref: ResolvedRef;
-  version: string;
-  constructor(ref: ResolvedRef, state: FileState) {
-    this.ref = ref;
-    this.version = state.version;
-  }
-}
-const files = (state: ManifestState): Set<File> =>
-  Object.entries(state.files).reduce(
-    (set, [url, file]) => set.add(new File(parseUrl(url), file)),
-    new Set<File>()
-  );
 
 const isManifest = (obj: any): obj is ManifestState => {
   if (!obj) return false;
@@ -79,15 +73,34 @@ export class Manifest {
 
   // Pending writes iterate in insertion order
   // The key, promise, indicated the pending IO operations
-  pendingWrites: Map<
-    Promise<void>,
-    OMap<ResolvedRef, JSONValue | DeleteValue>
-  > = new Map();
+  pendingWrites: Map<Operation, OMap<ResolvedRef, JSONValue | DeleteValue>> =
+    new Map();
+
+  writtenOperations: Map<VersionId, Operation> = new Map();
 
   constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
     this.service = service;
     this.ref = ref;
   }
+  observeVersionId(versionId: VersionId) {
+    console.log(
+      `observeVersionId ${versionId} in ${[
+        ...this.writtenOperations.keys(),
+      ]} pending ${this.pendingWrites.size}`
+    );
+    if (this.writtenOperations.has(versionId)) {
+      console.log(`clearing pending write for observeVersionId ${versionId}`);
+      const operation = this.writtenOperations.get(versionId)!;
+      this.pendingWrites.delete(operation);
+      this.writtenOperations.delete(versionId);
+    }
+    console.log(
+      `observeVersionId ${versionId} in ${[
+        ...this.writtenOperations.keys(),
+      ]} pending ${this.pendingWrites.size}`
+    );
+  }
+
   async get(): Promise<ManifestState> {
     try {
       const response = await this.service._getObject2<ManifestState>({
@@ -138,6 +151,10 @@ export class Manifest {
             data: latestState,
           };
 
+          if (previousVersion.Versions && previousVersion.Versions[0])
+            this.observeVersionId(previousVersion.Versions[0].VersionId!);
+          this.observeVersionId(response.VersionId!);
+
           return latestState;
         } else {
           // There have been some additional writes
@@ -170,6 +187,8 @@ export class Manifest {
 
           let state: ManifestState = baseStateRead.data;
 
+          this.observeVersionId(baseStateRead.VersionId!);
+
           // Play the missing patches over the base state, oldest first
           console.log("replay state");
           for (let index = start - 1; index >= 0; index--) {
@@ -179,11 +198,13 @@ export class Manifest {
             });
             const patch = missingState.data?.update;
 
-            console.log("patch state", patch);
+            this.observeVersionId(missingState.VersionId!);
             state = apply(state, patch);
           }
           // include latest
+          this.observeVersionId(response.VersionId!);
           state = apply(state, response.data.update);
+          state.update = apply(state.update, response.data.update);
           // reflect the catchup
           state.previous = {
             url: url(this.ref),
@@ -221,44 +242,61 @@ export class Manifest {
     if (this.subscriberCount > 0 && !this.poller) {
       this.poller = setInterval(() => this.poll(), 1000);
     }
-
     const state = await this.get();
-    this.subscribers.forEach((subscriber) => {
-      files(state).forEach(async (file) => {
-        if (eq(file.ref, subscriber.ref)) {
-          const fileContent = await this.service._getObject({
-            ref: file.ref,
-            version: file.version,
-          });
-          subscriber.handler(fileContent);
-        }
-      });
+    console.log(`poll ${JSON.stringify(state)}`);
+    this.subscribers.forEach(async (subscriber) => {
+      const fileState: FileState | undefined =
+        state.update.files[url(subscriber.ref)];
+      if (fileState) {
+        const fileContent = await this.service._getObject({
+          ref: subscriber.ref,
+          version: fileState.version,
+        });
+        subscriber.handler(fileContent);
+      } else {
+        subscriber.handler(undefined);
+      }
     });
   }
 
-  async updateContent(update: Map<ResolvedRef, string | DeleteValue>) {
-    const state = await this.get();
-    state.update = {
-      files: {},
-    };
-    for (let [ref, version] of update) {
-      const fileUrl = url(ref);
-      if (version) {
-        const fileState = {
-          version: version,
-        };
-        state.files[fileUrl] = fileState;
-        state.update.files[fileUrl] = fileState;
-      } else {
-        delete state.files[fileUrl];
-        state.update.files[fileUrl] = null;
-      }
-    }
+  async updateContent(
+    values: OMap<ResolvedRef, JSONValue | DeleteValue>,
+    write: Promise<Map<ResolvedRef, string | DeleteValue>>
+  ) {
+    this.pendingWrites.set(write, values);
+    console.log(`updateContent pending ${this.pendingWrites.size}`);
 
-    return this.service._putObject({
-      ref: this.ref,
-      value: state,
-    });
+    try {
+      const update = await write;
+      const state = await this.get();
+      state.update = {
+        files: {},
+      };
+      for (let [ref, version] of update) {
+        const fileUrl = url(ref);
+        if (version) {
+          const fileState = {
+            version: version,
+          };
+          state.files[fileUrl] = fileState;
+          state.update.files[fileUrl] = fileState;
+        } else {
+          delete state.files[fileUrl];
+          state.update.files[fileUrl] = null;
+        }
+      }
+      const response = await this.service._putObject({
+        ref: this.ref,
+        value: state,
+      });
+      this.writtenOperations.set(response.VersionId!, write);
+      console.log(`writtenOperations ${[...this.writtenOperations.keys()]}`);
+      return response;
+    } catch (err) {
+      console.error(err);
+      this.pendingWrites.delete(write);
+      throw err;
+    }
   }
 
   async getVersion(ref: ResolvedRef): Promise<string | undefined> {
