@@ -11,7 +11,8 @@
   "scripts": {
     "test": "bun test",
     "build": "bun build src/mps3.ts --outdir ./dist",
-    "publish": "npm publish"
+    "publish": "npm publish",
+    "test:randomize": "while bun test; [ $? -ne 1 ] ; do :; done"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "3.370.0",
