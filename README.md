@@ -16,6 +16,14 @@ You can use this library over S3, R2 or self hosted solutions like Minio
 coming soon
 - Offline first
 
+
+## API
+### subscribe(key, callback)
+
+Receive notifications snapshots of state at the key, delivered to the callback.
+Local writes will trigger the callback without a network round trip.
+Remote writes are received in the order they are written to the remote state (monotonic),
+however, you are not gauranteed to receive every intermediate state, so your communication style should be stateless/declarative (i.e. RESTFul)
 ## How it works
 
 Manifest files the metadata required to resolve snapshot state.
