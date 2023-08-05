@@ -58,9 +58,18 @@ const isManifest = (obj: any): obj is ManifestState => {
 export class Subscriber {
   ref: ResolvedRef;
   handler: (value: any) => void;
+  lastVersion?: VersionId;
   constructor(ref: ResolvedRef, handler: (value: any) => void) {
     this.ref = ref;
     this.handler = handler;
+  }
+
+  notify(version: VersionId | undefined, value: any) {
+    if (version === this.lastVersion) return;
+    else {
+      this.lastVersion = version;
+      this.handler(value);
+    }
   }
 }
 
@@ -97,7 +106,7 @@ export class Manifest {
   }
 
   async get(): Promise<ManifestState> {
-    return this.getLatest().then((state) => state || this.cache?.data!)
+    return this.getLatest().then((state) => state || this.cache?.data!);
   }
 
   async getLatest(): Promise<ManifestState | undefined> {
@@ -211,7 +220,6 @@ export class Manifest {
           // include latest
           this.observeVersionId(response.VersionId!);
           state = apply(state, response.data.update);
-          state.update = apply(state.update, response.data.update);
           // reflect the catchup
           state.previous = {
             url: url(this.ref),
@@ -252,18 +260,20 @@ export class Manifest {
     const state = await this.getLatest();
     if (state === undefined) return; // no changes
 
-    console.log(`poll ${JSON.stringify(state)}`);
+    console.log(`POLL ${JSON.stringify(state)}`);
     this.subscribers.forEach(async (subscriber) => {
-      const fileState: FileState | undefined =
-        state.update.files[url(subscriber.ref)];
+      const fileState: FileState | null | undefined =
+        state.files[url(subscriber.ref)];
       if (fileState) {
+        console.log(`NOTIFY ${url(subscriber.ref)} ${fileState.version}`);
         const fileContent = await this.service._getObject({
           ref: subscriber.ref,
           version: fileState.version,
         });
-        subscriber.handler(fileContent);
-      } else {
-        subscriber.handler(undefined);
+        subscriber.notify(fileState.version, fileContent);
+      } else if (fileState === null) {
+        console.log(`NOTIFY ${url(subscriber.ref)} DELETE`);
+        subscriber.notify(undefined, undefined);
       }
     });
   }
@@ -317,6 +327,7 @@ export class Manifest {
     keyRef: ResolvedRef,
     handler: (value: JSONValue | undefined) => void
   ): () => void {
+    console.log(`SUBSCRIBE ${url(keyRef)} ${this.subscriberCount + 1}`);
     const sub = new Subscriber(keyRef, handler);
     this.subscribers.add(sub);
     return () => this.subscribers.delete(sub);

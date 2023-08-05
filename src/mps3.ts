@@ -315,6 +315,7 @@ export class MPS3 {
     this.get(keyRef, {
       manifest: manifestRef,
     }).then((initial) => {
+      console.log(`NOTIFY (initial) ${url(keyRef)}`);
       // if the data is cached we don't want the subscriber called in the same tick as
       // the unsubscribe retun value will not be initialized
       queueMicrotask(() => {

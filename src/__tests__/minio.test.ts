@@ -4,6 +4,7 @@ import { MPS3 } from "mps3";
 
 describe("mps3", () => {
   let s3: S3;
+  let bucket = `t${Math.random().toString(16).substring(2, 9)}`;
   beforeAll(async () => {
     s3 = new S3({
       region: "us-east-1",
@@ -16,34 +17,41 @@ describe("mps3", () => {
       //logger: console,
     });
 
-    try {
-      console.log("creating bucket");
-      await s3.createBucket({
-        Bucket: "test5",
-      });
-    } catch (e) {}
+    await s3.createBucket({
+      Bucket: bucket,
+    });
 
-    try {
-      console.log("enable version");
-      await s3.putBucketVersioning({
-        Bucket: "test5",
-        VersioningConfiguration: {
-          Status: "Enabled",
-        },
-      });
-    } catch (e) {
-      console.error(e);
-    }
+    await s3.putBucketVersioning({
+      Bucket: bucket,
+      VersioningConfiguration: {
+        Status: "Enabled",
+      },
+    });
   });
 
   const getClient = () =>
     new MPS3({
-      defaultBucket: "test5",
+      defaultBucket: bucket,
       api: s3,
     });
 
-  
+  test("Subscription deduplicate undefined", async (done) => {
+    const mps3 = getClient();
+    const rnd = Math.random();
+    await mps3.delete("dedupe", undefined);
 
+    let notifications = 0;
+    getClient().subscribe("dedupe", (value) => {
+      if (notifications === 0) expect(value).toEqual(undefined);
+      if (notifications === 1) {
+        expect(value).toEqual(rnd);
+        done();
+      }
+      notifications++;
+    });
+    await mps3.delete("dedupe");
+    await mps3.put("dedupe", rnd);
+  });
 
   test("Can see other's mutations after populating cache", async () => {
     const mps3 = getClient();
@@ -143,7 +151,7 @@ describe("mps3", () => {
     mps3.put(rand_key, "_");
   });
 
-  test("Subscribe get committed initial value first", async (done) => {
+  test("Subscribe get notified of committed initial value first", async (done) => {
     const mps3 = getClient();
     const rnd = Math.random();
     await mps3.put("subscribe_initial", rnd);
@@ -155,7 +163,7 @@ describe("mps3", () => {
     });
   });
 
-  test("Subscribe get optimistic initial value first", async (done) => {
+  test("Subscribe get notified of optimistic value first", async (done) => {
     const mps3 = getClient();
     const rnd = Math.random();
     mps3.put("subscribe_initial", rnd);
@@ -167,7 +175,6 @@ describe("mps3", () => {
     });
   });
 
-  // TODO, but with parrallel puts on a blank manifest
   test("Parallel puts commute (warm manifest)", async () => {
     await getClient().put("null", null);
     const n = 3;
@@ -219,4 +226,30 @@ describe("mps3", () => {
 
     expect(reads).toEqual([...Array(n)].map((_, i) => i));
   });
+
+  test("Parallel puts notify other clients", async () => {
+    const n = 3;
+    const clients = [...Array(n)].map((_) => getClient());
+    const rand_keys = [...Array(n)].map(
+      (_, i) => `parallel_put/${i}_${Math.random().toString()}`
+    );
+
+    // collect results
+    const results = Promise.all(
+      rand_keys.map(
+        (key) =>
+          new Promise((resolve) =>
+            getClient().subscribe(key, (val) => {
+              if (val !== undefined) resolve(val);
+            })
+          )
+      )
+    );
+
+    // put in parallel
+    rand_keys.map((key, i) => clients[i].put(key, i));
+
+    expect(await results).toEqual([0, 1, 2]);
+  });
+
 });
