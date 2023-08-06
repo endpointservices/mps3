@@ -1,5 +1,5 @@
 import { S3 } from "@aws-sdk/client-s3";
-import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
+import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3 } from "mps3";
 
 describe("mps3", () => {
