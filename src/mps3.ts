@@ -228,10 +228,7 @@ export class MPS3 {
                 ref: contentRef,
                 value,
               }).then((fileUpdate) => {
-                if (
-                  fileUpdate.VersionId === undefined ||
-                  !fileUpdate.VersionId.match(uuidRegex)
-                ) {
+                if (fileUpdate.VersionId === undefined) {
                   console.error(fileUpdate);
                   throw Error(
                     `Bucket ${contentRef.bucket} is not version enabled!`
@@ -254,11 +251,11 @@ export class MPS3 {
         resolve(results);
       });
 
-    await Promise.all(
+    return Promise.all(
       options.manifests.map((ref) => {
         const manifest = this.getOrCreateManifest(ref);
         return manifest.updateContent(values, contentVersions);
-      }),
+      })
     );
   }
 
