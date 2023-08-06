@@ -4,9 +4,7 @@
 
 ### Multiplayer over any s3-compatible storage. 
 
-Written to provide a fast path for multiplayer without vendor lockin. Designed with orthogonality:
-- pluggable storage thanks to the de factor standardization of the s3 API.
-- pluggable auth through axios interceptors (including off-the-shelf solutions like aws4-axios).
+Written to provide a fast path for multiplayer without vendor lockin.
 
 You can use this library over S3, Backblaze, <strike>R2</strike>(no object versioning) or self-hosted solutions like Minio.
 
@@ -23,15 +21,15 @@ coming soon
 
 ## How it works
 
-The mps3 client wraps an S3 API and provides a *subscribale* key-value store interface: *put*, *get*, *subscribe*. Each key is a path of a JSON object into an s3 bucket. 
+The mps3 client wraps an S3 API and provides a key-value store interface: *put*, *get*, *subscribe*. Each key is a path of a JSON object into an s3 bucket. 
 
-To enable the advanced semantics, groups of objects are managed by one of manifest files. It is the manifest file that enables atomic bulk updates and serializability and provides a single key for clients to poll for changes. The manifest lists all objects *and their versions*.
+To enable additional semantics, groups of objects are managed by a manifest file. The manifest file enables atomic bulk updates, serializability and improves sync performance. The manifest primarily lists all objects *and their versions*.
 
-When using *putAll*, the values are first written and then the manifest is written with the new object versions, so the bulk operation is observerved atomically.
+When using *putAll*, the values are first written and then the manifest is written with the new object versions, so the bulk operation is observerved atomically. You can think of the manifest as the final commit step in a write-ahead-log.
 
 #### Collision avoidance
 
-It is possible multiple clients attempt to upload the manifest at the same time. If we assumed the latest manifest was the source of truth this would lead to lost writes under contention. Instead, each manifest references the previous manifest version it was based upon and includes the JSON-merge-patch operation that was intended. At read time several manifest versions are read and the latest state is derived by applying the merge-patches sequentially if needed. Thanks to S3's recent [consistency](https://aws.amazon.com/s3/consistency/) upgrades this is all that is needed.
+It is possible multiple clients update the manifest at the same time. If we assumed the latest manifest was the source of truth this would lead to lost writes under contention. Instead, each manifest references the previous manifest version it was based upon and includes the JSON-merge-patch operation that was intended. At read time several manifest versions are read and the latest state is derived by applying the merge-patches sequentially if needed. Thanks to S3's recent [consistency](https://aws.amazon.com/s3/consistency/) upgrades this works out.
 
 #### Optimistic Updates
 
