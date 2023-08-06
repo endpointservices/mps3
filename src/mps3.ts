@@ -13,7 +13,6 @@ import {
 } from "@aws-sdk/client-s3";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
-import { uuidRegex } from "regex";
 import { DeleteValue, JSONValue, Ref, ResolvedRef, url } from "types";
 
 export interface MPS3Config {
