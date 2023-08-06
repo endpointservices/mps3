@@ -11,6 +11,7 @@
   "scripts": {
     "test": "bun test",
     "build": "bun build src/mps3.ts --minify --outdir ./dist",
+    "format": "rome format src --write",
     "publish": "npm publish",
     "test:randomize": "while bun test; [ $? -ne 1 ] ; do :; done"
   },

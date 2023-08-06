@@ -75,12 +75,12 @@ export class MPS3 {
 		};
 		let inCache = false;
 		let cachedValue = undefined;
-		for (let [operation, values] of manifest.pendingWrites) {
-			if (values.has(contentRef)) {
-				inCache = true;
-				cachedValue = values.get(contentRef);
-			}
-		}
+		for (const [_, values] of manifest.pendingWrites) {
+      if (values.has(contentRef)) {
+        inCache = true;
+        cachedValue = values.get(contentRef);
+      }
+    }
 		if (inCache) {
 			console.log(`get (cached) ${url(contentRef)}`);
 			return cachedValue;

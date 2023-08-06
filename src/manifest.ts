@@ -56,21 +56,24 @@ const isManifest = (obj: any): obj is ManifestState => {
 };
 
 export class Subscriber {
-	ref: ResolvedRef;
-	handler: (value: any) => void;
-	lastVersion?: VersionId;
-	constructor(ref: ResolvedRef, handler: (value: any) => void) {
-		this.ref = ref;
-		this.handler = handler;
-	}
+  ref: ResolvedRef;
+  handler: (value: any) => void;
+  lastVersion?: VersionId;
+  constructor(
+    ref: ResolvedRef,
+    handler: (value: JSONValue | DeleteValue) => void
+  ) {
+    this.ref = ref;
+    this.handler = handler;
+  }
 
-	notify(version: VersionId | undefined, value: any) {
-		if (version === this.lastVersion) return;
-		else {
-			this.lastVersion = version;
-			this.handler(value);
-		}
-	}
+  notify(version: VersionId | undefined, value: JSONValue | DeleteValue) {
+    if (version === this.lastVersion) return;
+    else {
+      this.lastVersion = version;
+      this.handler(value);
+    }
+  }
 }
 
 export class Manifest {
@@ -143,98 +146,98 @@ export class Manifest {
 				);
 
 				if (
-					previousVersion.Versions === undefined ||
-					previousVersion.Versions?.length == 0 ||
-					(previousVersion.Versions[0].VersionId ===
-						latestState.previous?.version &&
-						latestState.previous?.version !== undefined)
-				) {
-					// If that one key is the base the state was generated from, we're good
-					// The is the common case for low load
-					latestState.previous = {
-						url: url(this.ref),
-						version: response.VersionId!,
-					};
+          previousVersion.Versions === undefined ||
+          previousVersion.Versions?.length === 0 ||
+          (previousVersion.Versions[0].VersionId ===
+            latestState.previous?.version &&
+            latestState.previous?.version !== undefined)
+        ) {
+          // If that one key is the base the state was generated from, we're good
+          // The is the common case for low load
+          latestState.previous = {
+            url: url(this.ref),
+            version: response.VersionId!,
+          };
 
-					this.cache = {
-						etag: response.ETag!,
-						data: latestState,
-					};
+          this.cache = {
+            etag: response.ETag!,
+            data: latestState,
+          };
 
-					if (previousVersion.Versions && previousVersion.Versions[0])
-						this.observeVersionId(previousVersion.Versions[0].VersionId!);
-					this.observeVersionId(response.VersionId!);
+          if (previousVersion.Versions && previousVersion.Versions[0])
+            this.observeVersionId(previousVersion.Versions[0].VersionId!);
+          this.observeVersionId(response.VersionId!);
 
-					return latestState;
-				} else {
-					// There have been some additional writes
-					const previousVersions = await this.service.s3Client.send(
-						new ListObjectVersionsCommand({
-							Bucket: this.ref.bucket,
-							Prefix: this.ref.key,
-							KeyMarker: this.ref.key,
-							VersionIdMarker: response.VersionId,
-							MaxKeys: 10,
-						}),
-					);
+          return latestState;
+        } else {
+          // There have been some additional writes
+          const previousVersions = await this.service.s3Client.send(
+            new ListObjectVersionsCommand({
+              Bucket: this.ref.bucket,
+              Prefix: this.ref.key,
+              KeyMarker: this.ref.key,
+              VersionIdMarker: response.VersionId,
+              MaxKeys: 10,
+            })
+          );
 
-					if (previousVersions.Versions === undefined)
-						throw new Error("No versions returned");
+          if (previousVersions.Versions === undefined)
+            throw new Error("No versions returned");
 
-					const start =
-						latestState.previous?.version === undefined
-							? previousVersions.Versions.length
-							: previousVersions.Versions?.findIndex(
-									(version) =>
-										version.VersionId === latestState.previous?.version,
-							  );
+          const start =
+            latestState.previous?.version === undefined
+              ? previousVersions.Versions.length
+              : previousVersions.Versions?.findIndex(
+                  (version) =>
+                    version.VersionId === latestState.previous?.version
+                );
 
-					if (start === -1) {
-						throw new Error(
-							`Can't find previous state ${latestState.previous?.version} in search window`,
-						);
-					}
+          if (start === -1) {
+            throw new Error(
+              `Can't find previous state ${latestState.previous?.version} in search window`
+            );
+          }
 
-					const baseStateRead = await this.service._getObject2<ManifestState>({
-						ref: this.ref,
-						version: latestState.previous?.version,
-					});
+          const baseStateRead = await this.service._getObject2<ManifestState>({
+            ref: this.ref,
+            version: latestState.previous?.version,
+          });
 
-					if (baseStateRead.data === undefined)
-						throw new Error("Can't find base state");
+          if (baseStateRead.data === undefined)
+            throw new Error("Can't find base state");
 
-					let state: ManifestState = baseStateRead.data;
+          let state: ManifestState = baseStateRead.data;
 
-					this.observeVersionId(baseStateRead.VersionId!);
+          this.observeVersionId(baseStateRead.VersionId!);
 
-					// Play the missing patches over the base state, oldest first
-					console.log("replay state");
-					for (let index = start - 1; index >= 0; index--) {
-						const missingState = await this.service._getObject2<ManifestState>({
-							ref: this.ref,
-							version: previousVersions.Versions[index].VersionId,
-						});
-						const patch = missingState.data?.update;
+          // Play the missing patches over the base state, oldest first
+          console.log("replay state");
+          for (let index = start - 1; index >= 0; index--) {
+            const missingState = await this.service._getObject2<ManifestState>({
+              ref: this.ref,
+              version: previousVersions.Versions[index].VersionId,
+            });
+            const patch = missingState.data?.update;
 
-						this.observeVersionId(missingState.VersionId!);
-						state = apply(state, patch);
-					}
-					// include latest
-					this.observeVersionId(response.VersionId!);
-					state = apply(state, response.data.update);
-					// reflect the catchup
-					state.previous = {
-						url: url(this.ref),
-						version: response.VersionId!,
-					};
+            this.observeVersionId(missingState.VersionId!);
+            state = apply(state, patch);
+          }
+          // include latest
+          this.observeVersionId(response.VersionId!);
+          state = apply(state, response.data.update);
+          // reflect the catchup
+          state.previous = {
+            url: url(this.ref),
+            version: response.VersionId!,
+          };
 
-					this.cache = {
-						etag: response.ETag!,
-						data: state,
-					};
-					console.log("resolved data", JSON.stringify(state));
-					return state;
-				}
+          this.cache = {
+            etag: response.ETag!,
+            data: state,
+          };
+          console.log("resolved data", JSON.stringify(state));
+          return state;
+        }
 			} else {
 				throw new Error("Invalid manifest");
 			}
