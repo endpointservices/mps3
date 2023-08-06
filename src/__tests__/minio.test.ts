@@ -84,11 +84,24 @@ describe("mps3", () => {
     expect(read).toEqual(undefined);
   });
 
-  test("Can read your write (number)", async () => {
-    const mps3 = getClient();
+  test("Can read a write", async () => {
     const rnd = Math.random();
-    await mps3.put("rw", rnd);
-    const read = await mps3.get("rw");
+    await getClient().put("rw", rnd);
+    const read = await getClient().get("rw");
+    expect(read).toEqual(rnd);
+  });
+
+  test("Can read a write (cold manifest)", async () => {
+    const manifest = {
+      key: `manifest_${Math.random()}`,
+    };
+    const rnd = Math.random();
+    await getClient().put("rw", rnd, {
+      manifests: [manifest],
+    });
+    const read = await getClient().get("rw", {
+      manifest: manifest,
+    });
     expect(read).toEqual(rnd);
   });
 

@@ -218,7 +218,7 @@ export class MPS3 {
     },
   ) {
     const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
-      new Promise(async (resolve) => {
+      new Promise(async (resolve, reject) => {
         const results = new Map<ResolvedRef, string | DeleteValue>();
         const contentOperations: Promise<any>[] = [];
         values.forEach((value, contentRef) => {
@@ -234,11 +234,11 @@ export class MPS3 {
                 ) {
                   console.error(fileUpdate);
                   throw Error(
-                    `Bucket ${contentRef.bucket} is not version enabled!`,
+                    `Bucket ${contentRef.bucket} is not version enabled!`
                   );
                 }
                 results.set(contentRef, fileUpdate.VersionId);
-              }),
+              })
             );
           } else {
             contentOperations.push(
@@ -246,11 +246,11 @@ export class MPS3 {
                 ref: contentRef,
               }).then((_) => {
                 results.set(contentRef, undefined);
-              }),
+              })
             );
           }
         });
-        await Promise.all(contentOperations);
+        await Promise.all(contentOperations).catch(reject);
         resolve(results);
       });
 
