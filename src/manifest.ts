@@ -6,10 +6,10 @@ import {
   Operation,
   ResolvedRef,
   VersionId,
-  parseUrl,
   url,
 } from "types";
 import { apply } from "json-merge-patch";
+import { ListObjectVersionsCommand } from "@aws-sdk/client-s3";
 
 interface FileState {
   version: string;
@@ -17,7 +17,7 @@ interface FileState {
 
 type Merge = any;
 
-interface ManifestState {
+export interface ManifestState {
   version: number;
   // TODO: the manifest should just be URLs which corresponde to the s3 URLs
   // this would scale beyond the s3 usecase and include regional endpoints etc.
@@ -132,14 +132,15 @@ export class Manifest {
         const latestState: ManifestState = response.data;
 
         // First we confirm no versions were written while this one was in flight
-        const previousVersion =
-          await this.service.config.api.listObjectVersions({
+        const previousVersion = await this.service.s3Client.send(
+          new ListObjectVersionsCommand({
             Bucket: this.ref.bucket,
             Prefix: this.ref.key,
             KeyMarker: this.ref.key,
             VersionIdMarker: response.VersionId,
             MaxKeys: 1, // Note we only look one version back
-          });
+          })
+        );
 
         if (
           previousVersion.Versions === undefined ||
@@ -167,14 +168,15 @@ export class Manifest {
           return latestState;
         } else {
           // There have been some additional writes
-          const previousVersions =
-            await this.service.config.api.listObjectVersions({
+          const previousVersions = await this.service.s3Client.send(
+            new ListObjectVersionsCommand({
               Bucket: this.ref.bucket,
               Prefix: this.ref.key,
               KeyMarker: this.ref.key,
               VersionIdMarker: response.VersionId,
               MaxKeys: 10,
-            });
+            })
+          );
 
           if (previousVersions.Versions === undefined)
             throw new Error("No versions returned");

@@ -5,17 +5,17 @@ import { MPS3 } from "mps3";
 describe("mps3", () => {
   let s3: S3;
   let bucket = `t${Math.random().toString(16).substring(2, 9)}`;
+  const s3Config = {
+    endpoint: "http://127.0.0.1:9102",
+    region: "eu-central-1",
+    credentials: {
+      accessKeyId: "mps3",
+      secretAccessKey: "ZOAmumEzdsUUcVlQ",
+    },
+  };
+
   beforeAll(async () => {
-    s3 = new S3({
-      region: "us-east-1",
-      endpoint: "http://127.0.0.1:9102 ", // for docker, http://minio:9102
-      credentials: {
-        accessKeyId: "mps3",
-        secretAccessKey: "ZOAmumEzdsUUcVlQ",
-      },
-      forcePathStyle: true,
-      //logger: console,
-    });
+    s3 = new S3(s3Config);
 
     await s3.createBucket({
       Bucket: bucket,
@@ -32,7 +32,7 @@ describe("mps3", () => {
   const getClient = () =>
     new MPS3({
       defaultBucket: bucket,
-      api: s3,
+      s3Config: s3Config,
     });
 
   test("Subscription deduplicate undefined", async (done) => {

@@ -1,11 +1,15 @@
 import {
+  DeleteObjectCommand,
   DeleteObjectCommandInput,
   DeleteObjectCommandOutput,
+  GetObjectCommand,
   GetObjectCommandInput,
   GetObjectCommandOutput,
+  PutObjectCommand,
   PutObjectCommandInput,
   PutObjectCommandOutput,
-  S3,
+  S3Client,
+  S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
@@ -15,7 +19,7 @@ import { DeleteValue, JSONValue, Ref, ResolvedRef, url } from "types";
 export interface MPS3Config {
   defaultBucket: string;
   defaultManifest?: Ref;
-  api: S3;
+  s3Config: S3ClientConfig;
 }
 
 async function sha256(message: string) {
@@ -30,12 +34,14 @@ async function sha256(message: string) {
 }
 
 export class MPS3 {
+  s3Client: S3Client;
   config: MPS3Config;
   manifests = new OMap<ResolvedRef, Manifest>(url);
   defaultManifest: ResolvedRef;
 
   constructor(config: MPS3Config) {
     this.config = config;
+    this.s3Client = new S3Client(this.config.s3Config);
     this.defaultManifest = {
       bucket: config.defaultManifest?.bucket || config.defaultBucket,
       key: config.defaultManifest?.key || "manifest.json",
@@ -98,7 +104,7 @@ export class MPS3 {
       ...(args.version && { VersionId: args.version }),
     };
     try {
-      const response = await this.config.api.getObject(command);
+      const response = await this.s3Client.send(new GetObjectCommand(command));
       if (!response.Body) return undefined;
       else {
         const payload = await response.Body.transformToString("utf-8");
@@ -126,7 +132,7 @@ export class MPS3 {
     };
     try {
       const response = {
-        ...(await this.config.api.getObject(command)),
+        ...(await this.s3Client.send(new GetObjectCommand(command))),
         data: <T | undefined>undefined,
       };
       if (response.Body) {
@@ -271,7 +277,7 @@ export class MPS3 {
       ChecksumSHA256: checksum,
     };
 
-    const response = await this.config.api.putObject(command);
+    const response = await this.s3Client.send(new PutObjectCommand(command));
     console.log(
       `PUT ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}\n${content}`
     );
@@ -286,7 +292,7 @@ export class MPS3 {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
     };
-    const response = await this.config.api.putObject(command);
+    const response = await this.s3Client.send(new DeleteObjectCommand(command));
     console.log(
       `DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
     );
