@@ -29,7 +29,7 @@ export class MPS3 {
   defaultManifest: ResolvedRef;
 
   constructor(config: MPS3Config) {
-    if (config.useChecksum !== false) config.useChecksum = true;
+    if (config.useChecksum === undefined) config.useChecksum = true;
     this.config = config;
     this.s3Client = new S3Client(this.config.s3Config);
     this.defaultManifest = {
@@ -253,13 +253,16 @@ export class MPS3 {
     ref: ResolvedRef;
     value: any;
   }): Promise<PutObjectCommandOutput> {
-    console.log(`putObject ${url(args.ref)}`);
+    console.log(
+      `putObject ${url(args.ref)} checksum ${this.config.useChecksum}`
+    );
     const content: string = JSON.stringify(args.value, null, 2);
     const command: PutObjectCommandInput = {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
       ContentType: "application/json",
       Body: content,
+      
       ...(this.config.useChecksum && { ChecksumSHA256: await sha256(content) }),
     };
 
