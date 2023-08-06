@@ -1,7 +1,7 @@
 {
   "name": "mps3",
   "description": "Provide clientside multiplayer and optimistic updates over any s3-compatible storage API",
-  "version": "0.0.41",
+  "version": "0.0.42",
   "license": "MIT",
   "author": {
     "name": "Tom Larkworthy"
@@ -11,8 +11,8 @@
   "scripts": {
     "test": "bun test",
     "build": "bun build src/mps3.ts --minify --outdir ./dist",
+    "prepare": "npm run build",
     "format": "rome format src --write --indent-style space",
-    "publish": "npm publish",
     "test:randomize": "while bun test; [ $? -ne 1 ] ; do :; done"
   },
   "devDependencies": {
