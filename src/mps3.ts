@@ -19,18 +19,8 @@ import { DeleteValue, JSONValue, Ref, ResolvedRef, url } from "types";
 export interface MPS3Config {
   defaultBucket: string;
   defaultManifest?: Ref;
+  useChecksum?: boolean;
   s3Config: S3ClientConfig;
-}
-
-async function sha256(message: string) {
-  // encode as UTF-8
-  const msgBuffer = new TextEncoder().encode(message);
-
-  // hash the message
-  const arrayBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-
-  // convert ArrayBuffer to base64-encoded string
-  return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 }
 
 export class MPS3 {
@@ -40,6 +30,7 @@ export class MPS3 {
   defaultManifest: ResolvedRef;
 
   constructor(config: MPS3Config) {
+    if (config.useChecksum !== false) config.useChecksum = true;
     this.config = config;
     this.s3Client = new S3Client(this.config.s3Config);
     this.defaultManifest = {
@@ -59,7 +50,7 @@ export class MPS3 {
     ref: string | Ref,
     options: {
       manifest?: Ref;
-    } = {},
+    } = {}
   ): Promise<JSONValue | DeleteValue> {
     const manifestRef: ResolvedRef = {
       ...this.defaultManifest,
@@ -109,7 +100,7 @@ export class MPS3 {
       else {
         const payload = await response.Body.transformToString("utf-8");
         console.log(
-          `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}\n${payload}`,
+          `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}\n${payload}`
         );
         return JSON.parse(payload);
       }
@@ -142,7 +133,7 @@ export class MPS3 {
         console.log(
           `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${
             response.VersionId
-          }\n${JSON.stringify(response.data)}`,
+          }\n${JSON.stringify(response.data)}`
         );
       }
       return response;
@@ -164,7 +155,7 @@ export class MPS3 {
     ref: string | Ref,
     options: {
       manifests?: Ref[];
-    } = {},
+    } = {}
   ) {
     return this.putAll(new Map([[ref, undefined]]), options);
   }
@@ -174,7 +165,7 @@ export class MPS3 {
     value: JSONValue | DeleteValue,
     options: {
       manifests?: Ref[];
-    } = {},
+    } = {}
   ) {
     return this.putAll(new Map([[ref, value]]), options);
   }
@@ -183,7 +174,7 @@ export class MPS3 {
     values: Map<string | Ref, JSONValue | DeleteValue>,
     options: {
       manifests?: Ref[];
-    } = {},
+    } = {}
   ) {
     const resolvedValues = new OMap<ResolvedRef, JSONValue | DeleteValue>(
       url,
@@ -196,7 +187,7 @@ export class MPS3 {
           key: typeof ref === "string" ? ref : ref.key,
         },
         value,
-      ]),
+      ])
     );
 
     const manifests: ResolvedRef[] = (
@@ -215,7 +206,7 @@ export class MPS3 {
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
     options: {
       manifests: ResolvedRef[];
-    },
+    }
   ) {
     const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
       new Promise(async (resolve, reject) => {
@@ -265,18 +256,17 @@ export class MPS3 {
   }): Promise<PutObjectCommandOutput> {
     console.log(`putObject ${url(args.ref)}`);
     const content: string = JSON.stringify(args.value, null, 2);
-    const checksum = await sha256(content);
     const command: PutObjectCommandInput = {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
       ContentType: "application/json",
       Body: content,
-      ChecksumSHA256: checksum,
+      ...(this.config.useChecksum && { ChecksumSHA256: await sha256(content) }),
     };
 
     const response = await this.s3Client.send(new PutObjectCommand(command));
     console.log(
-      `PUT ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}\n${content}`,
+      `PUT ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}\n${content}`
     );
 
     return response;
@@ -291,7 +281,7 @@ export class MPS3 {
     };
     const response = await this.s3Client.send(new DeleteObjectCommand(command));
     console.log(
-      `DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`,
+      `DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
     );
     return response;
   }
@@ -302,7 +292,7 @@ export class MPS3 {
     options?: {
       bucket?: string;
       manifest?: Ref;
-    },
+    }
   ): () => void {
     const manifestRef: ResolvedRef = {
       ...this.defaultManifest,
@@ -332,13 +322,24 @@ export class MPS3 {
 
   refresh(): Promise<unknown> {
     return Promise.all(
-      [...this.manifests.values()].map((manifest) => manifest.poll()),
+      [...this.manifests.values()].map((manifest) => manifest.poll())
     );
   }
   get subscriberCount(): number {
     return [...this.manifests.values()].reduce(
       (count, manifest) => count + manifest.subscriberCount,
-      0,
+      0
     );
   }
+}
+
+async function sha256(message: string) {
+  // encode as UTF-8
+  const msgBuffer = new TextEncoder().encode(message);
+
+  // hash the message
+  const arrayBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+
+  // convert ArrayBuffer to base64-encoded string
+  return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 }

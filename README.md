@@ -13,7 +13,7 @@ You can use this library over S3, Backblaze, <strike>R2</strike>(no object versi
 - Optimistic updates
 - Atomic bulk s3 operations
 - Multiplayer
-- Sha256 Checksums
+- If-None-Match and ChecksumSHA256 header optimizations
 
 coming soon
 - Offline first
