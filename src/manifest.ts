@@ -241,10 +241,10 @@ export class Manifest {
         }
       }
       // put versioned write
-      const version = time.upperTimeBound();
+      const version = time.upperTimeBound() + "_" + uuid().substring(0, 2);
       await this.service._putObject({
         ref: {
-          key: this.ref.key + "@" + version + "_" + uuid().substring(0, 2),
+          key: this.ref.key + "@" + version,
           bucket: this.ref.bucket,
         },
         value: state,
