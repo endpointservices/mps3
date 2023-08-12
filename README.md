@@ -1,4 +1,4 @@
-# mps3 - Vendorless BaaS
+# mps3 - A Causally Consistent Multiplayer Database over S3
 
 ⚠️ Under development - bugs and contributions welcome
 
