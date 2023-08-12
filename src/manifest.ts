@@ -1,5 +1,6 @@
 import { OMap } from "OMap";
 import { MPS3 } from "mps3";
+import * as time from "time";
 import {
   DeleteValue,
   JSONValue,
@@ -7,9 +8,10 @@ import {
   ResolvedRef,
   VersionId,
   url,
+  uuid,
 } from "types";
 import { apply } from "json-merge-patch";
-import { ListObjectVersionsCommand } from "@aws-sdk/client-s3";
+import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 interface FileState {
   version: string;
@@ -18,21 +20,19 @@ interface FileState {
 type Merge = any;
 
 export interface ManifestState {
-  version: number;
   // TODO: the manifest should just be URLs which corresponde to the s3 URLs
   // this would scale beyond the s3 usecase and include regional endpoints etc.
   files: {
     [url: string]: FileState;
   };
-  // The previous state this was based on
-  // Writes made after this version will not have been included
-  previous?: {
-    url: string;
-    version: string;
-  };
   // JSON-merge-patch update that the last operation was
   update: Merge;
 }
+
+const EMPTY_STATE: ManifestState = {
+  files: {},
+  update: {},
+};
 
 interface HttpCacheEntry<T> {
   etag: string;
@@ -50,7 +50,7 @@ const isManifest = (obj: any): obj is ManifestState => {
       (file: any) =>
         typeof file === "object" &&
         file.version !== undefined &&
-        typeof file.version === "string",
+        typeof file.version === "string"
     )
   );
 };
@@ -61,7 +61,7 @@ export class Subscriber {
   lastVersion?: VersionId;
   constructor(
     ref: ResolvedRef,
-    handler: (value: JSONValue | DeleteValue) => void,
+    handler: (value: JSONValue | DeleteValue) => void
   ) {
     this.ref = ref;
     this.handler = handler;
@@ -98,7 +98,7 @@ export class Manifest {
     console.log(
       `observeVersionId ${versionId} in ${[
         ...this.writtenOperations.keys(),
-      ]} pending ${this.pendingWrites.size}`,
+      ]} pending ${this.pendingWrites.size}`
     );
     if (this.writtenOperations.has(versionId)) {
       console.log(`clearing pending write for observeVersionId ${versionId}`);
@@ -113,7 +113,9 @@ export class Manifest {
   }
 
   async getLatest(): Promise<ManifestState | undefined> {
+    console.log("getLatest");
     try {
+      console.log("getLatest: s1");
       const response = await this.service._getObject2<ManifestState>({
         ref: this.ref,
         ifNoneMatch: this.cache?.etag,
@@ -124,130 +126,56 @@ export class Manifest {
       }
 
       if (response.data === undefined) {
-        return {
-          version: 0,
-          files: {},
-          update: {},
-        };
+        return EMPTY_STATE;
       }
 
-      if (isManifest(response.data)) {
-        const latestState: ManifestState = response.data;
+      const lowerWaterMark = response.data;
 
-        // First we confirm no versions were written while this one was in flight
-        const previousVersion = await this.service.s3Client.send(
-          new ListObjectVersionsCommand({
-            Bucket: this.ref.bucket,
-            Prefix: this.ref.key,
-            KeyMarker: this.ref.key,
-            VersionIdMarker: response.VersionId,
-            MaxKeys: 1, // Note we only look one version back
-          }),
-        );
+      console.log("getLatest: s2");
+      const objects = await this.service.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.ref.bucket,
+          Prefix: this.ref.key,
+          StartAfter: this.ref.key + "@" + lowerWaterMark,
+        })
+      );
+      // Play the missing patches over the base state, oldest first
+      if (objects.Contents === undefined) return EMPTY_STATE;
 
-        if (
-          previousVersion.Versions === undefined ||
-          previousVersion.Versions?.length === 0 ||
-          (previousVersion.Versions[0].VersionId ===
-            latestState.previous?.version &&
-            latestState.previous?.version !== undefined)
-        ) {
-          // If that one key is the base the state was generated from, we're good
-          // The is the common case for low load
-          latestState.previous = {
-            url: url(this.ref),
-            version: response.VersionId!,
-          };
-
-          this.cache = {
-            etag: response.ETag!,
-            data: latestState,
-          };
-
-          if (previousVersion.Versions && previousVersion.Versions[0])
-            this.observeVersionId(previousVersion.Versions[0].VersionId!);
-          this.observeVersionId(response.VersionId!);
-
-          return latestState;
+      console.log(`replay state ${JSON.stringify(objects.Contents)}`);
+      let state = undefined;
+      for (let index = 0; index < objects.Contents.length; index++) {
+        const key = objects.Contents[index].Key!;
+        const step = await this.service._getObject2<ManifestState>({
+          ref: {
+            bucket: this.ref.bucket,
+            key,
+          },
+        });
+        if (!state) {
+          console.log(`base ${key} ${JSON.stringify(step.data)}`);
+          state = step.data;
         } else {
-          // There have been some additional writes
-          const previousVersions = await this.service.s3Client.send(
-            new ListObjectVersionsCommand({
-              Bucket: this.ref.bucket,
-              Prefix: this.ref.key,
-              KeyMarker: this.ref.key,
-              VersionIdMarker: response.VersionId,
-              MaxKeys: 10,
-            }),
-          );
-
-          if (previousVersions.Versions === undefined)
-            throw new Error("No versions returned");
-
-          const start =
-            latestState.previous?.version === undefined
-              ? previousVersions.Versions.length
-              : previousVersions.Versions?.findIndex(
-                  (version) =>
-                    version.VersionId === latestState.previous?.version,
-                );
-
-          if (start === -1) {
-            throw new Error(
-              `Can't find previous state ${latestState.previous?.version} in search window`,
-            );
-          }
-
-          const baseStateRead = await this.service._getObject2<ManifestState>({
-            ref: this.ref,
-            version: latestState.previous?.version,
-          });
-
-          if (baseStateRead.data === undefined)
-            throw new Error("Can't find base state");
-
-          let state: ManifestState = baseStateRead.data;
-
-          this.observeVersionId(baseStateRead.VersionId!);
-
-          // Play the missing patches over the base state, oldest first
-          console.log("replay state");
-          for (let index = start - 1; index >= 0; index--) {
-            const missingState = await this.service._getObject2<ManifestState>({
-              ref: this.ref,
-              version: previousVersions.Versions[index].VersionId,
-            });
-            const patch = missingState.data?.update;
-
-            this.observeVersionId(missingState.VersionId!);
-            state = apply(state, patch);
-          }
-          // include latest
-          this.observeVersionId(response.VersionId!);
-          state = apply(state, response.data.update);
-          // reflect the catchup
-          state.previous = {
-            url: url(this.ref),
-            version: response.VersionId!,
-          };
-
-          this.cache = {
-            etag: response.ETag!,
-            data: state,
-          };
-          console.log("resolved data", JSON.stringify(state));
-          return state;
+          console.log(`patch ${key} ${JSON.stringify(step.data?.update)}`);
+          state = apply(state, step.data?.update);
         }
-      } else {
-        throw new Error("Invalid manifest");
+        this.observeVersionId(key.substring(key.lastIndexOf("@") + 1));
       }
+      // reflect the catchup
+      state.previous = {
+        url: url(this.ref),
+        version: response.VersionId!,
+      };
+
+      this.cache = {
+        etag: response.ETag!,
+        data: state,
+      };
+      console.log("resolved data", JSON.stringify(state));
+      return state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {
-        return {
-          version: 0,
-          files: {},
-          update: {},
-        };
+        return EMPTY_STATE;
       } else {
         throw err;
       }
@@ -285,13 +213,16 @@ export class Manifest {
 
   async updateContent(
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
-    write: Promise<Map<ResolvedRef, string | DeleteValue>>,
+    write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
     this.pendingWrites.set(write, values);
     console.log(`updateContent pending ${this.pendingWrites.size}`);
 
     try {
       const update = await write;
+      // the lower timebound pesimistically signals how far we are caught up to
+      // we can do this just before we read the latest manifest state
+      const lowerBound = time.lowerTimeBound();
       const state = await this.get();
       state.update = {
         files: {},
@@ -309,11 +240,25 @@ export class Manifest {
           state.update.files[fileUrl] = null;
         }
       }
-      const response = await this.service._putObject({
-        ref: this.ref,
+      // put versioned write
+      const version = time.upperTimeBound();
+      await this.service._putObject({
+        ref: {
+          key: this.ref.key + "@" + version + "_" + uuid().substring(0, 2),
+          bucket: this.ref.bucket,
+        },
         value: state,
       });
-      this.writtenOperations.set(response.VersionId!, write);
+      // update pollers with write to known location
+      const response = await this.service._putObject({
+        ref: {
+          key: this.ref.key,
+          bucket: this.ref.bucket,
+        },
+        value: lowerBound,
+      });
+
+      this.writtenOperations.set(version, write);
       this.poll();
       return response;
     } catch (err) {
@@ -324,13 +269,14 @@ export class Manifest {
   }
 
   async getVersion(ref: ResolvedRef): Promise<string | undefined> {
+    console.log("getVersion");
     const state = await this.get();
     return state.files[url(ref)]?.version;
   }
 
   subscribe(
     keyRef: ResolvedRef,
-    handler: (value: JSONValue | undefined) => void,
+    handler: (value: JSONValue | undefined) => void
   ): () => void {
     console.log(`SUBSCRIBE ${url(keyRef)} ${this.subscriberCount + 1}`);
     const sub = new Subscriber(keyRef, handler);

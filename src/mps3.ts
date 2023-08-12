@@ -253,9 +253,7 @@ export class MPS3 {
     ref: ResolvedRef;
     value: any;
   }): Promise<PutObjectCommandOutput> {
-    console.log(
-      `putObject ${url(args.ref)} checksum ${this.config.useChecksum}`
-    );
+    console.log(`putObject ${url(args.ref)}`);
     const content: string = JSON.stringify(args.value, null, 2);
     const command: PutObjectCommandInput = {
       Bucket: args.ref.bucket,

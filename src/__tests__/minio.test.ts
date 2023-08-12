@@ -191,12 +191,28 @@ describe("mps3", () => {
     });
   });
 
-  test("Parallel puts commute (warm manifest)", async () => {
-    await getClient().put("null", null);
+  test("Parallel puts commute - warm manifest - single read", async () => {
+    await getClient().put("warm", null);
     const n = 3;
     const clients = [...Array(n)].map((_) => getClient());
     const rand_keys = [...Array(n)].map(
-      (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+      (_, i) => `parallel_put/${i}_${Math.random().toString()}`
+    );
+
+    // put in parallel
+    await Promise.all(rand_keys.map((key, i) => clients[i].put(key, i)));
+
+    // await new Promise((resolve) => setTimeout(resolve, 1000));
+    // read in parallel
+    expect(await getClient().get(rand_keys[1])).toEqual(1);
+  });
+
+  test("Parallel puts commute - warm manifest", async () => {
+    await getClient().put("warm", null);
+    const n = 3;
+    const clients = [...Array(n)].map((_) => getClient());
+    const rand_keys = [...Array(n)].map(
+      (_, i) => `parallel_put/${i}_${Math.random().toString()}`
     );
 
     // put in parallel
@@ -204,13 +220,13 @@ describe("mps3", () => {
 
     // read in parallel
     const reads = await Promise.all(
-      rand_keys.map((key, i) => clients[n - i - 1].get(key)),
+      rand_keys.map((key, i) => clients[n - i - 1].get(key))
     );
 
     expect(reads).toEqual([...Array(n)].map((_, i) => i));
   });
 
-  test("Parallel puts commute (cold manifest)", async () => {
+  test("Parallel puts commute - cold manifest", async () => {
     const manifests = [
       {
         key: Math.random().toString(),
@@ -219,7 +235,7 @@ describe("mps3", () => {
     const n = 3;
     const clients = [...Array(n)].map((_) => getClient());
     const rand_keys = [...Array(n)].map(
-      (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+      (_, i) => `parallel_put/${i}_${Math.random().toString()}`
     );
 
     // put in parallel
@@ -227,8 +243,8 @@ describe("mps3", () => {
       rand_keys.map((key, i) =>
         clients[i].put(key, i, {
           manifests,
-        }),
-      ),
+        })
+      )
     );
 
     // read in parallel
@@ -236,8 +252,8 @@ describe("mps3", () => {
       rand_keys.map((key, i) =>
         clients[n - i - 1].get(key, {
           manifest: manifests[0],
-        }),
-      ),
+        })
+      )
     );
 
     expect(reads).toEqual([...Array(n)].map((_, i) => i));
