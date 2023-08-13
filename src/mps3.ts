@@ -13,7 +13,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
-import { DeleteValue, JSONValue, Ref, ResolvedRef, url } from "types";
+import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
 
 export interface MPS3Config {
   defaultBucket: string;
@@ -101,24 +101,34 @@ export class MPS3 {
     ref: ResolvedRef;
     version?: string;
   }): Promise<JSONValue | DeleteValue> {
-    const command: GetObjectCommandInput = {
-      Bucket: args.ref.bucket,
-      Key: args.ref.key,
-      ...(args.version && { VersionId: args.version }),
-    };
+    let command: GetObjectCommandInput;
+    if (this.config.useVersioning) {
+      command = {
+        Bucket: args.ref.bucket,
+        Key: args.ref.key,
+        ...(args.version && { VersionId: args.version }),
+      };
+    } else {
+      command = {
+        Bucket: args.ref.bucket,
+        Key: `${args.ref.key}${args.version ? `@${args.version}` : ""}`,
+      };
+    }
     try {
       const response = await this.s3Client.send(new GetObjectCommand(command));
       if (!response.Body) return undefined;
       else {
         const payload = await response.Body.transformToString("utf-8");
         console.log(
-          `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}\n${payload}`
+          `GET ${command.Bucket}/${command.Key} => ${response.VersionId}\n${payload}`
         );
         return JSON.parse(payload);
       }
     } catch (err: any) {
-      if (err.name === "NoSuchKey") return undefined;
-      else throw err;
+      if (err.name === "NoSuchKey") {
+        console.log(`GET ${command.Bucket}/${command.Key} => NOT FOUND`);
+        return undefined;
+      } else throw err;
     }
   }
 
@@ -226,18 +236,24 @@ export class MPS3 {
         const contentOperations: Promise<any>[] = [];
         values.forEach((value, contentRef) => {
           if (value !== undefined) {
+            let version = this.config.useVersioning ? undefined : uuid(); // TODO timestamped versions
             contentOperations.push(
               this._putObject({
                 ref: contentRef,
                 value,
+                version,
               }).then((fileUpdate) => {
-                if (fileUpdate.VersionId === undefined) {
-                  console.error(fileUpdate);
-                  throw Error(
-                    `Bucket ${contentRef.bucket} is not version enabled!`
-                  );
+                if (this.config.useVersioning) {
+                  if (fileUpdate.VersionId === undefined) {
+                    console.error(fileUpdate);
+                    throw Error(
+                      `Bucket ${contentRef.bucket} is not version enabled!`
+                    );
+                  } else {
+                    version = fileUpdate.VersionId;
+                  }
                 }
-                results.set(contentRef, fileUpdate.VersionId);
+                results.set(contentRef, version);
               })
             );
           } else {
@@ -265,21 +281,36 @@ export class MPS3 {
   async _putObject(args: {
     ref: ResolvedRef;
     value: any;
+    version?: string;
   }): Promise<PutObjectCommandOutput> {
     console.log(`putObject ${url(args.ref)}`);
     const content: string = JSON.stringify(args.value, null, 2);
-    const command: PutObjectCommandInput = {
-      Bucket: args.ref.bucket,
-      Key: args.ref.key,
-      ContentType: "application/json",
-      Body: content,
-
-      ...(this.config.useChecksum && { ChecksumSHA256: await sha256(content) }),
-    };
+    let command: PutObjectCommandInput;
+    if (this.config.useVersioning) {
+      command = {
+        Bucket: args.ref.bucket,
+        Key: args.ref.key,
+        ContentType: "application/json",
+        Body: content,
+        ...(this.config.useChecksum && {
+          ChecksumSHA256: await sha256(content),
+        }),
+      };
+    } else {
+      command = {
+        Bucket: args.ref.bucket,
+        Key: `${args.ref.key}${args.version ? `@${args.version}` : ""}`,
+        ContentType: "application/json",
+        Body: content,
+        ...(this.config.useChecksum && {
+          ChecksumSHA256: await sha256(content),
+        }),
+      };
+    }
 
     const response = await this.s3Client.send(new PutObjectCommand(command));
     console.log(
-      `PUT ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}\n${content}`
+      `PUT ${command.Bucket}/${command.Key} => ${response.VersionId}\n${content}`
     );
 
     return response;

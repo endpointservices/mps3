@@ -1,10 +1,10 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
-import { MPS3 } from "mps3";
+import { MPS3, MPS3Config } from "mps3";
 
 describe("mps3", () => {
   let s3: S3;
-  let bucket = `t${Math.random().toString(16).substring(2, 9)}`;
+  let session = Math.random().toString(16).substring(2, 6);
   const s3Config = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
@@ -14,34 +14,51 @@ describe("mps3", () => {
     },
   };
 
-  beforeAll(async () => {
-    s3 = new S3(s3Config);
-
-    await s3.createBucket({
-      Bucket: bucket,
-    });
-
-    await s3.putBucketVersioning({
-      Bucket: bucket,
-      VersioningConfiguration: {
-        Status: "Enabled",
-      },
-    });
-  });
-
-  [
+  const configs: {
+    label: string;
+    config: MPS3Config;
+  }[] = [
     {
-      label: "versioned",
+      label: "useVersioning",
       config: {
         pollFrequency: 100,
-        useVersions: true,
-        defaultBucket: bucket,
+        useVersioning: true,
+        defaultBucket: `ver${session}`,
         s3Config: s3Config,
       },
     },
-  ].map((variant) =>
+    {
+      label: "noVersioning",
+      config: {
+        pollFrequency: 100,
+        useChecksum: false,
+        // useVersioning: false, // is the default
+        defaultBucket: `nov${session}`,
+        s3Config: s3Config,
+      },
+    },
+  ];
+
+  configs.map((variant) =>
     describe(variant.label, () => {
+      beforeAll(async () => {
+        s3 = new S3(variant.config.s3Config);
+
+        await s3.createBucket({
+          Bucket: variant.config.defaultBucket,
+        });
+
+        if (variant.config.useVersioning) {
+          await s3.putBucketVersioning({
+            Bucket: variant.config.defaultBucket,
+            VersioningConfiguration: {
+              Status: "Enabled",
+            },
+          });
+        }
+      });
       const getClient = () => new MPS3(variant.config);
+
       test("Subscription deduplicate undefined", async (done) => {
         const mps3 = getClient();
         const listener = getClient();
@@ -99,12 +116,23 @@ describe("mps3", () => {
       });
 
       test("Storage key representation", async () => {
-        await getClient().put("storage_key", "foo");
-        const storage = await s3.getObject({
-          Bucket: bucket,
-          Key: "storage_key",
-        });
-        expect(storage.VersionId).toBeDefined();
+        const client = await getClient();
+        await client.put("storage_key", "foo");
+        if (variant.config.useVersioning) {
+          const storage = await s3.getObject({
+            Bucket: variant.config.defaultBucket,
+            Key: "storage_key",
+          });
+          expect(storage.VersionId).toBeDefined();
+        } else {
+          try {
+            const storage = await s3.getObject({
+              Bucket: variant.config.defaultBucket,
+              Key: "storage_key",
+            });
+            expect(false).toBe(true);
+          } catch (e) {}
+        }
       });
 
       test("Can read a write (cold manifest)", async () => {
