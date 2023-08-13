@@ -18,24 +18,35 @@ import { DeleteValue, JSONValue, Ref, ResolvedRef, url } from "types";
 export interface MPS3Config {
   defaultBucket: string;
   defaultManifest?: Ref;
+  useVersioning?: boolean;
   useChecksum?: boolean;
   s3Config: S3ClientConfig;
 }
 
-export class MPS3 {
-  s3Client: S3Client;
-  config: MPS3Config;
-  manifests = new OMap<ResolvedRef, Manifest>(url);
+interface ResolvedMPS3Config {
+  defaultBucket: string;
   defaultManifest: ResolvedRef;
+  useVersioning: boolean;
+  useChecksum: boolean;
+}
+
+export class MPS3 {
+  config: ResolvedMPS3Config;
+  s3Client: S3Client;
+  manifests = new OMap<ResolvedRef, Manifest>(url);
 
   constructor(config: MPS3Config) {
-    if (config.useChecksum === undefined) config.useChecksum = true;
-    this.config = config;
-    this.s3Client = new S3Client(this.config.s3Config);
-    this.defaultManifest = {
-      bucket: config.defaultManifest?.bucket || config.defaultBucket,
-      key: config.defaultManifest?.key || "manifest.json",
+    this.config = {
+      ...config,
+      useChecksum: config.useChecksum || true,
+      useVersioning: config.useVersioning || false,
+      defaultManifest: {
+        bucket: config.defaultManifest?.bucket || config.defaultBucket,
+        key: config.defaultManifest?.key || "manifest.json",
+      },
     };
+
+    this.s3Client = new S3Client(config.s3Config);
   }
 
   getOrCreateManifest(ref: ResolvedRef): Manifest {
@@ -52,7 +63,7 @@ export class MPS3 {
     } = {}
   ): Promise<JSONValue | DeleteValue> {
     const manifestRef: ResolvedRef = {
-      ...this.defaultManifest,
+      ...this.config.defaultManifest,
       ...options.manifest,
     };
     const manifest = this.getOrCreateManifest(manifestRef);
@@ -60,7 +71,7 @@ export class MPS3 {
       bucket:
         (<Ref>ref).bucket ||
         this.config.defaultBucket ||
-        this.defaultManifest.bucket,
+        this.config.defaultManifest.bucket,
       key: typeof ref === "string" ? ref : ref.key,
     };
     let inCache = false;
@@ -182,7 +193,7 @@ export class MPS3 {
           bucket:
             (<Ref>ref).bucket ||
             this.config.defaultBucket ||
-            this.defaultManifest.bucket,
+            this.config.defaultManifest.bucket,
           key: typeof ref === "string" ? ref : ref.key,
         },
         value,
@@ -190,9 +201,9 @@ export class MPS3 {
     );
 
     const manifests: ResolvedRef[] = (
-      options?.manifests || [this.defaultManifest]
+      options?.manifests || [this.config.defaultManifest]
     ).map((ref) => ({
-      ...this.defaultManifest,
+      ...this.config.defaultManifest,
       ...ref,
     }));
 
@@ -260,7 +271,7 @@ export class MPS3 {
       Key: args.ref.key,
       ContentType: "application/json",
       Body: content,
-      
+
       ...(this.config.useChecksum && { ChecksumSHA256: await sha256(content) }),
     };
 
@@ -295,7 +306,7 @@ export class MPS3 {
     }
   ): () => void {
     const manifestRef: ResolvedRef = {
-      ...this.defaultManifest,
+      ...this.config.defaultManifest,
       ...options?.manifest,
     };
     const keyRef: ResolvedRef = {
