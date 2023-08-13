@@ -340,7 +340,7 @@ describe("mps3", () => {
         rand_keys.map((key, i) => clients[i].put(key, i));
 
         expect(await results).toEqual([0, 1, 2]);
-      });git 
+      });
     })
   );
 });
