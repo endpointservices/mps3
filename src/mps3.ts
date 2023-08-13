@@ -20,14 +20,15 @@ export interface MPS3Config {
   defaultManifest?: Ref;
   useVersioning?: boolean;
   useChecksum?: boolean;
+  pollFrequency?: number;
   s3Config: S3ClientConfig;
 }
 
-interface ResolvedMPS3Config {
-  defaultBucket: string;
+interface ResolvedMPS3Config extends MPS3Config {
   defaultManifest: ResolvedRef;
   useVersioning: boolean;
   useChecksum: boolean;
+  pollFrequency: number;
 }
 
 export class MPS3 {
@@ -40,6 +41,7 @@ export class MPS3 {
       ...config,
       useChecksum: config.useChecksum || true,
       useVersioning: config.useVersioning || false,
+      pollFrequency: config.pollFrequency || 1000,
       defaultManifest: {
         bucket: config.defaultManifest?.bucket || config.defaultBucket,
         key: config.defaultManifest?.key || "manifest.json",

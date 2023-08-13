@@ -33,7 +33,8 @@ describe("mps3", () => {
     {
       label: "versioned",
       config: {
-        keyStyle: "version",
+        pollFrequency: 100,
+        useVersions: true,
         defaultBucket: bucket,
         s3Config: s3Config,
       },
@@ -95,6 +96,15 @@ describe("mps3", () => {
         await getClient().put("rw", rnd);
         const read = await getClient().get("rw");
         expect(read).toEqual(rnd);
+      });
+
+      test("Storage key representation", async () => {
+        await getClient().put("storage_key", "foo");
+        const storage = await s3.getObject({
+          Bucket: bucket,
+          Key: "storage_key",
+        });
+        expect(storage.VersionId).toBeDefined();
       });
 
       test("Can read a write (cold manifest)", async () => {

@@ -188,7 +188,10 @@ export class Manifest {
       this.poller = undefined;
     }
     if (this.subscriberCount > 0 && !this.poller) {
-      this.poller = setInterval(() => this.poll(), 1000);
+      this.poller = setInterval(
+        () => this.poll(),
+        this.service.config.pollFrequency
+      );
     }
     const state = await this.getLatest();
     if (state === undefined) return; // no changes
