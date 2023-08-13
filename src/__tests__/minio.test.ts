@@ -1,6 +1,7 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
+import { uuid } from "types";
 
 describe("mps3", () => {
   let s3: S3;
@@ -91,6 +92,16 @@ describe("mps3", () => {
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
         const read = await mps3.get("rw");
+        expect(read).toEqual(undefined);
+      });
+
+      test("Read no manifest", async () => {
+        const mps3 = getClient();
+        const read = await mps3.get("unused_key", {
+          manifest: {
+            key: uuid(),
+          },
+        });
         expect(read).toEqual(undefined);
       });
 
@@ -329,7 +340,7 @@ describe("mps3", () => {
         rand_keys.map((key, i) => clients[i].put(key, i));
 
         expect(await results).toEqual([0, 1, 2]);
-      });
+      });git 
     })
   );
 });

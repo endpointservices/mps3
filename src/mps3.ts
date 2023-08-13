@@ -39,7 +39,7 @@ export class MPS3 {
   constructor(config: MPS3Config) {
     this.config = {
       ...config,
-      useChecksum: config.useChecksum || true,
+      useChecksum: config.useChecksum === false ? false : true,
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
       defaultManifest: {
