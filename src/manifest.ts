@@ -116,7 +116,7 @@ export class Manifest {
     console.log("getLatest");
     try {
       console.log("getLatest: s1");
-      const response = await this.service._getObject2<ManifestState>({
+      const response = await this.service._getObject<ManifestState>({
         ref: this.ref,
         ifNoneMatch: this.cache?.etag,
       });
@@ -146,7 +146,7 @@ export class Manifest {
       let state = undefined;
       for (let index = 0; index < objects.Contents.length; index++) {
         const key = objects.Contents[index].Key!;
-        const step = await this.service._getObject2<ManifestState>({
+        const step = await this.service._getObject<ManifestState>({
           ref: {
             bucket: this.ref.bucket,
             key,
@@ -202,11 +202,11 @@ export class Manifest {
         state.files[url(subscriber.ref)];
       if (fileState) {
         console.log(`NOTIFY ${url(subscriber.ref)} ${fileState.version}`);
-        const fileContent = await this.service._getObject({
+        const fileContent = await this.service._getObject<any>({
           ref: subscriber.ref,
           version: fileState.version,
         });
-        subscriber.notify(fileState.version, fileContent);
+        subscriber.notify(fileState.version, fileContent.data);
       } else if (fileState === null) {
         console.log(`NOTIFY ${url(subscriber.ref)} DELETE`);
         subscriber.notify(undefined, undefined);

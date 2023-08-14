@@ -91,86 +91,78 @@ export class MPS3 {
 
     const version = await manifest.getVersion(contentRef);
     if (version === undefined) return undefined;
-    return this._getObject({
+    return (await this._getObject<any>({
       ref: contentRef,
       version: version,
-    });
+    })).data;
   }
 
-  async _getObject(args: {
+  getCache = new OMap<
+    GetObjectCommandInput,
+    Promise<GetObjectCommandOutput & { data: any }>
+  >(
+    (input) =>
+      `${input.Bucket}${input.Key}${input.VersionId}${input.IfNoneMatch}`
+  );
+
+  async _getObject<T>(args: {
     ref: ResolvedRef;
     version?: string;
-  }): Promise<JSONValue | DeleteValue> {
+    ifNoneMatch?: string;
+  }): Promise<GetObjectCommandOutput & { data: T | undefined }> {
     let command: GetObjectCommandInput;
     if (this.config.useVersioning) {
       command = {
         Bucket: args.ref.bucket,
         Key: args.ref.key,
+        IfNoneMatch: args.ifNoneMatch,
         ...(args.version && { VersionId: args.version }),
       };
     } else {
       command = {
         Bucket: args.ref.bucket,
         Key: `${args.ref.key}${args.version ? `@${args.version}` : ""}`,
+        IfNoneMatch: args.ifNoneMatch,
       };
     }
-    try {
-      const response = await this.s3Client.send(new GetObjectCommand(command));
-      if (!response.Body) return undefined;
-      else {
-        const payload = await response.Body.transformToString("utf-8");
-        console.log(
-          `GET ${command.Bucket}/${command.Key} => ${response.VersionId}\n${payload}`
-        );
-        return JSON.parse(payload);
-      }
-    } catch (err: any) {
-      if (err.name === "NoSuchKey") {
-        console.log(`GET ${command.Bucket}/${command.Key} => NOT FOUND`);
-        return undefined;
-      } else throw err;
+    if (this.getCache.has(command)) {
+      return await this.getCache.get(command)!;
     }
-  }
 
-  async _getObject2<T>(args: {
-    ref: ResolvedRef;
-    version?: string;
-    ifNoneMatch?: string;
-  }): Promise<GetObjectCommandOutput & { data: T | undefined }> {
-    const command: GetObjectCommandInput = {
-      Bucket: args.ref.bucket,
-      Key: args.ref.key,
-      IfNoneMatch: args.ifNoneMatch,
-      ...(args.version && { VersionId: args.version }),
-    };
-    try {
-      const response = {
-        ...(await this.s3Client.send(new GetObjectCommand(command))),
-        data: <T | undefined>undefined,
-      };
-      if (response.Body) {
-        response.data = <T>(
-          JSON.parse(await response.Body.transformToString("utf-8"))
-        );
-        console.log(
-          `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${
-            response.VersionId
-          }\n${JSON.stringify(response.data)}`
-        );
-      }
-      return response;
-    } catch (err: any) {
-      if (err?.name === "304") {
-        return {
-          $metadata: {
-            httpStatusCode: 304,
-          },
-          data: undefined,
+    const work = this.s3Client
+      .send(new GetObjectCommand(command))
+      .then(async (apiResponse) => {
+        const response = {
+          ...apiResponse,
+          data: <T | undefined>undefined,
         };
-      } else {
-        throw err;
-      }
-    }
+        if (response.Body) {
+          response.data = <T>(
+            JSON.parse(await response.Body.transformToString("utf-8"))
+          );
+          console.log(
+            `GET ${args.ref.bucket}/${args.ref.key}@${args.version} => ${
+              response.VersionId
+            }\n${JSON.stringify(response.data)}`
+          );
+          this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
+        }
+        return response;
+      })
+      .catch((err: any) => {
+        if (err?.name === "304") {
+          return {
+            $metadata: {
+              httpStatusCode: 304,
+            },
+            data: undefined,
+          };
+        } else {
+          throw err;
+        }
+      });
+
+    return work;
   }
 
   public async delete(
