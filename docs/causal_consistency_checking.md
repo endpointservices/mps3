@@ -32,7 +32,7 @@ We can intuitively spot a causal violation in Carol answering Bob's question bef
 
 Casual consistency is defining that X happens before Y, denoted X < Y. 
 
-From Carol's perspective she received a question from Bob as incoming information from the chat app unprompted. She then wrote a reply in the chat application. She only wrote that reply **because** she was asked the question. Thus a causal ordering (`<`) is established between these two events
+From Carol's perspective she received a question from Bob as incoming information from the chat app. She then wrote a reply in the chat application. She only wrote that reply **because** she was asked the question. Thus a causal ordering (`<`) is established between these two events
 ```
 "Bob: Would you like to come over for dinner? < Carol: Yes! I'll bring desert"
 ```
@@ -43,9 +43,9 @@ By encoding casual ordering dependency information into the messages themselves,
 
 ### Casual Consistency Over Multiple Timelines
 
-Each participant (client) experiences events in an order. This is their personal history. In a strictly serialized system this history would need to appear to be the same for all participants, but in a causally consistent system particpants can go offline and catch up later. The main gaurantee in causal consist systems is that things that "happened before" other things are preserved when replaying history.
+Each participant (client) experiences events in an order. This is their personal history. In a strictly serialized system this history would need to appear to be the same for all participants, but in a causally consistent system particpants can go offline and catch up later. The main gaurantee in causal consist systems is that things that "happened before" other things are preserved when replaying history, e.g. when getting back online.
 
-So there is not single global history in a causally consistent system, there is an observed history for each client. So we can say client A has observes events at `A01 < A02 < A03...`, and client B observes event on its own timeline of steps `B01 < B02 < B03...`. For a system to be causally consistent, there must be a combination of timelines that preserve causal ordering
+So there is not single global history in a causally consistent system, there is an observed history for each client. So we can say client A observes events at `A01 < A02 < A03...`, and client B observes event on its own timeline of steps `B01 < B02 < B03...`. For a system to be causally consistent, there must be a combination of timelines that preserve causal ordering
 
 ```
 A01 <              < A02 < A03
@@ -53,16 +53,16 @@ A01 <              < A02 < A03
 ```
 
 
-The interesting thing we saw in the Alice example is that she can observe messages in her personal timeline that imply logical assertion of causal dependencies across other timelines. We can take that general idea and run with it during automated testing. 
+The interesting thing we saw in the Alice example is that she can observe messages in her personal timeline that imply logical assertion of causal dependencies across other people's timelines. We can take that general idea and run with it during automated testing. 
 
 ### In-band Logic 
 
-Instead of sending random messages during randomized testing a client can publish data helpful for the test, for example, a simple useful messed is its local timestep. Other clients observing that message will then be able to infer a causal relationship between their two timelines.
+Instead of sending random messages during randomized testing a client can publish data helpful for the test, for example, a useful message is stating its local timestep. Other clients observing that message will then be able to infer a causal relationship between their two timelines.
 
 
-E.g. if client B, at time T5, observes client A broadcasting "I am at A3", it can deduce A3 < B5 (A3 is sometime before B5). It also knows its it can can only receive messages from A that come later, B5 <= A3.  This informative, but it is not expressive enough to discover the inconsistency in our opening example with Carol. 
+E.g. if client B, at time T5, observes client A broadcasting "I am at A3", it can deduce A3 < B5 (A3 is sometime before B5). It also knows its its next timestamp can can only receive messages from A that are older, B6 <= A3.  This is informative, but it is not expressive enough to discover the inconsistency in our opening example with Carol. 
 
-Instead if clients publish one level more then powerful causal testing can be performed in-band. To do this they encode their local timestep and the tightest bound they can determine of other particpants timesteps.
+If clients also publish their deductions so far, information .
 
 So if client A publishes first then write the time is A1, and because they have made no other observations they don't know anything  know client B and client C are 
 ```
@@ -73,7 +73,7 @@ If B receives that message, and its at time B1, B can update its knowledge
 
 ```
 B1: observe("A1") => 
-  A1 < B1 && B0 < A1  // TODO I CHANGE THE CHAIN RULE
+  A1 < B1 && B2 <= A1  // TODO I CHANGE THE CHAIN RULE
 ```
 
 Now if B transmits, it encodes all its knowledge in a message
@@ -135,7 +135,7 @@ But later
 "A2 < B2" // @A3 Alice heard bob's question out-of-turn
 ```
 
-B2 cannot be less than A2 and A2 cannot be less than B2 at the same time! So we have shown a contradiction. The pub system messed up when A2 head bob's reply, and all the information
+B2 cannot be less than A2 and A2 cannot be less than B2 at the same time! So we have shown a contradiction. The pub system messed up when Alice heard bob's reply, and all the information
 was available to do that detection locally to A. However, we had to use symbolic reasoning to figure it out, which is kinda complicated to do.
 
 ### Avoiding Symbolic Reasoning

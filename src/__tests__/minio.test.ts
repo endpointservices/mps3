@@ -355,18 +355,14 @@ describe("mps3", () => {
           C1_0: 0,
           C2_0: 0,
         };
+        const knowledge_base: Knowledge = {};
 
         type Message = {
           source: number;
           source_time: number;
-          knowledge: Knowledge;
         };
 
-        const observe = (
-          client: number,
-          message: Message,
-          knowledge_base: Knowledge
-        ) => {
+        const observe = (client: number, message: Message) => {
           global_time++;
           const client_time = client_clocks[client]++;
 
@@ -377,47 +373,51 @@ describe("mps3", () => {
           Object.assign(grounding, {
             [`C${client}_${client_time}`]: global_time,
           });
+          // Record the client next step as in Infinity
+          Object.assign(grounding, {
+            [`C${client}_${client_time + 1}`]: Number.POSITIVE_INFINITY,
+          });
 
-          Object.assign(knowledge_base, message.knowledge, {
+          Object.assign(knowledge_base, {
             // Indicate the progression of time on the client clock
             [`C${client}_${client_time - 1} < C${client}_${client_time}`]: null,
             // The source tick happened-before the client clock
             [`C${message.source}_${message.source_time} < C${client}_${client_time}`]:
               null,
           });
-          if (message.source !== client) {
-            Object.assign(knowledge_base, {
-              // Later messages by the sender will happen-after the clients_clock
-              [`C${client}_${client_time - 1} < C${message.source}_${
-                message.source_time
-              }`]: null, // Later messages will happen-after
-            });
-          }
-          console.log(grounding);
-          console.log(knowledge_base);
+          Object.assign(knowledge_base, {
+            // Later messages by the sender will happen-after the clients_clock
+            [`C${client}_${client_time + 1} >= C${message.source}_${
+              message.source_time
+            }`]: null, // Later messages will happen-after
+          });
           if (global_time < max_steps) {
             // Check facts are causally consistent so far
-            expect(check(grounding, knowledge_base)).toBe(true);
+            const check_result = check(grounding, knowledge_base);
+            if (!check_result) {
+              console.error(grounding);
+              console.error(knowledge_base);
+            }
+            expect(check_result).toBe(true);
 
-            // Write a new message with the knowledge base summary
+            // Write a new message
             clients[client].put(key, {
               source: client,
               source_time: client_time,
-              knowledge: knowledge_base,
             });
           } else if (global_time === max_steps) {
+            clients.forEach((c) =>
+              c.manifests.forEach((m) => m.subscribers.clear())
+            );
             done();
           }
         };
 
         // Setup all clients to forward messages to the observer
         const clients = [...Array(3)].map((_, client_id) => {
-          const knowledge_base: Knowledge = {};
           const client = getClient();
-          const unsubscribe = client.subscribe(key, (message) =>
-            message
-              ? observe(client_id, <Message>message, knowledge_base)
-              : undefined
+          client.subscribe(key, (message) =>
+            message ? observe(client_id, <Message>message) : undefined
           );
           return client;
         });
@@ -428,7 +428,6 @@ describe("mps3", () => {
         clients[0].put(key, {
           source: 3,
           source_time: 0,
-          knowledge: {},
         });
       });
     })
