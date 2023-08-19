@@ -60,7 +60,7 @@ The interesting thing we saw in the Alice example is that she can observe messag
 Instead of sending random messages during randomized testing a client can publish data helpful for the test, for example, a simple useful messed is its local timestep. Other clients observing that message will then be able to infer a causal relationship between their two timelines.
 
 
-E.g. if client B, at time T5, observes client A broadcasting "I am at A3", it can deduce A3 < B5 (A3 is sometime before B5). It also knows its it can can only receive messages from A that come later, B4 < A3.  This informative, but it is not expressive enough to discover the inconsistency in our opening example with Carol. 
+E.g. if client B, at time T5, observes client A broadcasting "I am at A3", it can deduce A3 < B5 (A3 is sometime before B5). It also knows its it can can only receive messages from A that come later, B5 <= A3.  This informative, but it is not expressive enough to discover the inconsistency in our opening example with Carol. 
 
 Instead if clients publish one level more then powerful causal testing can be performed in-band. To do this they encode their local timestep and the tightest bound they can determine of other particpants timesteps.
 
@@ -73,7 +73,7 @@ If B receives that message, and its at time B1, B can update its knowledge
 
 ```
 B1: observe("A1") => 
-  A1 < B1 && B0 < A1
+  A1 < B1 && B0 < A1  // TODO I CHANGE THE CHAIN RULE
 ```
 
 Now if B transmits, it encodes all its knowledge in a message

@@ -2,6 +2,7 @@ import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { uuid } from "types";
+import { Grounding, Knowledge, check } from "./consistency";
 
 describe("mps3", () => {
   let s3: S3;
@@ -245,7 +246,7 @@ describe("mps3", () => {
             expect(value).toEqual(rnd);
             unsubscribe();
             done();
-          },
+          }
         );
       });
 
@@ -254,7 +255,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // put in parallel
@@ -270,7 +271,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // put in parallel
@@ -278,7 +279,7 @@ describe("mps3", () => {
 
         // read in parallel
         const reads = await Promise.all(
-          rand_keys.map((key, i) => clients[n - i - 1].get(key)),
+          rand_keys.map((key, i) => clients[n - i - 1].get(key))
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -293,7 +294,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // put in parallel
@@ -301,8 +302,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[i].put(key, i, {
               manifests,
-            }),
-          ),
+            })
+          )
         );
 
         // read in parallel
@@ -310,8 +311,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[n - i - 1].get(key, {
               manifest: manifests[0],
-            }),
-          ),
+            })
+          )
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -321,7 +322,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // collect results
@@ -331,9 +332,9 @@ describe("mps3", () => {
               new Promise((resolve) =>
                 getClient().subscribe(key, (val) => {
                   if (val !== undefined) resolve(val);
-                }),
-              ),
-          ),
+                })
+              )
+          )
         );
 
         // put in parallel
@@ -341,6 +342,95 @@ describe("mps3", () => {
 
         expect(await results).toEqual([0, 1, 2]);
       });
-    }),
+
+      test("causal consistency all-to-all, single key", async (done) => {
+        const key = "causal";
+        await getClient().delete(key);
+
+        const max_steps = 10;
+        let global_time = 0;
+        const client_clocks = [1, 1, 1];
+        const grounding: Grounding = {
+          C0_0: 0,
+          C1_0: 0,
+          C2_0: 0,
+        };
+
+        type Message = {
+          source: number;
+          source_time: number;
+          knowledge: Knowledge;
+        };
+
+        const observe = (
+          client: number,
+          message: Message,
+          knowledge_base: Knowledge
+        ) => {
+          global_time++;
+          const client_time = client_clocks[client]++;
+
+          console.log(
+            `time: ${global_time}\nclient: ${client}\nclient_time: ${client_time}\nsource: ${message.source}\nsource_time: ${message.source_time}`
+          );
+          // Record the client's timestep in the global time
+          Object.assign(grounding, {
+            [`C${client}_${client_time}`]: global_time,
+          });
+
+          Object.assign(knowledge_base, message.knowledge, {
+            // Indicate the progression of time on the client clock
+            [`C${client}_${client_time - 1} < C${client}_${client_time}`]: null,
+            // The source tick happened-before the client clock
+            [`C${message.source}_${message.source_time} < C${client}_${client_time}`]:
+              null,
+          });
+          if (message.source !== client) {
+            Object.assign(knowledge_base, {
+              // Later messages by the sender will happen-after the clients_clock
+              [`C${client}_${client_time - 1} < C${message.source}_${
+                message.source_time
+              }`]: null, // Later messages will happen-after
+            });
+          }
+          console.log(grounding);
+          console.log(knowledge_base);
+          if (global_time < max_steps) {
+            // Check facts are causally consistent so far
+            expect(check(grounding, knowledge_base)).toBe(true);
+
+            // Write a new message with the knowledge base summary
+            clients[client].put(key, {
+              source: client,
+              source_time: client_time,
+              knowledge: knowledge_base,
+            });
+          } else if (global_time === max_steps) {
+            done();
+          }
+        };
+
+        // Setup all clients to forward messages to the observer
+        const clients = [...Array(3)].map((_, client_id) => {
+          const knowledge_base: Knowledge = {};
+          const client = getClient();
+          const unsubscribe = client.subscribe(key, (message) =>
+            message
+              ? observe(client_id, <Message>message, knowledge_base)
+              : undefined
+          );
+          return client;
+        });
+
+        // kick it off with a write from a client not in the test
+        global_time++;
+        grounding["C3_0"] = 1;
+        clients[0].put(key, {
+          source: 3,
+          source_time: 0,
+          knowledge: {},
+        });
+      });
+    })
   );
 });
