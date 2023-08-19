@@ -245,7 +245,7 @@ describe("mps3", () => {
             expect(value).toEqual(rnd);
             unsubscribe();
             done();
-          }
+          },
         );
       });
 
@@ -254,7 +254,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
         );
 
         // put in parallel
@@ -270,7 +270,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
         );
 
         // put in parallel
@@ -278,7 +278,7 @@ describe("mps3", () => {
 
         // read in parallel
         const reads = await Promise.all(
-          rand_keys.map((key, i) => clients[n - i - 1].get(key))
+          rand_keys.map((key, i) => clients[n - i - 1].get(key)),
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -293,7 +293,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
         );
 
         // put in parallel
@@ -301,8 +301,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[i].put(key, i, {
               manifests,
-            })
-          )
+            }),
+          ),
         );
 
         // read in parallel
@@ -310,8 +310,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[n - i - 1].get(key, {
               manifest: manifests[0],
-            })
-          )
+            }),
+          ),
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -321,7 +321,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
         );
 
         // collect results
@@ -331,9 +331,9 @@ describe("mps3", () => {
               new Promise((resolve) =>
                 getClient().subscribe(key, (val) => {
                   if (val !== undefined) resolve(val);
-                })
-              )
-          )
+                }),
+              ),
+          ),
         );
 
         // put in parallel
@@ -341,6 +341,6 @@ describe("mps3", () => {
 
         expect(await results).toEqual([0, 1, 2]);
       });
-    })
+    }),
   );
 });

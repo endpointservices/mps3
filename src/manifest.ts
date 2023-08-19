@@ -50,7 +50,7 @@ const isManifest = (obj: any): obj is ManifestState => {
       (file: any) =>
         typeof file === "object" &&
         file.version !== undefined &&
-        typeof file.version === "string"
+        typeof file.version === "string",
     )
   );
 };
@@ -61,7 +61,7 @@ export class Subscriber {
   lastVersion?: VersionId;
   constructor(
     ref: ResolvedRef,
-    handler: (value: JSONValue | DeleteValue) => void
+    handler: (value: JSONValue | DeleteValue) => void,
   ) {
     this.ref = ref;
     this.handler = handler;
@@ -98,7 +98,7 @@ export class Manifest {
     console.log(
       `observeVersionId ${versionId} in ${[
         ...this.writtenOperations.keys(),
-      ]} pending ${this.pendingWrites.size}`
+      ]} pending ${this.pendingWrites.size}`,
     );
     if (this.writtenOperations.has(versionId)) {
       console.log(`clearing pending write for observeVersionId ${versionId}`);
@@ -137,7 +137,7 @@ export class Manifest {
           Bucket: this.ref.bucket,
           Prefix: this.ref.key,
           StartAfter: this.ref.key + "@" + lowerWaterMark,
-        })
+        }),
       );
       // Play the missing patches over the base state, oldest first
       if (objects.Contents === undefined) return EMPTY_STATE;
@@ -190,7 +190,7 @@ export class Manifest {
     if (this.subscriberCount > 0 && !this.poller) {
       this.poller = setInterval(
         () => this.poll(),
-        this.service.config.pollFrequency
+        this.service.config.pollFrequency,
       );
     }
     const state = await this.getLatest();
@@ -216,7 +216,7 @@ export class Manifest {
 
   async updateContent(
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
-    write: Promise<Map<ResolvedRef, string | DeleteValue>>
+    write: Promise<Map<ResolvedRef, string | DeleteValue>>,
   ) {
     this.pendingWrites.set(write, values);
     console.log(`updateContent pending ${this.pendingWrites.size}`);
@@ -279,7 +279,7 @@ export class Manifest {
 
   subscribe(
     keyRef: ResolvedRef,
-    handler: (value: JSONValue | undefined) => void
+    handler: (value: JSONValue | undefined) => void,
   ): () => void {
     console.log(`SUBSCRIBE ${url(keyRef)} ${this.subscriberCount + 1}`);
     const sub = new Subscriber(keyRef, handler);
