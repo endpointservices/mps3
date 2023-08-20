@@ -17,7 +17,7 @@ Verifying causal consistency is quite tricky in general ([NP-Complete](https://a
 
 ### Relevant Reading
 
-"Time, Clocks, and the Ordering of Events in a Distributed System" by Leslie Lamport, the daddy paper of causal consistency that introduced the relation "happens-before" is a way that scales to multiple timelines. Not the easiest introduction.
+"Time, Clocks, and the Ordering of Events in a Distributed System" by Leslie Lamport, the foundational paper of causal consistency that introduced the relation "happens-before" is a way that scales to multiple timelines. Its not the easiest introduction, but basically all knowledge required is there.
 
 [Causal Consistency - Jepsen blog](https://jepsen.io/consistency/models/causal#:~:text=Causal%20consistency%20captures%20the%20notion,order%20of%20causally%20independent%20operations.)
 
@@ -182,10 +182,11 @@ The clauses that conflict are
 
 We use this framework for randomized testing of the MPS3 client so we can test for causal consistency. Causal consistency is the true contract we want to offer over multiple concurrent clients. Layering causal consistency semantics over vanilla S3 is not easy, so we need to go the extra mile to check the complexity is achieving what we hoped for. 
 
-In fact, the checker immediately found a bug with one of the possible configurations of the clients (the no versioning setting). I am very pleased this could be implemented with no additional dependencies in pure Javascript with very little code. 
+In fact, the checker immediately found a bug with one of the possible configurations of the clients (the no versioning setting). I am very pleased this could be implemented with no additional dependencies in pure Javascript with very little code.
 
-The new obvious step is to generalize the system a bit in the future to handle multiple Independent ordered topics, and model clients joining and leaving them. This article was
+The next obvious step is to generalize the system to handle clients joining and leaving multiple independent ordered topics. This article was
 written as a basic introduction to the technique that we will build upon during future development of MPS3.
+
 
 ### Links
 
