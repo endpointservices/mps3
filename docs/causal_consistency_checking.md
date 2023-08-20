@@ -13,7 +13,7 @@ Most advanced features are transparent to the messaging user. They use the same 
 verify the API semantics are observably correct just from SDK usage experiments.
 
 
-Verifying causal consistency is quite tricky in general ([NP-Complete](https://arxiv.org/abs/1611.00580#:~:text=Causal%20consistency%20is%20one%20of,according%20to%20their%20causal%20precedence.) in fact!), but I consider randomized property checking central to building a robust infrastructure. Here I explain a low complexity technique for verifying causal consistency, that avoids complex model checking. Its implemented in < 100 lines of Typescript and uses `eval`! We avoid any searching by exploiting the known global timeline.
+Verifying causal consistency is quite tricky in general ([NP-Complete](https://arxiv.org/abs/1611.00580#:~:text=Causal%20consistency%20is%20one%20of,according%20to%20their%20causal%20precedence.) in fact!), but I consider randomized property checking central to building a robust infrastructure. Here I explain a low complexity technique for verifying causal consistency, that avoids complex model checking. Its implemented in < 100 lines of Typescript ([source](https://github.com/endpointservices/mps3/blob/12969b06c6564ac9df6c450f3d15a7ca3a5a9a25/src/__tests__/consistency.ts#L25)) and uses `eval` legitimately! We avoid any searching by exploiting the known global timeline.
 
 ### Relevant Reading
 
@@ -118,8 +118,8 @@ const A0 = 0, B0 = 0, C0 = 0, B1 = 1; // grounding
 2 C1: observe ("B1") =>
 
 const A0 = 0, B0 = 0, C0 = 0, B1 = 1, C1 = 2; 
-/*P1*/ B0 < B1 &&
-/*P1*/ C0 < C1 &&
+/*P1*/ B0 < B1 && // previous knowledge
+/*P1*/ C0 < C1 && // new stuff
 /*P2*/ B1 < C1
 > true
 ```
@@ -166,7 +166,7 @@ const A0 = 0, B0 = 0, C0 = 0, B1 = 1, C1 = 2, C2 = 3, A1 = 4, A2 = 5;
 /*P2*/ C2 < A1 &&
 /*P1*/ A1 < A2 &&
 /*P2*/ B1 < A2 &&
-/*P3*/ C2 < B1
+/*P3*/ C2 < B1    // Eeek
 > false // A causal violation!
 ```
 
@@ -186,3 +186,9 @@ In fact, the checker immediately found a bug with one of the possible configurat
 
 The new obvious step is to generalize the system a bit in the future to handle multiple Independent ordered topics, and model clients joining and leaving them. This article was
 written as a basic introduction to the technique that we will build upon during future development of MPS3.
+
+### Links
+
+- The self contained 86 LOC implementation of the causal model and checker ([source](https://github.com/endpointservices/mps3/blob/12969b06c6564ac9df6c450f3d15a7ca3a5a9a25/src/__tests__/consistency.ts#L25))
+- Using the checker against the article's Alice, Bob and Carol example ([source](https://github.com/endpointservices/mps3/blob/12969b06c6564ac9df6c450f3d15a7ca3a5a9a25/src/__tests__/consistency.test.ts#L115))
+- Using the checker to verify the consistency of the MPS3 SDK ([source](https://github.com/endpointservices/mps3/blob/12969b06c6564ac9df6c450f3d15a7ca3a5a9a25/src/__tests__/minio.test.ts#L350))
