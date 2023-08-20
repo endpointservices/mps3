@@ -348,7 +348,7 @@ describe("mps3", () => {
         await getClient().delete(key);
 
         const system = new CausalSystem();
-        const max_steps = 10;
+        const max_steps = 20;
 
         type Message = {
           sender: number;
