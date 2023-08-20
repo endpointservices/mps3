@@ -2,7 +2,7 @@ import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { uuid } from "types";
-import { CausalSystem, Grounding, Knowledge, check } from "./consistency";
+import { CentralisedCausalSystem } from "./consistency";
 
 describe("mps3", () => {
   let s3: S3;
@@ -347,7 +347,7 @@ describe("mps3", () => {
         const key = "causal";
         await getClient().delete(key);
 
-        const system = new CausalSystem();
+        const system = new CentralisedCausalSystem();
         const max_steps = 20;
 
         type Message = {

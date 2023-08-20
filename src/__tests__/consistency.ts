@@ -3,13 +3,14 @@ type Clause = string;
 export type Knowledge = Record<Clause, null>;
 export type Grounding = Record<Variable, number>;
 
+export const toJS = (grounding: Grounding, kb: Knowledge): string =>
+  `const ${Object.entries(grounding)
+    .map(([variable, number]) => `${variable} = ${number}`)
+    .join(", ")};\n${Object.keys(kb).join(" &&\n")}`;
+
 export const check = (grounding: Grounding, kb: Knowledge): boolean => {
   if (Object.keys(kb).length === 0) return true;
-  const expr = `const ${Object.entries(grounding)
-    .map(([variable, number]) => `${variable} = ${number}`)
-    .join(", ")};
-    ${Object.keys(kb).join(" && ")}
-  `;
+  const expr = toJS(grounding, kb);
   try {
     return eval?.(expr);
   } catch (err) {
@@ -21,7 +22,7 @@ export const check = (grounding: Grounding, kb: Knowledge): boolean => {
 export const union = (a: Knowledge, b: Knowledge): Knowledge =>
   Object.assign({}, a, b);
 
-export class CausalSystem {
+export class CentralisedCausalSystem {
   global_time = 0;
   client_clocks = [1, 1, 1];
   client_labels = ["A", "B", "C"];
@@ -34,7 +35,7 @@ export class CausalSystem {
   previous_seen: string[] = [];
 
   private symbol(client: number, clock: number) {
-    return `${this.client_labels[client]}_${clock}`;
+    return `${this.client_labels[client]}${clock}`;
   }
 
   observe({
@@ -53,19 +54,15 @@ export class CausalSystem {
     Object.assign(this.grounding, {
       [this.symbol(client, client_clock)]: this.global_time,
     });
-    // Record the client next step as Infinity
-    Object.assign(this.grounding, {
-      [`${this.symbol(client, client_clock + 1)}`]: Number.POSITIVE_INFINITY,
-    });
 
     Object.assign(this.knowledge_base, {
       // Indicate the progression of time on the client clock
-      [`${this.symbol(client, client_clock - 1)} < ${this.symbol(
+      [`/*P1*/ ${this.symbol(client, client_clock - 1)} < ${this.symbol(
         client,
         client_clock
       )}`]: null,
       // The source tick happened-before the client clock
-      [`${this.symbol(source, source_time)} < ${this.symbol(
+      [`/*P2*/ ${this.symbol(source, source_time)} < ${this.symbol(
         client,
         client_clock
       )}`]: null,
@@ -73,8 +70,10 @@ export class CausalSystem {
     if (this.previous_seen[client]) {
       Object.assign(this.knowledge_base, {
         // The previously seen message happens after
-        [`${this.previous_seen[client]} < ${this.symbol(source, source_time)}`]:
-          null,
+        [`/*P3*/ ${this.previous_seen[client]} < ${this.symbol(
+          source,
+          source_time
+        )}`]: null,
       });
     }
     this.previous_seen[client] = `${this.symbol(source, source_time)}`;

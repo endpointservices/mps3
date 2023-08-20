@@ -1,26 +1,25 @@
 # Checking Causal Consistency the Easy Way
 
-Streaming infrastruture has fairly clear semantics: "send the messages to the recipients in the order they were written".
-And yet, this starts to get complicated as advanced features are added.
+Message infrastructure has fairly clear semantics: "send the messages to the recipients in the order they were written".
+And yet, things start to get complicated as advanced features are added.
 
 - Multiplayer? well now you have to consider merging queues and multiple timelines
 - Optimistic updates? Well now local writes have a different pathway.
 - Mobile-first? Well clients connectivity is unreliable, so you need transparent resumption
-- Local-first? well now some participants messages are buffered and delayed for days
+- Local-first? Well now some participants messages are buffered and delayed for days
 
 Still, there is an intuitive notion of ordering that is preserved even under these use cases: causal consistency.
 Most advanced features are transparent to the messaging user. They use the same SDK, but the path of the messages through the system changes. So you need a way to 
-verify the API semantics are correct externally just from SDK usage experiments. 
+verify the API semantics are observably correct just from SDK usage experiments.
 
 
-Verifying causal consistency is quite tricky in general ([NP-Complete](https://arxiv.org/abs/1611.00580#:~:text=Causal%20consistency%20is%20one%20of,according%20to%20their%20causal%20precedence.) infact!), but I consider randomized property checking central to building a robust messaging system. Here I explain a low complexity technique that avoids model checking that makes good use of `eval`, implemented in <100 lines of Typescript.
+Verifying causal consistency is quite tricky in general ([NP-Complete](https://arxiv.org/abs/1611.00580#:~:text=Causal%20consistency%20is%20one%20of,according%20to%20their%20causal%20precedence.) in fact!), but I consider randomized property checking central to building a robust infrastructure. Here I explain a low complexity technique for verifying causal consistency, that avoids complex model checking. Its implemented in < 100 lines of Typescript and uses `eval`! We avoid any searching by exploiting the known global timeline.
 
-### Reading
+### Relevant Reading
 
 "Time, Clocks, and the Ordering of Events in a Distributed System" by Leslie Lamport, the daddy paper of causal consistency that introduced the relation "happens-before" is a way that scales to multiple timelines. Not the easiest introduction.
 
 [Causal Consistency - Jepsen blog](https://jepsen.io/consistency/models/causal#:~:text=Causal%20consistency%20captures%20the%20notion,order%20of%20causally%20independent%20operations.)
-
 
 ## Example
 
@@ -70,6 +69,8 @@ By encoding causal ordering dependency information into the messages themselves,
 
 Each participant (client) experiences events in an order. This is their personal history. In a strictly serialized system, this history would need to appear the same for all participants. But in a causally consistent system, participants can go offline and catch up later. The main guarantee in causally consistent systems is that things that "happened before" other things are preserved when replaying history, e.g., when getting back online.
 
+#### Principle 1: Consistency Within a Client's Timeline
+
 So there is not a single global history in a causally consistent system; there is an observed history for each client. We can say client A observes events at `A01 < A02 < A03...`, and client B observes events on its own timeline of steps `B01 < B02 < B03...`. For a system to be causally consistent, there must be a combination of timelines that preserve causal ordering:
 
 ```
@@ -77,78 +78,111 @@ A01 <              < A02 < A03
        B01 < B02                < B03
 ```
 
-### In-Band Logic 
+#### Principle 2: Send time happens before receive time
 
-Instead of sending random messages during randomized testing, a client can publish data helpful for the test. For example, a useful message is stating its local timestep. Other clients observing that message will then be able to infer a causal relationship between their two timelines.
+If client B, at time B5, observes client A broadcasting "I am at A3," it can deduce \( A3 < B5 \) (A3 happened-before B5). 
 
-E.g., if client B, at time T5, observes client A broadcasting "I am at A3," it can deduce \( A3 < B5 \) (A3 is sometime before B5). This is informative but not expressive enough to discover the inconsistency in our opening example with Carol.
+#### Principle 3: Global Ordering of Messages in Topic
 
-By running a chat session between some participants, we generate a set of causal relations. Here's what it looks like for our chat app:
+Within shared topics, like chat, you want everybody to receive the messages in the same order. A centralised system also fits this definition. A received message occurs after
+the previously received message for all given client. 
 
 ```
-// Alice: Shall we invite Carol over?
-1 A1: publish ()
+previous_message < received_message 
+```
 
-// Bobs receives: Alice: Shall we invite Carol over?
-2 B1: observe (A1: ) =>
-  A1 < B1 && B0 < A1
+Note this does not preclude clients locally buffering messages or going offline, it just implies there is a global ordering that every message eventually passes through.
 
+### Grounding 
+
+Usefully the causal "happens-before" relation works similarly to the Javascript's less-than does on the number line. So finding a causally consistent interpretation is equivalent to assigning numbers that satisfy the numerical inequalities (grounding).
+
+In a general setting this involves a exhaustive symbolic searching, but if we know the 
+global order of events, then we can simply set the temporal variables to their known global values.
+
+## Live Annotation
+
+We can append causal implications (expressed as `<` and `&&`) as we observe a live system exchanging messages. Here's the salient part of our chat example. It is then enough to evaluate the expressions as Javascript using `eval` to check for validity.
+
+```
 // Bob: Would you like to come over for dinner?
-3 B2: publish ("A1 < B1 && B0 < A1")
+1 B1 publish("B1") =>
 
+const A0 = 0, B0 = 0, C0 = 0, B1 = 1; // grounding
+/*P1*/ B0 < B1                        // causal knowledge
+> true
+```
+
+```
 // Carol receives: Bob: Would you like to come over for dinner?
-4 C1: observe ("B2: A1 < B1 && B0 < A1") => 
-  B2 < C1 && C0 < B2 && 
-  A1 < B1 && B0 < A1
+2 C1: observe ("B1") =>
 
+const A0 = 0, B0 = 0, C0 = 0, B1 = 1, C1 = 2; 
+/*P1*/ B0 < B1 &&
+/*P1*/ C0 < C1 &&
+/*P2*/ B1 < C1
+> true
+```
+
+```
 // Carol: Yes, I'll bring dessert
-5 C2: publish ("B2 < C1 && C0 < B2 && A1 < B1 && B0 < A1")
+3 C2: publish ("C2") => 
 
+const A0 = 0, B0 = 0, C0 = 0, B1 = 1, C1 = 2, C2 = 3;
+/*P1*/ B0 < B1 &&
+/*P1*/ C0 < C1 &&
+/*P2*/ B1 < C1 &&
+/*P1*/ C1 < C2 &&
+/*P3*/ B1 < C1      // Note Carol's response depends on Bob
+> true
+```
+
+```
 // Alice receives: Yes! I'll bring dessert
-6 A2: observe ("C2: B2 < C1 && C0 < B2 && A1 < B1 && B0 < A1") => 
-    C2 < A2 && A1 < C2 && 
-    B2 < C1 && C0 < B2 && A1 < B1 && B0 < A1
+4 A1: observe ("C2") => 
 
+const A0 = 0, B0 = 0, C0 = 0, B1 = 1, C1 = 2, C2 = 3, A1 = 4;
+/*P1*/ B0 < B1 &&
+/*P1*/ C0 < C1 &&
+/*P2*/ B1 < C1 &&
+/*P1*/ C1 < C2 &&
+/*P3*/ B1 < C1 &&
+/*P1*/ A0 < A1 &&
+/*P2*/ C2 < A1
+> true
+```
+
+```
 // Alice receives: Would you like to come over for dinner?
-7 A3: observe ("B2: A1 < B1 && B0 < A1") => 
-    B2 < A3 && A2 < B2 &&
-    A1 < B1 < A2 && B0 < A1 && C0 < A1 && 
-    /* A's prior knowledge */ C2 < A2 && A1 < C2 && B2 < C1 && C0 < B2 && A1 < B1 && B0 < A1
+5 A2: observe ("B2") => 
+
+const A0 = 0, B0 = 0, C0 = 0, B1 = 1, C1 = 2, C2 = 3, A1 = 4, A2 = 5;
+/*P1*/ B0 < B1 &&
+/*P1*/ C0 < C1 &&
+/*P2*/ B1 < C1 &&
+/*P1*/ C1 < C2 &&
+/*P3*/ B1 < C1 &&
+/*P1*/ A0 < A1 &&
+/*P2*/ C2 < A1 &&
+/*P1*/ A1 < A2 &&
+/*P2*/ B1 < A2 &&
+/*P3*/ C2 < B1
+> false // A causal violation!
 ```
 
-Now, at time 7, we see the causal violation at step A3. The important clauses are:
+The clauses that conflict are
 
 ```
-"B2 < C1" // @C1 Carol heard Bob's question
-"C2 < A2" // @A2 // Alice observed Carol's response
-"C1 < C2" // timelines ordering
-=> 
-  B2 < A2
+/*P3*/ B1 < C1 // When carol heard bob
+/*P1*/ C1 < C2 // Carol's sequential timeline
+/*P3*/ C2 < B1 // When alice received bobs message after carols
 ```
 
-But later:
+## Conclusion
 
-```
-"A2 < B2" // @A3 Alice heard Bob's question out-of-turn
-```
+We use this framework for randomized testing of the MPS3 client so we can test for causal consistency. Causal consistency is the true contract we want to offer over multiple concurrent clients. Layering causal consistency semantics over vanilla S3 is not easy, so we need to go the extra mile to check the complexity is achieving what we hoped for. 
 
-\( B2 \) cannot be less than \( A2 \), and \( A2 \) cannot be less than \( B2 \) at the same time! So we have shown a contradiction. The system messed up when Alice heard Bob's reply, and all the information was available to detect that locally to A. However, we had to use symbolic reasoning to figure it out, which can be complicated.
+In fact, the checker immediately found a bug with one of the possible configurations of the clients (the no versioning setting). I am very pleased this could be implemented with no additional dependencies in pure Javascript with very little code. 
 
-### Avoiding Symbolic Reasoning
-
-In the special case of a test harness or a single remote authority, we do not need a symbolic reasoner to detect conflicts in the expressions. We can use the known time and substitute it into the timestep variables.
-
-```
-let
-    A1= 1,
-    B1= 2,
-    B2= 3,
-    C1= 4,
-    C2= 5,
-    A2= 6,
-    A3= 7,
-    A0= 0,
-    B0= 0,
-    C0= 0;
-B2 < A3 && A2 < B2 &&
-    A1 < B1 < A2 && B0 < A1 && C0 < A1 && C2 < A2 && A
+The new obvious step is to generalize the system a bit in the future to handle multiple Independent ordered topics, and model clients joining and leaving them. This article was
+written as a basic introduction to the technique that we will build upon during future development of MPS3.
