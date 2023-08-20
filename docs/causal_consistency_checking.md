@@ -60,7 +60,7 @@ The interesting thing we saw in the Alice example is that she can observe messag
 Instead of sending random messages during randomized testing a client can publish data helpful for the test, for example, a useful message is stating its local timestep. Other clients observing that message will then be able to infer a causal relationship between their two timelines.
 
 
-E.g. if client B, at time T5, observes client A broadcasting "I am at A3", it can deduce A3 < B5 (A3 is sometime before B5). It also knows its its next timestamp can can only receive messages from A that are older, B6 <= A3.  This is informative, but it is not expressive enough to discover the inconsistency in our opening example with Carol. 
+E.g. if client B, at time T5, observes client A broadcasting "I am at A3", it can deduce A3 < B5 (A3 is sometime before B5). This is informative, but it is not expressive enough to discover the inconsistency in our opening example with Carol. 
 
 If clients also publish their deductions so far, information .
 

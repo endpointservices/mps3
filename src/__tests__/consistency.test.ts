@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { check, union } from "./consistency";
+import { CausalSystem, check, union } from "./consistency";
 describe("check", () => {
   test("check (true)", () => {
     const result = check(
@@ -93,3 +93,47 @@ describe("union", () => {
     });
   });
 });
+
+describe("CausalSystem", () => {
+  test("Alice, Bob and Carol compact example, exclude reordering", () => {
+    const system = new CausalSystem();
+    const alice = 0,
+      bob = 1,
+      carol = 2;
+
+    system.observe({ receiver: carol, sender: bob, send_time: 0 }); // carol received bobs question
+    expect(system.causallyConsistent()).toBe(true);
+
+    system.observe({ receiver: alice, sender: carol, send_time: 1 }); // alice hears carols reply
+    expect(system.causallyConsistent()).toBe(true);
+
+    // Causal consistency violation
+    system.observe({ receiver: alice, sender: bob, send_time: 0 });
+    expect(system.causallyConsistent()).toBe(false); // alice hears bob's question after the reply
+  });
+
+  test("Alice, Bob and Carol full example", () => {
+    const system = new CausalSystem();
+    const alice = 0,
+      bob = 1,
+      carol = 2;
+
+    system.observe({ receiver: bob, sender: bob, send_time: 0 }); // bob writes a message
+    system.observe({ receiver: carol, sender: bob, send_time: 1 }); // carol received bobs question
+    expect(system.causallyConsistent()).toBe(true);
+    expect(system.client_clocks).toEqual([1, 2, 2]);
+    system.observe({ receiver: carol, sender: carol, send_time: 1 }); // carol writes a message
+    expect(system.causallyConsistent()).toBe(true);
+    system.observe({ receiver: bob, sender: carol, send_time: 2 }); // bob hears carol's reply
+    expect(system.causallyConsistent()).toBe(true);
+    system.observe({ receiver: alice, sender: carol, send_time: 2 }); // alice hears carols reply
+    expect(system.causallyConsistent()).toBe(true);
+    expect(system.client_clocks).toEqual([2, 3, 3]);
+
+    // violation, carol observes bob's message after carol's message that was a
+    // reply to bob
+    system.observe({ receiver: alice, sender: bob, send_time: 1 });
+    expect(system.causallyConsistent()).toBe(false); // alice hears bob's question
+  });
+});
+

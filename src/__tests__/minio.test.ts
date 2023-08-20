@@ -2,7 +2,7 @@ import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { uuid } from "types";
-import { Grounding, Knowledge, check } from "./consistency";
+import { CausalSystem, Grounding, Knowledge, check } from "./consistency";
 
 describe("mps3", () => {
   let s3: S3;
@@ -347,87 +347,54 @@ describe("mps3", () => {
         const key = "causal";
         await getClient().delete(key);
 
+        const system = new CausalSystem();
         const max_steps = 10;
-        let global_time = 0;
-        const client_clocks = [1, 1, 1];
-        const grounding: Grounding = {
-          C0_0: 0,
-          C1_0: 0,
-          C2_0: 0,
-        };
-        const knowledge_base: Knowledge = {};
 
         type Message = {
-          source: number;
-          source_time: number;
+          sender: number;
+          send_time: number;
         };
-
-        const observe = (client: number, message: Message) => {
-          global_time++;
-          const client_time = client_clocks[client]++;
-
-          console.log(
-            `time: ${global_time}\nclient: ${client}\nclient_time: ${client_time}\nsource: ${message.source}\nsource_time: ${message.source_time}`
-          );
-          // Record the client's timestep in the global time
-          Object.assign(grounding, {
-            [`C${client}_${client_time}`]: global_time,
-          });
-          // Record the client next step as in Infinity
-          Object.assign(grounding, {
-            [`C${client}_${client_time + 1}`]: Number.POSITIVE_INFINITY,
-          });
-
-          Object.assign(knowledge_base, {
-            // Indicate the progression of time on the client clock
-            [`C${client}_${client_time - 1} < C${client}_${client_time}`]: null,
-            // The source tick happened-before the client clock
-            [`C${message.source}_${message.source_time} < C${client}_${client_time}`]:
-              null,
-          });
-          Object.assign(knowledge_base, {
-            // Later messages by the sender will happen-after the clients_clock
-            [`C${client}_${client_time + 1} >= C${message.source}_${
-              message.source_time
-            }`]: null, // Later messages will happen-after
-          });
-          if (global_time < max_steps) {
-            // Check facts are causally consistent so far
-            const check_result = check(grounding, knowledge_base);
-            if (!check_result) {
-              console.error(grounding);
-              console.error(knowledge_base);
-            }
-            expect(check_result).toBe(true);
-
-            // Write a new message
-            clients[client].put(key, {
-              source: client,
-              source_time: client_time,
-            });
-          } else if (global_time === max_steps) {
-            clients.forEach((c) =>
-              c.manifests.forEach((m) => m.subscribers.clear())
-            );
-            done();
-          }
-        };
-
         // Setup all clients to forward messages to the observer
         const clients = [...Array(3)].map((_, client_id) => {
           const client = getClient();
-          client.subscribe(key, (message) =>
-            message ? observe(client_id, <Message>message) : undefined
-          );
-          return client;
-        });
+          client.subscribe(key, (val) => {
+            if (val) {
+              const message: Message = <Message>val;
+              system.observe({
+                ...message,
+                receiver: client_id,
+              });
+            }
 
-        // kick it off with a write from a client not in the test
-        global_time++;
-        grounding["C3_0"] = 1;
-        clients[0].put(key, {
-          source: 3,
-          source_time: 0,
+            if (system.global_time < max_steps) {
+              // Check facts are causally consistent so far
+              const check_result = system.causallyConsistent();
+              if (!check_result) {
+                console.error(system.grounding);
+                console.error(system.knowledge_base);
+              }
+              expect(check_result).toBe(true);
+
+              // Write a new message
+              system.observe({
+                receiver: client_id,
+                sender: client_id,
+                send_time: system.client_clocks[client_id] - 1,
+              });
+
+              expect(check_result).toBe(true);
+              client.put(key, {
+                sender: client_id,
+                send_time: system.client_clocks[client_id] - 1,
+              });
+            } else if (system.global_time === max_steps) {
+              clients.forEach((c) =>
+                c.manifests.forEach((m) => m.subscribers.clear())
+              );
+              done();
+            }
+          });
+          return client;
         });
       });
     })
