@@ -76,7 +76,11 @@ export class CentralisedCausalSystem {
         )}`]: null,
       });
     }
-    this.previous_seen[client] = `${this.symbol(source, source_time)}`;
+    if (source !== client) {
+      // only force causal ordering on events that went through the remote
+      // this is to support local caching.
+      this.previous_seen[client] = `${this.symbol(source, source_time)}`;
+    }
   }
 
   causallyConsistent(): boolean {
