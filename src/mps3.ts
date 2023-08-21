@@ -16,6 +16,7 @@ import { Manifest } from "manifest";
 import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
 
 export interface MPS3Config {
+  label?: string;
   defaultBucket: string;
   defaultManifest?: Ref;
   useVersioning?: boolean;
@@ -25,6 +26,7 @@ export interface MPS3Config {
 }
 
 interface ResolvedMPS3Config extends MPS3Config {
+  label: string;
   defaultManifest: ResolvedRef;
   useVersioning: boolean;
   useChecksum: boolean;
@@ -39,6 +41,7 @@ export class MPS3 {
   constructor(config: MPS3Config) {
     this.config = {
       ...config,
+      label: config.label || uuid().substring(0, 3),
       useChecksum: config.useChecksum === false ? false : true,
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
@@ -85,7 +88,7 @@ export class MPS3 {
       }
     }
     if (inCache) {
-      console.log(`get (cached) ${url(contentRef)}`);
+      console.log(`${this.config.label} get (cached) ${url(contentRef)}`);
       return cachedValue;
     }
 
@@ -145,7 +148,7 @@ export class MPS3 {
             JSON.parse(await response.Body.transformToString("utf-8"))
           );
           console.log(
-            `${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
+            `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
           );
           this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
         }
@@ -305,7 +308,7 @@ export class MPS3 {
 
     const response = await this.s3Client.send(new PutObjectCommand(command));
     console.log(
-      `${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
+      `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
     );
 
     return response;
@@ -320,7 +323,7 @@ export class MPS3 {
     };
     const response = await this.s3Client.send(new DeleteObjectCommand(command));
     console.log(
-      `DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
+      `${this.config.label} DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
     );
     return response;
   }
@@ -347,7 +350,7 @@ export class MPS3 {
     this.get(keyRef, {
       manifest: manifestRef,
     }).then((initial) => {
-      console.log(`NOTIFY (initial) ${url(keyRef)}`);
+      console.log(`${this.config.label} NOTIFY (initial) ${url(keyRef)}`);
       // if the data is cached we don't want the subscriber called in the same tick as
       // the unsubscribe retun value will not be initialized
       queueMicrotask(() => {

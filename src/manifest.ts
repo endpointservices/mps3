@@ -51,10 +51,14 @@ export class Subscriber {
     this.handler = handler;
   }
 
-  notify(version: VersionId | undefined, value: JSONValue | DeleteValue) {
+  notify(
+    label: string,
+    version: VersionId | undefined,
+    value: JSONValue | DeleteValue
+  ) {
     if (version === this.lastVersion) return;
     else {
-      console.log(`NOTIFY ${url(this.ref)} ${version}`);
+      console.log(`${label} NOTIFY ${url(this.ref)} ${version}`);
       this.lastVersion = version;
       this.handler(value);
     }
@@ -67,6 +71,7 @@ export class Manifest {
   subscribers = new Set<Subscriber>();
   poller?: Timer;
   cache?: HttpCacheEntry<ManifestState>;
+  pollInProgress: boolean = false;
 
   // Pending writes iterate in insertion order
   // The key, promise, indicated the pending IO operations
@@ -164,6 +169,9 @@ export class Manifest {
   }
 
   async poll() {
+    if (this.pollInProgress) return;
+    this.pollInProgress = true;
+
     if (this.subscriberCount === 0 && this.poller) {
       clearInterval(this.poller);
       this.poller = undefined;
@@ -175,7 +183,10 @@ export class Manifest {
       );
     }
     const state = await this.getLatest();
-    if (state === undefined) return; // no changes
+    if (state === undefined) {
+      this.pollInProgress = false;
+      return; // no changes
+    }
     this.subscribers.forEach(async (subscriber) => {
       const fileState: FileState | null | undefined =
         state.files[url(subscriber.ref)];
@@ -185,11 +196,16 @@ export class Manifest {
           ref: subscriber.ref,
           version: fileState.version,
         });
-        subscriber.notify(fileState.version, fileContent.data);
+        subscriber.notify(
+          this.service.config.label,
+          fileState.version,
+          fileContent.data
+        );
       } else if (fileState === null) {
-        subscriber.notify(undefined, undefined);
+        subscriber.notify(this.service.config.label, undefined, undefined);
       }
     });
+    this.pollInProgress = false;
   }
 
   async updateContent(

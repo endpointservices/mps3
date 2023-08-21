@@ -59,7 +59,11 @@ describe("mps3", () => {
           });
         }
       });
-      const getClient = () => new MPS3(variant.config);
+      const getClient = (args?: { label?: string }) =>
+        new MPS3({
+          label: args?.label,
+          ...variant.config,
+        });
 
       test("Subscription deduplicate undefined", async (done) => {
         const mps3 = getClient();
@@ -356,7 +360,9 @@ describe("mps3", () => {
         };
         // Setup all clients to forward messages to the observer
         const clients = [...Array(3)].map((_, client_id) => {
-          const client = getClient();
+          const client = getClient({
+            label: system.client_labels[client_id],
+          });
           client.subscribe(key, (val) => {
             if (val) {
               const message: Message = <Message>val;
