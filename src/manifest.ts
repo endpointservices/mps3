@@ -43,6 +43,7 @@ export class Subscriber {
   ref: ResolvedRef;
   handler: (value: any) => void;
   lastVersion?: VersionId;
+  queue = Promise.resolve();
   constructor(
     ref: ResolvedRef,
     handler: (value: JSONValue | DeleteValue) => void
@@ -54,14 +55,18 @@ export class Subscriber {
   notify(
     label: string,
     version: VersionId | undefined,
-    value: JSONValue | DeleteValue
+    content: Promise<JSONValue | DeleteValue>
   ) {
-    if (version === this.lastVersion) return;
-    else {
-      console.log(`${label} NOTIFY ${url(this.ref)} ${version}`);
-      this.lastVersion = version;
-      this.handler(value);
-    }
+    this.queue = this.queue
+      .then(() => content)
+      .then((response) => {
+        if (version === this.lastVersion) return;
+        else {
+          console.log(`${label} NOTIFY ${url(this.ref)} ${version}`);
+          this.lastVersion = version;
+          this.handler(response.data);
+        }
+      });
   }
 }
 
@@ -191,7 +196,7 @@ export class Manifest {
       const fileState: FileState | null | undefined =
         state.files[url(subscriber.ref)];
       if (fileState) {
-        const fileContent = await this.service._getObject<any>({
+        const content = this.service._getObject<any>({
           operation: "GET_CONTENT",
           ref: subscriber.ref,
           version: fileState.version,
@@ -199,10 +204,14 @@ export class Manifest {
         subscriber.notify(
           this.service.config.label,
           fileState.version,
-          fileContent.data
+          content.then((res) => res.data)
         );
       } else if (fileState === null) {
-        subscriber.notify(this.service.config.label, undefined, undefined);
+        subscriber.notify(
+          this.service.config.label,
+          undefined,
+          Promise.resolve({ data: null })
+        );
       }
     });
     this.pollInProgress = false;
