@@ -12,6 +12,7 @@ import {
 } from "types";
 import { apply } from "json-merge-patch";
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+//import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 interface FileState {
   version: string;
@@ -126,7 +127,7 @@ export class Manifest {
 
       const lowerWaterMark = response.data;
 
-      const objects = await this.service.s3Client.send(
+      const objects = await this.service.s3ClientLite.listObjectV2(
         new ListObjectsV2Command({
           Bucket: this.ref.bucket,
           Prefix: this.ref.key,
