@@ -65,7 +65,7 @@ export class Subscriber {
         else {
           console.log(`${label} NOTIFY ${url(this.ref)} ${version}`);
           this.lastVersion = version;
-          this.handler(response.data);
+          this.handler(response);
         }
       });
   }
@@ -211,7 +211,7 @@ export class Manifest {
         subscriber.notify(
           this.service.config.label,
           undefined,
-          Promise.resolve({ data: null })
+          Promise.resolve(undefined)
         );
       }
     });

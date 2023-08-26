@@ -153,18 +153,12 @@ export class MPS3 {
       .then(async (apiResponse) => {
         const response = {
           ...apiResponse,
-          data: <T | undefined>undefined,
+          data: <T | undefined>apiResponse.Body,
         };
-        if (response.Body) {
-          response.data = <T>(
-            // JSON.parse(await response.Body.transformToString("utf-8"))
-            response.Body
-          );
-          console.log(
-            `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
-          );
-          this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
-        }
+        console.log(
+          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId} ${response.data}}`
+        );
+        this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
         return response;
       })
       .catch((err: any) => {

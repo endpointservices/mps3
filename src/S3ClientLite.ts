@@ -79,11 +79,18 @@ export class S3ClientLite {
         "If-None-Match": command.input.IfNoneMatch!,
       },
     });
+    if (response.status == 304) {
+      const err = new Error();
+      err.name = "304";
+      throw err;
+    }
+
+    const content = response.status == 404 ? undefined : await response.json();
     return {
       $metadata: {
         httpStatusCode: response.status,
       },
-      Body: response.status == 404 ? undefined : await response.json(),
+      Body: content,
       ETag: response.headers.get("ETag")!,
       ...(response.headers.get("x-amz-version-id") && {
         VersionId: response.headers.get("x-amz-version-id")!,
