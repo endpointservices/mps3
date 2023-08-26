@@ -269,8 +269,6 @@ describe("mps3", () => {
         // put in parallel
         await Promise.all(rand_keys.map((key, i) => clients[i].put(key, i)));
 
-        // TODO switch to no causal reads for get
-        await new Promise((resolve) => setTimeout(resolve, 1000));
         // read in parallel
         expect(await getClient().get(rand_keys[1])).toEqual(1);
       });

@@ -80,6 +80,7 @@ export class Manifest {
 
   authoritative_key: string = "";
   authoritative_state = INITIAL_STATE;
+  optimistic_state = INITIAL_STATE;
 
   // Pending writes iterate in insertion order
   // The key, promise, indicated the pending IO operations
@@ -133,6 +134,7 @@ export class Manifest {
       // Play the missing patches over the base state, oldest first
       if (objects.Contents === undefined) {
         this.authoritative_state = INITIAL_STATE;
+        this.optimistic_state = INITIAL_STATE;
         return this.authoritative_state;
       }
 
@@ -153,22 +155,15 @@ export class Manifest {
         if (step.data.previous < settledPoint) {
           this.authoritative_key = step.data.previous;
           this.authoritative_state = step.data;
-          console.log(
-            `accepts lookback because ${step.data.previous} < ${settledPoint}`
-          );
           break;
         } else {
-          console.log(
-            `reject lookback because ${step.data.previous} >= ${settledPoint}`
-          );
         }
       }
 
-      let state = this.authoritative_state;
       for (let index = 0; index < objects.Contents.length; index++) {
         const key = objects.Contents[index].Key!;
         if (key == this.ref.key) continue; // skip manifest read
-        console.log(`step ${key} from ${this.authoritative_key}`);
+        // console.log(`step ${key} from ${this.authoritative_key}`);
         const step = await this.service._getObject<ManifestState>({
           operation: "SWEEP",
           ref: {
@@ -179,15 +174,18 @@ export class Manifest {
         const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
         const settledPoint = time.lowerTimeBound();
 
-        if (stepVersionid >= settledPoint) {
-          // we cannot replay state into the inflight zone, its not authorative yet
-
-          console.log(
-            `cannot use ${stepVersionid} >= ${settledPoint} as it could be inflight`
+        if (key < this.authoritative_key) {
+        } else if (stepVersionid >= settledPoint) {
+          this.optimistic_state = apply(
+            this.optimistic_state,
+            step.data?.update
           );
+          // we cannot replay state into the inflight zone, its not authorative yet
         } else {
-          console.log(`updating authority with settled patch ${stepVersionid}`);
-          state = apply(state, step.data?.update);
+          this.authoritative_state = apply(
+            this.authoritative_state,
+            step.data?.update
+          );
           this.authoritative_key = key;
         }
         this.observeVersionId(stepVersionid);
@@ -199,8 +197,7 @@ export class Manifest {
         etag: poll.ETag!,
         data: state,
       };*/
-      this.authoritative_state = state;
-      return state;
+      return this.authoritative_state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {
         this.authoritative_state = INITIAL_STATE;
@@ -312,9 +309,9 @@ export class Manifest {
     }
   }
 
-  async getVersion(ref: ResolvedRef): Promise<string | undefined> {
-    const state = await this.get();
-    return state.files[url(ref)]?.version;
+  async getOptimisticVersion(ref: ResolvedRef): Promise<string | undefined> {
+    await this.get();
+    return this.optimistic_state.files[url(ref)]?.version;
   }
 
   subscribe(

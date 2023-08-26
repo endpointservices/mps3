@@ -104,7 +104,7 @@ export class MPS3 {
       return cachedValue;
     }
 
-    const version = await manifest.getVersion(contentRef);
+    const version = await manifest.getOptimisticVersion(contentRef);
     if (version === undefined) return undefined;
     return (
       await this._getObject<any>({
