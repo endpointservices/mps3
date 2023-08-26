@@ -6,7 +6,7 @@ import { CentralisedCausalSystem } from "./consistency";
 
 describe("mps3", () => {
   let s3: S3;
-  let session = Math.random().toString(16).substring(2, 6);
+  let session = Math.random().toString(16).substring(2, 7);
   const s3Config = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
