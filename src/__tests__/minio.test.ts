@@ -3,6 +3,8 @@ import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { uuid } from "types";
 import { CentralisedCausalSystem } from "./consistency";
+import * as jsdom from "jsdom";
+const dom = new jsdom.JSDOM("");
 
 describe("mps3", () => {
   let s3: S3;
@@ -27,6 +29,7 @@ describe("mps3", () => {
         useVersioning: true,
         defaultBucket: `ver${session}`,
         s3Config: s3Config,
+        parser: new dom.window.DOMParser()
       },
     },
     {
@@ -37,6 +40,7 @@ describe("mps3", () => {
         // useVersioning: false, // is the default
         defaultBucket: `nov${session}`,
         s3Config: s3Config,
+        parser: new dom.window.DOMParser()
       },
     },
   ];
@@ -265,7 +269,6 @@ describe("mps3", () => {
         // put in parallel
         await Promise.all(rand_keys.map((key, i) => clients[i].put(key, i)));
 
-        // await new Promise((resolve) => setTimeout(resolve, 1000));
         // read in parallel
         expect(await getClient().get(rand_keys[1])).toEqual(1);
       });
@@ -347,62 +350,68 @@ describe("mps3", () => {
         expect(await results).toEqual([0, 1, 2]);
       });
 
-      test("causal consistency all-to-all, single key", async (done) => {
-        const key = "causal";
-        await getClient().delete(key);
+      test(
+        "causal consistency all-to-all, single key",
+        async (done) => {
+          const key = "causal";
+          await getClient().delete(key);
 
-        const system = new CentralisedCausalSystem();
-        const max_steps = 100;
+          const system = new CentralisedCausalSystem();
+          const max_steps = 100;
 
-        type Message = {
-          sender: number;
-          send_time: number;
-        };
-        // Setup all clients to forward messages to the observer
-        const clients = [...Array(3)].map((_, client_id) => {
-          const client = getClient({
-            label: system.client_labels[client_id],
-          });
-          client.subscribe(key, (val) => {
-            if (val) {
-              const message: Message = <Message>val;
-              system.observe({
-                ...message,
-                receiver: client_id,
-              });
-            }
-
-            if (system.global_time < max_steps) {
-              // Check facts are causally consistent so far
-              const check_result = system.causallyConsistent();
-              if (!check_result) {
-                console.error(system.grounding);
-                console.error(system.knowledge_base);
+          type Message = {
+            sender: number;
+            send_time: number;
+          };
+          // Setup all clients to forward messages to the observer
+          const clients = [...Array(3)].map((_, client_id) => {
+            const client = getClient({
+              label: system.client_labels[client_id],
+            });
+            client.subscribe(key, (val) => {
+              if (val) {
+                const message: Message = <Message>val;
+                system.observe({
+                  ...message,
+                  receiver: client_id,
+                });
               }
-              expect(check_result).toBe(true);
 
-              // Write a new message
-              system.observe({
-                receiver: client_id,
-                sender: client_id,
-                send_time: system.client_clocks[client_id] - 1,
-              });
+              if (system.global_time < max_steps) {
+                // Check facts are causally consistent so far
+                const check_result = system.causallyConsistent();
+                if (!check_result) {
+                  console.error(system.grounding);
+                  console.error(system.knowledge_base);
+                }
+                expect(check_result).toBe(true);
 
-              expect(check_result).toBe(true);
-              client.put(key, {
-                sender: client_id,
-                send_time: system.client_clocks[client_id] - 1,
-              });
-            } else if (system.global_time === max_steps) {
-              clients.forEach((c) =>
-                c.manifests.forEach((m) => m.subscribers.clear())
-              );
-              done();
-            }
+                // Write a new message
+                system.observe({
+                  receiver: client_id,
+                  sender: client_id,
+                  send_time: system.client_clocks[client_id] - 1,
+                });
+
+                expect(check_result).toBe(true);
+                client.put(key, {
+                  sender: client_id,
+                  send_time: system.client_clocks[client_id] - 1,
+                });
+              } else if (system.global_time === max_steps) {
+                clients.forEach((c) =>
+                  c.manifests.forEach((m) => m.subscribers.clear())
+                );
+                done();
+              }
+            });
+            return client;
           });
-          return client;
-        });
-      });
+        },
+        {
+          timeout: 60 * 1000,
+        }
+      );
     })
   );
 });

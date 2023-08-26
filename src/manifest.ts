@@ -12,6 +12,7 @@ import {
 } from "types";
 import { apply } from "json-merge-patch";
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+//import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 interface FileState {
   version: string;
@@ -20,16 +21,15 @@ interface FileState {
 type Merge = any;
 
 export interface ManifestState {
-  // TODO: the manifest should just be URLs which corresponde to the s3 URLs
-  // this would scale beyond the s3 usecase and include regional endpoints etc.
+  previous: string; // key of previous snapshot this change was based on
   files: {
     [url: string]: FileState;
   };
-  // JSON-merge-patch update that the last operation was
+  // JSON-merge-patch update that *this* operation was, the files do not include this
   update: Merge;
 }
 
-const EMPTY_STATE: ManifestState = {
+const INITIAL_STATE: ManifestState = {
   files: {},
   update: {},
 };
@@ -78,7 +78,9 @@ export class Manifest {
   cache?: HttpCacheEntry<ManifestState>;
   pollInProgress: boolean = false;
 
-  syncSecs = 0; // number indicating how far along is the sync process w.r.t. server time
+  authoritative_key: string = "";
+  authoritative_state = INITIAL_STATE;
+  optimistic_state = INITIAL_STATE;
 
   // Pending writes iterate in insertion order
   // The key, promise, indicated the pending IO operations
@@ -106,38 +108,62 @@ export class Manifest {
 
   async getLatest(): Promise<ManifestState | undefined> {
     try {
-      const response = await this.service._getObject<ManifestState>({
+      const poll = await this.service._getObject<string>({
         operation: "POLL_TIME",
         ref: this.ref,
         ifNoneMatch: this.cache?.etag,
       });
-
-      if (response.$metadata.httpStatusCode === 304) {
+      if (poll.$metadata.httpStatusCode === 304) {
         return undefined;
       }
 
-      if (response.data === undefined) {
-        return EMPTY_STATE;
+      if (poll.data === undefined) {
+        this.authoritative_key = "."; // before digits
+      } else {
+        this.authoritative_key = poll.data;
       }
 
-      const lowerWaterMark = response.data;
-
-      const objects = await this.service.s3Client.send(
+      const objects = await this.service.s3ClientLite.listObjectV2(
         new ListObjectsV2Command({
           Bucket: this.ref.bucket,
           Prefix: this.ref.key,
-          StartAfter: this.ref.key + "@" + lowerWaterMark,
+          StartAfter: this.authoritative_key,
         })
       );
 
-      const currentTime = time.dateToSecs(objects.Date!);
-
       // Play the missing patches over the base state, oldest first
-      if (objects.Contents === undefined) return EMPTY_STATE;
+      if (objects.Contents === undefined) {
+        this.authoritative_state = INITIAL_STATE;
+        this.optimistic_state = INITIAL_STATE;
+        return this.authoritative_state;
+      }
 
-      let state = undefined;
+      // Find the most recent patch, whose base state is settled, and that we have a record for
+      for (let index = objects.Contents.length - 1; index >= 0; index--) {
+        const key = objects.Contents[index].Key!;
+        if (key == this.ref.key) continue; // skip manifest read
+        const settledPoint = time.lowerTimeBound();
+        const step = await this.service._getObject<ManifestState>({
+          operation: "LOOK_BACK",
+          ref: {
+            bucket: this.ref.bucket,
+            key,
+          },
+        });
+        if (step.data === undefined) throw new Error("empty data");
+
+        if (step.data.previous < settledPoint) {
+          this.authoritative_key = step.data.previous;
+          this.authoritative_state = step.data;
+          break;
+        } else {
+        }
+      }
+
       for (let index = 0; index < objects.Contents.length; index++) {
         const key = objects.Contents[index].Key!;
+        if (key == this.ref.key) continue; // skip manifest read
+        // console.log(`step ${key} from ${this.authoritative_key}`);
         const step = await this.service._getObject<ManifestState>({
           operation: "SWEEP",
           ref: {
@@ -145,27 +171,37 @@ export class Manifest {
             key,
           },
         });
-        if (!state) {
-          state = step.data;
-        } else {
-          state = apply(state, step.data?.update);
-        }
-        this.observeVersionId(key.substring(key.lastIndexOf("@") + 1));
-      }
-      // reflect the catchup
-      state.previous = {
-        url: url(this.ref),
-        version: response.VersionId!,
-      };
+        const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
+        const settledPoint = time.lowerTimeBound();
 
+        if (key < this.authoritative_key) {
+        } else if (stepVersionid >= settledPoint) {
+          this.optimistic_state = apply(
+            this.optimistic_state,
+            step.data?.update
+          );
+          // we cannot replay state into the inflight zone, its not authorative yet
+        } else {
+          this.authoritative_state = apply(
+            this.authoritative_state,
+            step.data?.update
+          );
+          this.authoritative_key = key;
+        }
+        this.observeVersionId(stepVersionid);
+      }
+
+      /*
+      Disable poll cache, as we sometimes need to gather the same thing twice to catchup
       this.cache = {
-        etag: response.ETag!,
+        etag: poll.ETag!,
         data: state,
-      };
-      return state;
+      };*/
+      return this.authoritative_state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {
-        return EMPTY_STATE;
+        this.authoritative_state = INITIAL_STATE;
+        return this.authoritative_state;
       } else {
         throw err;
       }
@@ -186,6 +222,7 @@ export class Manifest {
         this.service.config.pollFrequency
       );
     }
+
     const state = await this.getLatest();
     if (state === undefined) {
       this.pollInProgress = false;
@@ -209,7 +246,7 @@ export class Manifest {
         subscriber.notify(
           this.service.config.label,
           undefined,
-          Promise.resolve({ data: null })
+          Promise.resolve(undefined)
         );
       }
     });
@@ -221,14 +258,12 @@ export class Manifest {
     write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
     this.pendingWrites.set(write, values);
-    // console.log(`updateContent pending ${this.pendingWrites.size}`);
+    // console.loggit push(`updateContent pending ${this.pendingWrites.size}`);
 
     try {
       const update = await write;
-      // the lower timebound pesimistically signals how far we are caught up to
-      // we can do this just before we read the latest manifest state
-      const lowerBound = time.lowerTimeBound();
       const state = await this.get();
+      state.previous = this.authoritative_key;
       state.update = {
         files: {},
       };
@@ -238,31 +273,30 @@ export class Manifest {
           const fileState = {
             version: version,
           };
-          state.files[fileUrl] = fileState;
           state.update.files[fileUrl] = fileState;
         } else {
-          delete state.files[fileUrl];
           state.update.files[fileUrl] = null;
         }
       }
       // put versioned write
       const version = time.upperTimeBound() + "_" + uuid().substring(0, 2);
+      const manifest_key = this.ref.key + "@" + version;
       await this.service._putObject({
         operation: "PUT_MANIFEST",
         ref: {
-          key: this.ref.key + "@" + version,
+          key: manifest_key,
           bucket: this.ref.bucket,
         },
         value: state,
       });
       // update pollers with write to known location
       const response = await this.service._putObject({
-        operation: "PUT_TIME",
+        operation: "PUT_POLL",
         ref: {
           key: this.ref.key,
           bucket: this.ref.bucket,
         },
-        value: lowerBound,
+        value: this.authoritative_key, // indicates how far we need to look back
       });
 
       this.writtenOperations.set(version, write);
@@ -275,9 +309,9 @@ export class Manifest {
     }
   }
 
-  async getVersion(ref: ResolvedRef): Promise<string | undefined> {
-    const state = await this.get();
-    return state.files[url(ref)]?.version;
+  async getOptimisticVersion(ref: ResolvedRef): Promise<string | undefined> {
+    await this.get();
+    return this.optimistic_state.files[url(ref)]?.version;
   }
 
   subscribe(

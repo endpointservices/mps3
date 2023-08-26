@@ -8,9 +8,10 @@ import {
   PutObjectCommand,
   PutObjectCommandInput,
   PutObjectCommandOutput,
-  S3Client,
   S3ClientConfig,
 } from "@aws-sdk/client-s3";
+import { AwsClient } from "aws4fetch";
+import { S3ClientLite } from "S3ClientLite";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
 import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
@@ -23,6 +24,7 @@ export interface MPS3Config {
   useChecksum?: boolean;
   pollFrequency?: number;
   s3Config: S3ClientConfig;
+  parser?: DOMParser;
 }
 
 interface ResolvedMPS3Config extends MPS3Config {
@@ -35,7 +37,7 @@ interface ResolvedMPS3Config extends MPS3Config {
 
 export class MPS3 {
   config: ResolvedMPS3Config;
-  s3Client: S3Client;
+  s3ClientLite: S3ClientLite;
   manifests = new OMap<ResolvedRef, Manifest>(url);
 
   constructor(config: MPS3Config) {
@@ -51,7 +53,17 @@ export class MPS3 {
       },
     };
 
-    this.s3Client = new S3Client(config.s3Config);
+    this.s3ClientLite = new S3ClientLite(
+      new AwsClient({
+        accessKeyId: this.config.s3Config?.credentials?.accessKeyId, // required, akin to AWS_ACCESS_KEY_ID
+        secretAccessKey: this.config.s3Config?.credentials?.secretAccessKey, // required, akin to AWS_SECRET_ACCESS_KEY
+        sessionToken: this.config.s3Config?.credentials?.sessionToken, // akin to AWS_SESSION_TOKEN if using temp credentials
+        service: "s3",
+        retries: 0,
+      }),
+      config.s3Config.endpoint,
+      config.parser || new DOMParser()
+    );
   }
 
   getOrCreateManifest(ref: ResolvedRef): Manifest {
@@ -92,7 +104,7 @@ export class MPS3 {
       return cachedValue;
     }
 
-    const version = await manifest.getVersion(contentRef);
+    const version = await manifest.getOptimisticVersion(contentRef);
     if (version === undefined) return undefined;
     return (
       await this._getObject<any>({
@@ -136,22 +148,17 @@ export class MPS3 {
       return await this.getCache.get(command)!;
     }
 
-    const work = this.s3Client
-      .send(new GetObjectCommand(command))
+    const work = this.s3ClientLite
+      .getObject(new GetObjectCommand(command))
       .then(async (apiResponse) => {
         const response = {
           ...apiResponse,
-          data: <T | undefined>undefined,
+          data: <T | undefined>apiResponse.Body,
         };
-        if (response.Body) {
-          response.data = <T>(
-            JSON.parse(await response.Body.transformToString("utf-8"))
-          );
-          console.log(
-            `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
-          );
-          this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
-        }
+        console.log(
+          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId} ${response.data}}`
+        );
+        this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
         return response;
       })
       .catch((err: any) => {
@@ -306,7 +313,9 @@ export class MPS3 {
       };
     }
 
-    const response = await this.s3Client.send(new PutObjectCommand(command));
+    const response = await this.s3ClientLite.putObject(
+      new PutObjectCommand(command)
+    );
     console.log(
       `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
     );
@@ -321,7 +330,9 @@ export class MPS3 {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
     };
-    const response = await this.s3Client.send(new DeleteObjectCommand(command));
+    const response = await this.s3ClientLite.deleteObject(
+      new DeleteObjectCommand(command)
+    );
     console.log(
       `${this.config.label} DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
     );
