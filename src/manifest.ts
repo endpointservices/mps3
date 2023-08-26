@@ -223,7 +223,7 @@ export class Manifest {
     write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
     this.pendingWrites.set(write, values);
-    // console.log(`updateContent pending ${this.pendingWrites.size}`);
+    // console.loggit push(`updateContent pending ${this.pendingWrites.size}`);
 
     try {
       const update = await write;
