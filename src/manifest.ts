@@ -78,6 +78,8 @@ export class Manifest {
   cache?: HttpCacheEntry<ManifestState>;
   pollInProgress: boolean = false;
 
+  syncSecs = 0; // number indicating how far along is the sync process w.r.t. server time
+
   // Pending writes iterate in insertion order
   // The key, promise, indicated the pending IO operations
   pendingWrites: Map<Operation, OMap<ResolvedRef, JSONValue | DeleteValue>> =
@@ -90,12 +92,6 @@ export class Manifest {
     this.ref = ref;
   }
   observeVersionId(versionId: VersionId) {
-    /*
-    console.log(
-      `observeVersionId ${versionId} in ${[
-        ...this.writtenOperations.keys(),
-      ]} pending ${this.pendingWrites.size}`
-    );*/
     if (this.writtenOperations.has(versionId)) {
       //console.log(`clearing pending write for observeVersionId ${versionId}`);
       const operation = this.writtenOperations.get(versionId)!;
@@ -133,6 +129,9 @@ export class Manifest {
           StartAfter: this.ref.key + "@" + lowerWaterMark,
         })
       );
+
+      const currentTime = time.dateToSecs(objects.Date!);
+
       // Play the missing patches over the base state, oldest first
       if (objects.Contents === undefined) return EMPTY_STATE;
 
