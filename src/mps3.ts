@@ -53,6 +53,8 @@ export class MPS3 {
       },
     };
 
+    const endpoint =
+      config.s3Config.endpoint || `s3.${config.s3Config.region}.amazonaws.com`;
     this.s3ClientLite = new S3ClientLite(
       new AwsClient({
         accessKeyId: this.config.s3Config?.credentials?.accessKeyId, // required, akin to AWS_ACCESS_KEY_ID
@@ -61,7 +63,7 @@ export class MPS3 {
         service: "s3",
         retries: 0,
       }),
-      config.s3Config.endpoint,
+      endpoint,
       config.parser || new DOMParser()
     );
   }
