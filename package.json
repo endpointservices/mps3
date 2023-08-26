@@ -1,7 +1,7 @@
 {
   "name": "mps3",
   "description": "Provide clientside multiplayer and optimistic updates over any s3-compatible storage API",
-  "version": "0.0.53",
+  "version": "0.0.55",
   "license": "MIT",
   "author": {
     "name": "Tom Larkworthy"
@@ -23,5 +23,8 @@
     "jsdom": "22.1.0",
     "aws4fetch": "1.0.17",
     "json-merge-patch": "^1.0.2"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }
