@@ -50,14 +50,17 @@ export class MPS3 {
       },
     };
 
-    const endpoint =
-      config.s3Config.endpoint ||
+    if (this.config.s3Config?.credentials instanceof Function)
+      throw Error("We can't do that yet");
+
+    const endpoint: string =
+      <string>config.s3Config.endpoint ||
       `https://s3.${config.s3Config.region}.amazonaws.com`;
     this.s3ClientLite = new S3ClientLite(
       new AwsClient({
-        accessKeyId: this.config.s3Config?.credentials?.accessKeyId, // required, akin to AWS_ACCESS_KEY_ID
-        secretAccessKey: this.config.s3Config?.credentials?.secretAccessKey, // required, akin to AWS_SECRET_ACCESS_KEY
-        sessionToken: this.config.s3Config?.credentials?.sessionToken, // akin to AWS_SESSION_TOKEN if using temp credentials
+        accessKeyId: this.config.s3Config?.credentials?.accessKeyId!, // required, akin to AWS_ACCESS_KEY_ID
+        secretAccessKey: this.config.s3Config?.credentials?.secretAccessKey!, // required, akin to AWS_SECRET_ACCESS_KEY
+        sessionToken: this.config.s3Config?.credentials?.sessionToken!, // akin to AWS_SESSION_TOKEN if using temp credentials
         service: "s3",
         retries: 0,
       }),

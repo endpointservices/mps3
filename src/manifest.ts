@@ -30,6 +30,7 @@ export interface ManifestState {
 }
 
 const INITIAL_STATE: ManifestState = {
+  previous: ".",
   files: {},
   update: {},
 };

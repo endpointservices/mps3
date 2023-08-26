@@ -93,3 +93,94 @@ options: {
     }
 }
 ```
+
+<!-- TSDOC_START -->
+
+## :toolbox: Functions
+
+- [uuid](#gear-uuid)
+- [eq](#gear-eq)
+- [url](#gear-url)
+- [parseUrl](#gear-parseurl)
+
+### :gear: uuid
+
+| Function | Type |
+| ---------- | ---------- |
+| `uuid` | `() => string` |
+
+### :gear: eq
+
+| Function | Type |
+| ---------- | ---------- |
+| `eq` | `(a: Ref, b: Ref) => boolean` |
+
+### :gear: url
+
+| Function | Type |
+| ---------- | ---------- |
+| `url` | `(ref: Ref) => string` |
+
+### :gear: parseUrl
+
+| Function | Type |
+| ---------- | ---------- |
+| `parseUrl` | `(url: string) => ResolvedRef` |
+
+
+## :factory: MPS3
+
+### Methods
+
+- [getOrCreateManifest](#gear-getorcreatemanifest)
+- [get](#gear-get)
+- [delete](#gear-delete)
+- [put](#gear-put)
+- [putAll](#gear-putall)
+- [subscribe](#gear-subscribe)
+- [refresh](#gear-refresh)
+
+#### :gear: getOrCreateManifest
+
+| Method | Type |
+| ---------- | ---------- |
+| `getOrCreateManifest` | `(ref: ResolvedRef) => Manifest` |
+
+#### :gear: get
+
+| Method | Type |
+| ---------- | ---------- |
+| `get` | `(ref: any, options?: { manifest?: Ref; }) => Promise<any>` |
+
+#### :gear: delete
+
+| Method | Type |
+| ---------- | ---------- |
+| `delete` | `(ref: any, options?: { manifests?: Ref[]; }) => Promise<any>` |
+
+#### :gear: put
+
+| Method | Type |
+| ---------- | ---------- |
+| `put` | `(ref: any, value: any, options?: { manifests?: Ref[]; }) => Promise<any>` |
+
+#### :gear: putAll
+
+| Method | Type |
+| ---------- | ---------- |
+| `putAll` | `(values: Map<any, any>, options?: { manifests?: Ref[]; }) => Promise<any>` |
+
+#### :gear: subscribe
+
+| Method | Type |
+| ---------- | ---------- |
+| `subscribe` | `(key: string, handler: (value: any) => void, options?: { bucket?: string; manifest?: Ref; }) => () => void` |
+
+#### :gear: refresh
+
+| Method | Type |
+| ---------- | ---------- |
+| `refresh` | `() => Promise<unknown>` |
+
+
+<!-- TSDOC_END -->

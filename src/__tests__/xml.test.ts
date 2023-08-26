@@ -1,9 +1,11 @@
 import { expect, test, describe } from "bun:test";
 import { parseListObjectsV2CommandOutput } from "../xml";
+import * as jsdom from "jsdom";
+const parser = new new jsdom.JSDOM("").window.DOMParser();
 
 describe("XML parser", () => {
   test("parseListObjectsV2CommandOutput example", () => {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+    const xml: string = `<?xml version="1.0" encoding="UTF-8"?>
         <ListBucketResult>
            <IsTruncated>false</IsTruncated>
            <Contents>
@@ -74,10 +76,9 @@ describe("XML parser", () => {
     });
   });
 
-
   test("parseListObjectV2 minio example", () => {
-    const xml `<?xml version="1.0" encoding="UTF-8"?>
-    <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>ver6a24</Name><Prefix>manifest.json</Prefix><KeyCount>2</KeyCount><MaxKeys>1000</MaxKeys><IsTruncated>false</IsTruncated><Contents><Key>manifest.json</Key><LastModified>2023-08-25T19:34:04.316Z</LastModified><ETag>&#34;fb2a3ed15fa6e7ced42dc00d50132e62&#34;</ETag><Size>16</Size><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>manifest.json@01692992046294_ac</Key><LastModified>2023-08-25T19:34:04.306Z</LastModified><ETag>&#34;6de2d545ee848a433040e045d0ed146f&#34;</ETag><Size>230</Size><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>`
+    const xml: string = `<?xml version="1.0" encoding="UTF-8"?>
+    <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>ver6a24</Name><Prefix>manifest.json</Prefix><KeyCount>2</KeyCount><MaxKeys>1000</MaxKeys><IsTruncated>false</IsTruncated><Contents><Key>manifest.json</Key><LastModified>2023-08-25T19:34:04.316Z</LastModified><ETag>&#34;fb2a3ed15fa6e7ced42dc00d50132e62&#34;</ETag><Size>16</Size><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>manifest.json@01692992046294_ac</Key><LastModified>2023-08-25T19:34:04.306Z</LastModified><ETag>&#34;6de2d545ee848a433040e045d0ed146f&#34;</ETag><Size>230</Size><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>`;
 
     const parsed = parseListObjectsV2CommandOutput(xml, parser);
     expect(parsed).toEqual({
@@ -113,5 +114,5 @@ describe("XML parser", () => {
       StartAfter: "startafter",
       NextContinuationToken: "nexttoken",
     });
-  })
+  });
 });

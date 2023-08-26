@@ -39,7 +39,7 @@ export class S3ClientLite {
     }`;
     const response = await this.client.fetch(url, {
       method: "PUT",
-      body: command.Body,
+      body: <string>command.Body,
     });
     if (response.status != 200) throw new Error("Failed to put object");
     return {
