@@ -1,11 +1,11 @@
 import {
-  DeleteObjectCommand,
+  DeleteObjectCommandInput,
   DeleteObjectCommandOutput,
-  GetObjectCommand,
+  GetObjectCommandInput,
   GetObjectCommandOutput,
-  ListObjectsV2Command,
+  ListObjectsV2CommandInput,
   ListObjectsV2CommandOutput,
-  PutObjectCommand,
+  PutObjectCommandInput,
   PutObjectCommandOutput,
 } from "@aws-sdk/client-s3";
 import { AwsClient } from "aws4fetch";
@@ -22,10 +22,10 @@ export class S3ClientLite {
   }
 
   async listObjectV2(
-    command: ListObjectsV2Command
+    command: ListObjectsV2CommandInput
   ): Promise<ListObjectsV2CommandOutput> {
-    const url = `${this.endpoint}/${command.input.Bucket!}?list-type=2&prefix=${
-      command.input.Prefix
+    const url = `${this.endpoint}/${command.Bucket!}?list-type=2&prefix=${
+      command.Prefix
     }`;
     const response = await this.client.fetch(url, {});
     const xml = await response.text();
@@ -33,13 +33,13 @@ export class S3ClientLite {
     return result;
   }
 
-  async putObject(command: PutObjectCommand): Promise<PutObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.input.Bucket!}/${
-      command.input.Key
+  async putObject(command: PutObjectCommandInput): Promise<PutObjectCommandOutput> {
+    const url = `${this.endpoint}/${command.Bucket!}/${
+      command.Key
     }`;
     const response = await this.client.fetch(url, {
       method: "PUT",
-      body: command.input.Body,
+      body: command.Body,
     });
     if (response.status != 200) throw new Error("Failed to put object");
     return {
@@ -54,10 +54,10 @@ export class S3ClientLite {
   }
 
   async deleteObject(
-    command: DeleteObjectCommand
+    command: DeleteObjectCommandInput
   ): Promise<DeleteObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.input.Bucket!}/${
-      command.input.Key
+    const url = `${this.endpoint}/${command.Bucket!}/${
+      command.Key
     }`;
     const response = await this.client.fetch(url, {
       method: "DELETE",
@@ -69,14 +69,14 @@ export class S3ClientLite {
     };
   }
 
-  async getObject(command: GetObjectCommand): Promise<GetObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.input.Bucket!}/${
-      command.input.Key
-    }?${command.input.VersionId ? `versionId=${command.input.VersionId}` : ""}`;
+  async getObject(command: GetObjectCommandInput): Promise<GetObjectCommandOutput> {
+    const url = `${this.endpoint}/${command.Bucket!}/${
+      command.Key
+    }?${command.VersionId ? `versionId=${command.VersionId}` : ""}`;
     const response = await this.client.fetch(url, {
       method: "GET",
       headers: {
-        "If-None-Match": command.input.IfNoneMatch!,
+        "If-None-Match": command.IfNoneMatch!,
       },
     });
     if (response.status == 304) {

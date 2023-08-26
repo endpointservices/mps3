@@ -1,11 +1,8 @@
 import {
-  DeleteObjectCommand,
   DeleteObjectCommandInput,
   DeleteObjectCommandOutput,
-  GetObjectCommand,
   GetObjectCommandInput,
   GetObjectCommandOutput,
-  PutObjectCommand,
   PutObjectCommandInput,
   PutObjectCommandOutput,
   S3ClientConfig,
@@ -54,7 +51,8 @@ export class MPS3 {
     };
 
     const endpoint =
-      config.s3Config.endpoint || `s3.${config.s3Config.region}.amazonaws.com`;
+      config.s3Config.endpoint ||
+      `https://s3.${config.s3Config.region}.amazonaws.com`;
     this.s3ClientLite = new S3ClientLite(
       new AwsClient({
         accessKeyId: this.config.s3Config?.credentials?.accessKeyId, // required, akin to AWS_ACCESS_KEY_ID
@@ -151,7 +149,7 @@ export class MPS3 {
     }
 
     const work = this.s3ClientLite
-      .getObject(new GetObjectCommand(command))
+      .getObject(command)
       .then(async (apiResponse) => {
         const response = {
           ...apiResponse,
@@ -315,9 +313,7 @@ export class MPS3 {
       };
     }
 
-    const response = await this.s3ClientLite.putObject(
-      new PutObjectCommand(command)
-    );
+    const response = await this.s3ClientLite.putObject(command);
     console.log(
       `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
     );
@@ -332,9 +328,7 @@ export class MPS3 {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
     };
-    const response = await this.s3ClientLite.deleteObject(
-      new DeleteObjectCommand(command)
-    );
+    const response = await this.s3ClientLite.deleteObject(command);
     console.log(
       `${this.config.label} DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
     );

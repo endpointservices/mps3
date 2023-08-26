@@ -123,13 +123,11 @@ export class Manifest {
         this.authoritative_key = poll.data;
       }
 
-      const objects = await this.service.s3ClientLite.listObjectV2(
-        new ListObjectsV2Command({
-          Bucket: this.ref.bucket,
-          Prefix: this.ref.key,
-          StartAfter: this.authoritative_key,
-        })
-      );
+      const objects = await this.service.s3ClientLite.listObjectV2({
+        Bucket: this.ref.bucket,
+        Prefix: this.ref.key,
+        StartAfter: this.authoritative_key,
+      });
 
       // Play the missing patches over the base state, oldest first
       if (objects.Contents === undefined) {
