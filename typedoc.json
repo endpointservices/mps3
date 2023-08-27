@@ -1,9 +1,10 @@
 {
     "entryDocument": "API.md",
     "entryPoints": [
-        "src/*.ts"
+        "src/mps3.ts"
     ],
     "out": "docs/api",
     "githubPages": false,
-    "readme": "none"
+    "readme": "none",
+    "excludeInternal": true
 }
