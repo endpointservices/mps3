@@ -28,7 +28,7 @@ Manifests should not contain too many keys as it adds overheads. A manifest shou
 To use this library you construct an MP3S class.
 
 
-[mps3 class](docs/api/classes/mps3.MPS3.md)
+[mps3 class](docs/api/classes/MPS3.md)
 
 ### Quick start ([Codepen](https://codepen.io/tomlarkworthy/pen/QWzybxd))
 ```
@@ -79,6 +79,6 @@ There is no authorization. Do one thing and do it well. Every use-case needs dif
 ### Advanced Usage
 
 Consult the [API Documentation
-](docs/api/classes/mps3.MPS3.md) for advanced usage.
+](docs/api/classes/MPS3.md) for advanced usage.
 - atomic batch operations
 - multiple manifests

@@ -30,7 +30,7 @@
 
 #### Defined in
 
-[mps3.ts:85](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L85)
+[mps3.ts:85](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L85)
 
 ## Methods
 
@@ -52,7 +52,7 @@
 
 #### Defined in
 
-[mps3.ts:220](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L220)
+[mps3.ts:220](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L220)
 
 ___
 
@@ -74,7 +74,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:124](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L124)
+[mps3.ts:124](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L124)
 
 ___
 
@@ -97,7 +97,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:229](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L229)
+[mps3.ts:229](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L229)
 
 ___
 
@@ -119,7 +119,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:239](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L239)
+[mps3.ts:239](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L239)
 
 ___
 
@@ -149,4 +149,4 @@ ___
 
 #### Defined in
 
-[mps3.ts:378](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L378)
+[mps3.ts:378](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L378)

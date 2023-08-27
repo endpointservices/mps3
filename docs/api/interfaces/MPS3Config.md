@@ -23,7 +23,7 @@ Bucket to use by default
 
 #### Defined in
 
-[mps3.ts:22](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L22)
+[mps3.ts:22](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L22)
 
 ___
 
@@ -42,7 +42,7 @@ operation's options
 
 #### Defined in
 
-[mps3.ts:28](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L28)
+[mps3.ts:28](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L28)
 
 ___
 
@@ -61,7 +61,7 @@ new window.DOMParser()
 
 #### Defined in
 
-[mps3.ts:58](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L58)
+[mps3.ts:58](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L58)
 
 ___
 
@@ -81,7 +81,7 @@ due to If-None-Match request optimizations.
 
 #### Defined in
 
-[mps3.ts:45](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L45)
+[mps3.ts:45](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L45)
 
 ___
 
@@ -103,7 +103,7 @@ https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfa
 
 #### Defined in
 
-[mps3.ts:51](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L51)
+[mps3.ts:51](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L51)
 
 ___
 
@@ -123,4 +123,4 @@ false
 
 #### Defined in
 
-[mps3.ts:35](https://github.com/endpointservices/mps3/blob/a43fb9a/src/mps3.ts#L35)
+[mps3.ts:35](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L35)
