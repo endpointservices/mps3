@@ -375,11 +375,16 @@ export class MPS3 {
     return response;
   }
 
+  /**
+   * Listen to a key for changes
+   * @param key
+   * @param handler callback to be notified of changes
+   * @returns unsubscribe function
+   */
   public subscribe(
-    key: string,
+    key: string | Ref,
     handler: (value: JSONValue | DeleteValue) => void,
     options?: {
-      bucket?: string;
       manifest?: Ref;
     }
   ): () => void {
@@ -388,9 +393,9 @@ export class MPS3 {
       ...options?.manifest,
     };
     const keyRef: ResolvedRef = {
-      key: key,
+      key: typeof key === "string" ? key : key.key,
       bucket:
-        options?.bucket || this.config.defaultBucket || manifestRef.bucket,
+        (<Ref>key).bucket || this.config.defaultBucket || manifestRef.bucket,
     };
     const manifest = this.getOrCreateManifest(manifestRef);
     const unsubscribe = manifest.subscribe(keyRef, handler);
@@ -399,7 +404,7 @@ export class MPS3 {
     }).then((initial) => {
       console.log(`${this.config.label} NOTIFY (initial) ${url(keyRef)}`);
       // if the data is cached we don't want the subscriber called in the same tick as
-      // the unsubscribe retun value will not be initialized
+      // the unsubscribe return value will not be initialized
       queueMicrotask(() => {
         handler(initial);
         manifest.poll();

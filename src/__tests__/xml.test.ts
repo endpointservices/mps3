@@ -13,16 +13,16 @@ describe("XML parser", () => {
               ...
               <ETag>1</ETag>
               <Key>key</Key>
-              <LastModified>timestamp</LastModified>
+              <LastModified>2023-08-25T19:34:04.306Z</LastModified>
               <Owner>
                  <DisplayName>string</DisplayName>
                  <ID>string</ID>
               </Owner>
               <RestoreStatus>
                  <IsRestoreInProgress>boolean</IsRestoreInProgress>
-                 <RestoreExpiryDate>timestamp</RestoreExpiryDate>
+                 <RestoreExpiryDate>2023-08-25T19:34:04.306Z</RestoreExpiryDate>
               </RestoreStatus>
-              <Size>integer</Size>
+              <Size>12</Size>
               <StorageClass>string</StorageClass>
            </Contents>
            ...
@@ -42,23 +42,22 @@ describe("XML parser", () => {
         </ListBucketResult>`;
     const parsed = parseListObjectsV2CommandOutput(xml, parser);
     expect(parsed).toEqual({
+      $metadata: {},
       IsTruncated: false,
-      Contents: {
-        ChecksumAlgorithm: "checksum",
-        ETag: "1",
-        Key: "key",
-        LastModified: "timestamp",
-        Owner: {
-          DisplayName: "string",
-          ID: "string",
+      Contents: [
+        {
+          ChecksumAlgorithm: ["checksum"],
+          ETag: "1",
+          Key: "key",
+          LastModified: new Date("2023-08-25T19:34:04.306Z"),
+          Owner: {
+            DisplayName: "string",
+            ID: "string",
+          },
+          Size: 12,
+          StorageClass: "string",
         },
-        RestoreStatus: {
-          IsRestoreInProgress: "boolean",
-          RestoreExpiryDate: "timestamp",
-        },
-        Size: "integer",
-        StorageClass: "string",
-      },
+      ],
       Name: "name",
       Prefix: "prefix",
       Delimiter: "deliminator",
@@ -82,37 +81,44 @@ describe("XML parser", () => {
 
     const parsed = parseListObjectsV2CommandOutput(xml, parser);
     expect(parsed).toEqual({
+      $metadata: {},
       IsTruncated: false,
-      Contents: {
-        ChecksumAlgorithm: "checksum",
-        ETag: "1",
-        Key: "key",
-        LastModified: "timestamp",
-        Owner: {
-          DisplayName: "string",
-          ID: "string",
-        },
-        RestoreStatus: {
-          IsRestoreInProgress: "boolean",
-          RestoreExpiryDate: "timestamp",
-        },
-        Size: "integer",
-        StorageClass: "string",
-      },
-      Name: "name",
-      Prefix: "prefix",
-      Delimiter: "deliminator",
-      MaxKeys: 100,
-      CommonPrefixes: [
+      Contents: [
         {
-          Prefix: "commonprefix",
+          ChecksumAlgorithm: [undefined],
+          ETag: '"fb2a3ed15fa6e7ced42dc00d50132e62"',
+          Key: "manifest.json",
+          LastModified: new Date("2023-08-25T19:34:04.316Z"),
+          Owner: {
+            DisplayName: undefined,
+            ID: undefined,
+          },
+          Size: 16,
+          StorageClass: "STANDARD",
+        },
+        {
+          ChecksumAlgorithm: [undefined],
+          ETag: '"6de2d545ee848a433040e045d0ed146f"',
+          Key: "manifest.json@01692992046294_ac",
+          LastModified: new Date("2023-08-25T19:34:04.306Z"),
+          Owner: {
+            DisplayName: undefined,
+            ID: undefined,
+          },
+          Size: 230,
+          StorageClass: "STANDARD",
         },
       ],
-      EncodingType: "encoding",
+      Name: "ver6a24",
+      Prefix: "manifest.json",
+      Delimiter: undefined,
+      MaxKeys: 1000,
+      CommonPrefixes: [],
+      EncodingType: undefined,
       KeyCount: 2,
-      ContinuationToken: "contoken",
-      StartAfter: "startafter",
-      NextContinuationToken: "nexttoken",
+      ContinuationToken: undefined,
+      StartAfter: undefined,
+      NextContinuationToken: undefined,
     });
   });
 });
