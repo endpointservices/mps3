@@ -11,6 +11,8 @@ A browser database client for any S3-compatible API.
     - storage representation is intuitive and supports interventions  
 - Designed for correctness
     - sync protocol is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
+- Web optimized, its currently 20kb, making it significantly lighter-weight than the AWS S3 client.
+
 
 Tested with S3, Backblaze or self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)). R2 should work.
 
