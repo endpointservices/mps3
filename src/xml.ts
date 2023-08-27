@@ -21,7 +21,7 @@ export const parseListObjectsV2CommandOutput = (
       ETag: content.querySelector("ETag")?.textContent!,
       Key: content.querySelector("Key")?.textContent!,
       LastModified: new Date(
-        content.querySelector("LastModified")?.textContent!
+        content.querySelector("LastModified")?.textContent!,
       ),
       Owner: {
         DisplayName: content.querySelector("DisplayName")?.textContent!,
@@ -38,7 +38,7 @@ export const parseListObjectsV2CommandOutput = (
       commonPrefixes ? commonPrefixes.querySelectorAll("Prefix") : [],
       (prefix) => ({
         Prefix: prefix?.textContent!,
-      })
+      }),
     ),
     EncodingType: doc.querySelector("EncodingType")?.textContent!,
     KeyCount: Number.parseInt(doc.querySelector("KeyCount")?.textContent!),
