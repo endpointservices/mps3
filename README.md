@@ -28,11 +28,11 @@ To use this library you construct an MP3S class.
 
 [mps3 class](docs/api/classes/mps3.MPS3.md)
 
-### Quick start
+### Quick start ([Codepen](https://codepen.io/tomlarkworthy/pen/QWzybxd))
 ```
-import {MPS3} from 'https://cdn.skypack.dev/mps3@0.0.58?min'
+import {MPS3} from 'https://cdn.skypack.dev/mps3@0.0.58?min';
 
-const mp3s = new MPS3({
+const mps3 = new MPS3({
   defaultBucket: "<BUCKET>",
   s3Config: {
     region: "<REGION>",
@@ -43,7 +43,7 @@ const mp3s = new MPS3({
   }
 });
 
-mp3s.put("key", "myValue"); // can await for confirmation
+mps3.put("key", "myValue"); // can await for confirmation
 
 mps3.subscribe("key", (val) => console.log(val)); // causally consist listeners
 
