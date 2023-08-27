@@ -65,7 +65,7 @@ export class MPS3 {
         retries: 0,
       }),
       endpoint,
-      config.parser || new DOMParser()
+      config.parser || new DOMParser(),
     );
   }
 
@@ -80,7 +80,7 @@ export class MPS3 {
     ref: string | Ref,
     options: {
       manifest?: Ref;
-    } = {}
+    } = {},
   ): Promise<JSONValue | DeleteValue> {
     const manifestRef: ResolvedRef = {
       ...this.config.defaultManifest,
@@ -123,7 +123,7 @@ export class MPS3 {
     Promise<GetObjectCommandOutput & { data: any }>
   >(
     (input) =>
-      `${input.Bucket}${input.Key}${input.VersionId}${input.IfNoneMatch}`
+      `${input.Bucket}${input.Key}${input.VersionId}${input.IfNoneMatch}`,
   );
 
   async _getObject<T>(args: {
@@ -159,7 +159,7 @@ export class MPS3 {
           data: <T | undefined>apiResponse.Body,
         };
         console.log(
-          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId} ${response.data}}`
+          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId} ${response.data}}`,
         );
         this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
         return response;
@@ -184,7 +184,7 @@ export class MPS3 {
     ref: string | Ref,
     options: {
       manifests?: Ref[];
-    } = {}
+    } = {},
   ) {
     return this.putAll(new Map([[ref, undefined]]), options);
   }
@@ -194,7 +194,7 @@ export class MPS3 {
     value: JSONValue | DeleteValue,
     options: {
       manifests?: Ref[];
-    } = {}
+    } = {},
   ) {
     return this.putAll(new Map([[ref, value]]), options);
   }
@@ -203,7 +203,7 @@ export class MPS3 {
     values: Map<string | Ref, JSONValue | DeleteValue>,
     options: {
       manifests?: Ref[];
-    } = {}
+    } = {},
   ) {
     const resolvedValues = new OMap<ResolvedRef, JSONValue | DeleteValue>(
       url,
@@ -216,7 +216,7 @@ export class MPS3 {
           key: typeof ref === "string" ? ref : ref.key,
         },
         value,
-      ])
+      ]),
     );
 
     const manifests: ResolvedRef[] = (
@@ -235,7 +235,7 @@ export class MPS3 {
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
     options: {
       manifests: ResolvedRef[];
-    }
+    },
   ) {
     const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
       new Promise(async (resolve, reject) => {
@@ -255,14 +255,14 @@ export class MPS3 {
                   if (fileUpdate.VersionId === undefined) {
                     console.error(fileUpdate);
                     throw Error(
-                      `Bucket ${contentRef.bucket} is not version enabled!`
+                      `Bucket ${contentRef.bucket} is not version enabled!`,
                     );
                   } else {
                     version = fileUpdate.VersionId;
                   }
                 }
                 results.set(contentRef, version);
-              })
+              }),
             );
           } else {
             contentOperations.push(
@@ -270,7 +270,7 @@ export class MPS3 {
                 ref: contentRef,
               }).then((_) => {
                 results.set(contentRef, undefined);
-              })
+              }),
             );
           }
         });
@@ -282,7 +282,7 @@ export class MPS3 {
       options.manifests.map((ref) => {
         const manifest = this.getOrCreateManifest(ref);
         return manifest.updateContent(values, contentVersions);
-      })
+      }),
     );
   }
 
@@ -318,7 +318,7 @@ export class MPS3 {
 
     const response = await this.s3ClientLite.putObject(command);
     console.log(
-      `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
+      `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`,
     );
 
     return response;
@@ -333,7 +333,7 @@ export class MPS3 {
     };
     const response = await this.s3ClientLite.deleteObject(command);
     console.log(
-      `${this.config.label} DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
+      `${this.config.label} DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`,
     );
     return response;
   }
@@ -344,7 +344,7 @@ export class MPS3 {
     options?: {
       bucket?: string;
       manifest?: Ref;
-    }
+    },
   ): () => void {
     const manifestRef: ResolvedRef = {
       ...this.config.defaultManifest,
@@ -374,13 +374,13 @@ export class MPS3 {
 
   refresh(): Promise<unknown> {
     return Promise.all(
-      [...this.manifests.values()].map((manifest) => manifest.poll())
+      [...this.manifests.values()].map((manifest) => manifest.poll()),
     );
   }
   get subscriberCount(): number {
     return [...this.manifests.values()].reduce(
       (count, manifest) => count + manifest.subscriberCount,
-      0
+      0,
     );
   }
 }

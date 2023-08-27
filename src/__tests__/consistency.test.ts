@@ -9,7 +9,7 @@ describe("check", () => {
       },
       {
         "a < b": null,
-      }
+      },
     );
     expect(result).toBe(true);
   });
@@ -22,7 +22,7 @@ describe("check", () => {
       },
       {
         "a < b": null,
-      }
+      },
     );
     expect(result).toBe(false);
   });
@@ -37,7 +37,7 @@ describe("check", () => {
       {
         "a < b": null,
         "b < c": null,
-      }
+      },
     );
     expect(result).toBe(true);
   });
@@ -51,7 +51,7 @@ describe("check", () => {
       {
         "a < b": null,
         "b < c": null,
-      }
+      },
     );
     expect(result).toBe(false);
   });
@@ -139,4 +139,3 @@ describe("CausalSystem", () => {
     expect(system.causallyConsistent()).toBe(false); // alice hears bob's question
   });
 });
-

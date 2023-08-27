@@ -47,7 +47,7 @@ export class Subscriber {
   queue = Promise.resolve();
   constructor(
     ref: ResolvedRef,
-    handler: (value: JSONValue | DeleteValue) => void
+    handler: (value: JSONValue | DeleteValue) => void,
   ) {
     this.ref = ref;
     this.handler = handler;
@@ -56,7 +56,7 @@ export class Subscriber {
   notify(
     label: string,
     version: VersionId | undefined,
-    content: Promise<JSONValue | DeleteValue>
+    content: Promise<JSONValue | DeleteValue>,
   ) {
     this.queue = this.queue
       .then(() => content)
@@ -177,13 +177,13 @@ export class Manifest {
         } else if (stepVersionid >= settledPoint) {
           this.optimistic_state = apply(
             this.optimistic_state,
-            step.data?.update
+            step.data?.update,
           );
           // we cannot replay state into the inflight zone, its not authorative yet
         } else {
           this.authoritative_state = apply(
             this.authoritative_state,
-            step.data?.update
+            step.data?.update,
           );
           this.authoritative_key = key;
         }
@@ -218,7 +218,7 @@ export class Manifest {
     if (this.subscriberCount > 0 && !this.poller) {
       this.poller = setInterval(
         () => this.poll(),
-        this.service.config.pollFrequency
+        this.service.config.pollFrequency,
       );
     }
 
@@ -239,13 +239,13 @@ export class Manifest {
         subscriber.notify(
           this.service.config.label,
           fileState.version,
-          content.then((res) => res.data)
+          content.then((res) => res.data),
         );
       } else if (fileState === null) {
         subscriber.notify(
           this.service.config.label,
           undefined,
-          Promise.resolve(undefined)
+          Promise.resolve(undefined),
         );
       }
     });
@@ -254,7 +254,7 @@ export class Manifest {
 
   async updateContent(
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
-    write: Promise<Map<ResolvedRef, string | DeleteValue>>
+    write: Promise<Map<ResolvedRef, string | DeleteValue>>,
   ) {
     this.pendingWrites.set(write, values);
     // console.loggit push(`updateContent pending ${this.pendingWrites.size}`);
@@ -315,7 +315,7 @@ export class Manifest {
 
   subscribe(
     keyRef: ResolvedRef,
-    handler: (value: JSONValue | undefined) => void
+    handler: (value: JSONValue | undefined) => void,
   ): () => void {
     console.log(`SUBSCRIBE ${url(keyRef)} ${this.subscriberCount + 1}`);
     const sub = new Subscriber(keyRef, handler);

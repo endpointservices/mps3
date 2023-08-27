@@ -22,7 +22,7 @@ export class S3ClientLite {
   }
 
   async listObjectV2(
-    command: ListObjectsV2CommandInput
+    command: ListObjectsV2CommandInput,
   ): Promise<ListObjectsV2CommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}?list-type=2&prefix=${
       command.Prefix
@@ -33,10 +33,10 @@ export class S3ClientLite {
     return result;
   }
 
-  async putObject(command: PutObjectCommandInput): Promise<PutObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.Bucket!}/${
-      command.Key
-    }`;
+  async putObject(
+    command: PutObjectCommandInput,
+  ): Promise<PutObjectCommandOutput> {
+    const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
     const response = await this.client.fetch(url, {
       method: "PUT",
       body: <string>command.Body,
@@ -54,11 +54,9 @@ export class S3ClientLite {
   }
 
   async deleteObject(
-    command: DeleteObjectCommandInput
+    command: DeleteObjectCommandInput,
   ): Promise<DeleteObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.Bucket!}/${
-      command.Key
-    }`;
+    const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
     const response = await this.client.fetch(url, {
       method: "DELETE",
     });
@@ -69,10 +67,12 @@ export class S3ClientLite {
     };
   }
 
-  async getObject(command: GetObjectCommandInput): Promise<GetObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.Bucket!}/${
-      command.Key
-    }?${command.VersionId ? `versionId=${command.VersionId}` : ""}`;
+  async getObject(
+    command: GetObjectCommandInput,
+  ): Promise<GetObjectCommandOutput> {
+    const url = `${this.endpoint}/${command.Bucket!}/${command.Key}?${
+      command.VersionId ? `versionId=${command.VersionId}` : ""
+    }`;
     const response = await this.client.fetch(url, {
       method: "GET",
       headers: {

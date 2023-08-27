@@ -4,7 +4,7 @@ import { ListObjectsV2CommandOutput } from "@aws-sdk/client-s3";
 
 export const parseListObjectsV2CommandOutput = (
   xml: string,
-  domParser: DOMParser
+  domParser: DOMParser,
 ): ListObjectsV2CommandOutput => {
   const doc = domParser.parseFromString(xml, "text/xml");
   const results = doc.querySelector("ListBucketResult");
@@ -21,7 +21,7 @@ export const parseListObjectsV2CommandOutput = (
       ETag: content.querySelector("ETag")?.textContent!,
       Key: content.querySelector("Key")?.textContent!,
       LastModified: new Date(
-        content.querySelector("LastModified")?.textContent!
+        content.querySelector("LastModified")?.textContent!,
       ),
       Owner: {
         DisplayName: content.querySelector("DisplayName")?.textContent!,
@@ -31,7 +31,7 @@ export const parseListObjectsV2CommandOutput = (
         IsRestoreInProgress:
           content.querySelector("IsRestoreInProgress")?.textContent! === "true",
         RestoreExpiryDate: new Date(
-          content.querySelector("RestoreExpiryDate")?.textContent!
+          content.querySelector("RestoreExpiryDate")?.textContent!,
         ),
       },
       Size: Number.parseInt(content.querySelector("Size")?.textContent!),
@@ -45,7 +45,7 @@ export const parseListObjectsV2CommandOutput = (
       commonPrefixes ? commonPrefixes.querySelectorAll("Prefix") : [],
       (prefix) => ({
         Prefix: prefix?.textContent!,
-      })
+      }),
     ),
     EncodingType: doc.querySelector("EncodingType")?.textContent!,
     KeyCount: Number.parseInt(doc.querySelector("KeyCount")?.textContent!),
