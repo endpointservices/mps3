@@ -1,0 +1,9 @@
+{
+    "entryDocument": "API.md",
+    "entryPoints": [
+        "src/*.ts"
+    ],
+    "out": "docs/api",
+    "githubPages": false,
+    "readme": "none"
+}

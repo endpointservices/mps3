@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "doc": "typedoc --plugin typedoc-plugin-markdown --out tmp src/mps3.ts",
+    "doc": " npx typedoc --plugin typedoc-plugin-markdown",
     "build": "bun build src/mps3.ts --minify --outdir ./dist",
     "prepare": "npm run build",
     "format": "rome format src --write --indent-style space",
