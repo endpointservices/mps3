@@ -36,7 +36,13 @@ export class S3ClientLite {
   async putObject(
     command: PutObjectCommandInput,
   ): Promise<PutObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
+    const url = `${this.endpoint}/${command.Bucket!}/${
+      command.Key
+    }?${new URLSearchParams({
+      ...(command.ChecksumSHA256 && {
+        "x-amz-content-sha256": command.ChecksumSHA256,
+      }),
+    }).toString()}}`;
     const response = await this.client.fetch(url, {
       method: "PUT",
       body: <string>command.Body,
