@@ -6,6 +6,7 @@ export const parseListObjectsV2CommandOutput = (
   xml: string,
   domParser: DOMParser,
 ): ListObjectsV2CommandOutput => {
+  console.log(xml);
   const doc = domParser.parseFromString(xml, "text/xml");
   const results = doc.querySelector("ListBucketResult");
   const contents = doc.querySelectorAll("Contents");
