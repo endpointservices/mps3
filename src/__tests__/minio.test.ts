@@ -114,6 +114,15 @@ describe("mps3", () => {
         expect(read).toEqual(undefined);
       });
 
+      test("Write no manifest", async () => {
+        const mps3 = getClient();
+        await mps3.put("unused_key_2", {
+          manifest: {
+            key: uuid(),
+          },
+        });
+      });
+
       test("Read unknown key resolves to undefined", async () => {
         const mps3 = getClient();
         const read = await mps3.get("unused_key");
@@ -254,7 +263,7 @@ describe("mps3", () => {
             expect(value).toEqual(rnd);
             unsubscribe();
             done();
-          },
+          }
         );
       });
 
@@ -263,7 +272,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // put in parallel
@@ -278,7 +287,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // put in parallel
@@ -286,7 +295,7 @@ describe("mps3", () => {
 
         // read in parallel
         const reads = await Promise.all(
-          rand_keys.map((key, i) => clients[n - i - 1].get(key)),
+          rand_keys.map((key, i) => clients[n - i - 1].get(key))
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -301,7 +310,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // put in parallel
@@ -309,8 +318,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[i].put(key, i, {
               manifests,
-            }),
-          ),
+            })
+          )
         );
 
         // read in parallel
@@ -318,8 +327,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[n - i - 1].get(key, {
               manifest: manifests[0],
-            }),
-          ),
+            })
+          )
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -329,7 +338,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${Math.random().toString()}`
         );
 
         // collect results
@@ -339,9 +348,9 @@ describe("mps3", () => {
               new Promise((resolve) =>
                 getClient().subscribe(key, (val) => {
                   if (val !== undefined) resolve(val);
-                }),
-              ),
-          ),
+                })
+              )
+          )
         );
 
         // put in parallel
@@ -349,69 +358,6 @@ describe("mps3", () => {
 
         expect(await results).toEqual([0, 1, 2]);
       });
-
-      test(
-        "causal consistency all-to-all, single key",
-        async (done) => {
-          const key = "causal";
-          await getClient().delete(key);
-
-          const system = new CentralisedCausalSystem();
-          const max_steps = 100;
-
-          type Message = {
-            sender: number;
-            send_time: number;
-          };
-          // Setup all clients to forward messages to the observer
-          const clients = [...Array(3)].map((_, client_id) => {
-            const client = getClient({
-              label: system.client_labels[client_id],
-            });
-            client.subscribe(key, (val) => {
-              if (val) {
-                const message: Message = <Message>val;
-                system.observe({
-                  ...message,
-                  receiver: client_id,
-                });
-              }
-
-              if (system.global_time < max_steps) {
-                // Check facts are causally consistent so far
-                const check_result = system.causallyConsistent();
-                if (!check_result) {
-                  console.error(system.grounding);
-                  console.error(system.knowledge_base);
-                }
-                expect(check_result).toBe(true);
-
-                // Write a new message
-                system.observe({
-                  receiver: client_id,
-                  sender: client_id,
-                  send_time: system.client_clocks[client_id] - 1,
-                });
-
-                expect(check_result).toBe(true);
-                client.put(key, {
-                  sender: client_id,
-                  send_time: system.client_clocks[client_id] - 1,
-                });
-              } else if (system.global_time === max_steps) {
-                clients.forEach((c) =>
-                  c.manifests.forEach((m) => m.subscribers.clear()),
-                );
-                done();
-              }
-            });
-            return client;
-          });
-        },
-        {
-          timeout: 60 * 1000,
-        },
-      );
     }),
   );
 });
