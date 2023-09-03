@@ -47,7 +47,8 @@ export class S3ClientLite {
       method: "PUT",
       body: <string>command.Body,
     });
-    if (response.status != 200) throw new Error("Failed to put object");
+    if (response.status != 200)
+      throw new Error(`Failed to PUT: ${await response.text()}`);
     return {
       $metadata: {
         httpStatusCode: response.status,

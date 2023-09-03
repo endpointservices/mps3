@@ -48,6 +48,7 @@ describe("mps3", () => {
       createBucket: false,
       config: {
         defaultBucket: `mps3-demo`,
+        useChecksum: false, // TODO: https://github.com/endpointservices/mps3/issues/15
         s3Config: {
           region: "eu-central-1",
           credentials: {
