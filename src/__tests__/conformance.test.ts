@@ -1,12 +1,11 @@
 import { S3 } from "@aws-sdk/client-s3";
-import { expect, test, describe, beforeAll } from "bun:test";
+import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
-import { uuid } from "types";
+import { ResolvedRef, uuid } from "types";
 import * as jsdom from "jsdom";
 const dom = new jsdom.JSDOM("");
 
 describe("mps3", () => {
-  let s3: S3;
   let session = Math.random().toString(16).substring(2, 7);
   const minioConfig = {
     endpoint: "http://127.0.0.1:9102",
@@ -33,7 +32,7 @@ describe("mps3", () => {
       },
     },
     {
-      label: "noVersioning",
+      label: "minio",
       config: {
         pollFrequency: 100,
         useChecksum: false,
@@ -64,8 +63,8 @@ describe("mps3", () => {
   configs.map((variant) =>
     describe(variant.label, () => {
       beforeAll(async () => {
-        s3 = new S3(variant.config.s3Config);
-
+        console.log("beforeAll");
+        const s3 = new S3(variant.config.s3Config);
         if (variant.createBucket !== false) {
           await s3.createBucket({
             Bucket: variant.config.defaultBucket,
@@ -132,13 +131,77 @@ describe("mps3", () => {
         expect(read).toEqual(undefined);
       });
 
-      test("Write no manifest", async () => {
+      test("manifest cold start", async () => {
+        console.log(
+          "variant.config.defaultBucket",
+          variant.config.defaultBucket
+        );
+        const s3 = new S3(variant.config.s3Config);
         const mps3 = getClient();
-        await mps3.put("unused_key_2", {
-          manifest: {
-            key: uuid(),
-          },
+        const manifest: ResolvedRef = {
+          key: uuid(),
+          bucket: variant.config.defaultBucket,
+        };
+        await mps3.put("unused_key_2", "", {
+          manifests: [manifest],
         });
+
+        // Blackbox test for outcome
+        const pollFile = await s3.getObject({
+          Bucket: variant.config.defaultBucket,
+          Key: manifest.key,
+        });
+        const manifestVersions = await s3.listObjectsV2({
+          Prefix: manifest.key,
+          Bucket: variant.config.defaultBucket,
+        });
+
+        // First call we don't have a previous version setup
+        const pollContent = await pollFile.Body?.transformToString();
+        expect(pollContent).toEqual('"."');
+        // First we expect two files, the pollFile + one other version file
+        expect(manifestVersions.KeyCount).toEqual(2);
+        const versionFileKey = manifestVersions.Contents![1].Key;
+
+        const versionFile = await s3.getObject({
+          Bucket: variant.config.defaultBucket,
+          Key: versionFileKey,
+        });
+        const versionFileContent = JSON.parse(
+          await versionFile.Body?.transformToString()!
+        );
+        expect(versionFileContent.files).toEqual({}); // base version is empty
+        console.log(versionFileContent);
+        expect(
+          versionFileContent.update.files[
+            `${variant.config.defaultBucket}/unused_key_2`
+          ]
+        ).toBeDefined();
+        expect(versionFileContent.previous).toBe(".");
+
+        await new Promise((resolve) => setTimeout(resolve, 500)); // wait to settle
+        await mps3.get("unused_key_2", {
+          // force a refresh
+          manifest: manifest,
+        });
+        // Second call we have a previous version setup
+        await mps3.put("unused_key_2", "", {
+          manifests: [manifest],
+        });
+
+        const pollFile2 = await s3.getObject({
+          Bucket: variant.config.defaultBucket,
+          Key: manifest.key,
+        });
+
+        const manifestVersions2 = await s3.listObjectsV2({
+          Prefix: manifest.key,
+          Bucket: variant.config.defaultBucket,
+        });
+
+        // Second call we expect the previous version to be setup
+        const pollContent2 = await pollFile2.Body?.transformToString();
+        expect(pollContent2).toEqual('"' + versionFileKey + '"');
       });
 
       test("Read unknown key resolves to undefined", async () => {
