@@ -2,14 +2,13 @@ import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { uuid } from "types";
-import { CentralisedCausalSystem } from "./consistency";
 import * as jsdom from "jsdom";
 const dom = new jsdom.JSDOM("");
 
 describe("mps3", () => {
   let s3: S3;
   let session = Math.random().toString(16).substring(2, 7);
-  const s3Config = {
+  const minioConfig = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
     credentials: {
@@ -20,6 +19,7 @@ describe("mps3", () => {
 
   const configs: {
     label: string;
+    createBucket?: boolean;
     config: MPS3Config;
   }[] = [
     {
@@ -28,7 +28,7 @@ describe("mps3", () => {
         pollFrequency: 100,
         useVersioning: true,
         defaultBucket: `ver${session}`,
-        s3Config: s3Config,
+        s3Config: minioConfig,
         parser: new dom.window.DOMParser(),
       },
     },
@@ -39,7 +39,23 @@ describe("mps3", () => {
         useChecksum: false,
         // useVersioning: false, // is the default
         defaultBucket: `nov${session}`,
-        s3Config: s3Config,
+        s3Config: minioConfig,
+        parser: new dom.window.DOMParser(),
+      },
+    },
+    {
+      label: "s3",
+      createBucket: false,
+      config: {
+        defaultBucket: `mps3-demo`,
+        useChecksum: false,
+        s3Config: {
+          region: "eu-central-1",
+          credentials: {
+            accessKeyId: "AKIAT4VAYEMIUJGSMOXP",
+            secretAccessKey: "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",
+          },
+        },
         parser: new dom.window.DOMParser(),
       },
     },
@@ -50,9 +66,11 @@ describe("mps3", () => {
       beforeAll(async () => {
         s3 = new S3(variant.config.s3Config);
 
-        await s3.createBucket({
-          Bucket: variant.config.defaultBucket,
-        });
+        if (variant.createBucket !== false) {
+          await s3.createBucket({
+            Bucket: variant.config.defaultBucket,
+          });
+        }
 
         if (variant.config.useVersioning) {
           await s3.putBucketVersioning({
@@ -358,6 +376,6 @@ describe("mps3", () => {
 
         expect(await results).toEqual([0, 1, 2]);
       });
-    }),
+    })
   );
 });
