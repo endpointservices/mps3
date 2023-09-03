@@ -1,8 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { parseListObjectsV2CommandOutput } from "../xml";
-import * as jsdom from "jsdom";
-const parser = new new jsdom.JSDOM("").window.DOMParser();
-
+import { DOMParser } from "@xmldom/xmldom";
+const parser = new DOMParser();
 describe("XML parser", () => {
   test("parseListObjectsV2CommandOutput example", () => {
     const xml: string = `<?xml version="1.0" encoding="UTF-8"?>

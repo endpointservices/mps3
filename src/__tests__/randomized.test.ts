@@ -3,8 +3,7 @@ import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { uuid } from "types";
 import { CentralisedCausalSystem } from "./consistency";
-import * as jsdom from "jsdom";
-const dom = new jsdom.JSDOM("");
+import { DOMParser } from "@xmldom/xmldom";
 
 describe("mps3", () => {
   let s3: S3;
@@ -29,7 +28,7 @@ describe("mps3", () => {
         useVersioning: true,
         defaultBucket: `ver${session}`,
         s3Config: s3Config,
-        parser: new dom.window.DOMParser(),
+        parser: new DOMParser(),
       },
     },
     {
@@ -40,7 +39,7 @@ describe("mps3", () => {
         // useVersioning: false, // is the default
         defaultBucket: `nov${session}`,
         s3Config: s3Config,
-        parser: new dom.window.DOMParser(),
+        parser: new DOMParser(),
       },
     },
   ];

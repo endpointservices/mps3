@@ -7,44 +7,54 @@ export const parseListObjectsV2CommandOutput = (
   domParser: DOMParser
 ): ListObjectsV2CommandOutput => {
   const doc = domParser.parseFromString(xml, "text/xml");
-  const results = doc.querySelector("ListBucketResult");
-  const contents = doc.querySelectorAll("Contents");
-  const commonPrefixes = doc.querySelector("CommonPrefixes");
+  const results = doc.getElementsByTagName("ListBucketResult")[0];
+  const contents = doc.getElementsByTagName("Contents");
+  const commonPrefixes = doc.getElementsByTagName("CommonPrefixes")[0];
   if (results === null || contents === null) throw new Error("Invalid XML");
   return {
     $metadata: {},
-    IsTruncated: results.querySelector("IsTruncated")?.textContent === "true",
+    IsTruncated:
+      results.getElementsByTagName("IsTruncated")[0]?.textContent === "true",
     Contents: Array.from(contents).map((content) => ({
       ChecksumAlgorithm: [
-        content.querySelector("ChecksumAlgorithm")?.textContent!,
+        content.getElementsByTagName("ChecksumAlgorithm")[0]?.textContent!,
       ],
-      ETag: content.querySelector("ETag")?.textContent!,
-      Key: content.querySelector("Key")?.textContent!,
+      ETag: content.getElementsByTagName("ETag")[0]?.textContent!,
+      Key: content.getElementsByTagName("Key")[0]?.textContent!,
       LastModified: new Date(
-        content.querySelector("LastModified")?.textContent!
+        content.getElementsByTagName("LastModified")[0]?.textContent!
       ),
       Owner: {
-        DisplayName: content.querySelector("DisplayName")?.textContent!,
-        ID: content.querySelector("ID")?.textContent!,
+        DisplayName:
+          content.getElementsByTagName("DisplayName")[0]?.textContent!,
+        ID: content.getElementsByTagName("ID")[0]?.textContent!,
       },
-      Size: Number.parseInt(content.querySelector("Size")?.textContent!),
-      StorageClass: content.querySelector("StorageClass")?.textContent!,
+      Size: Number.parseInt(
+        content.getElementsByTagName("Size")[0]?.textContent!
+      ),
+      StorageClass:
+        content.getElementsByTagName("StorageClass")[0]?.textContent!,
     })),
-    Name: doc.querySelector("Name")?.textContent!,
-    Prefix: doc.querySelector("Prefix")?.textContent!,
-    Delimiter: doc.querySelector("Delimiter")?.textContent!,
-    MaxKeys: Number.parseInt(doc.querySelector("MaxKeys")?.textContent!),
+    Name: doc.getElementsByTagName("Name")[0]?.textContent!,
+    Prefix: doc.getElementsByTagName("Prefix")[0]?.textContent!,
+    Delimiter: doc.getElementsByTagName("Delimiter")[0]?.textContent!,
+    MaxKeys: Number.parseInt(
+      doc.getElementsByTagName("MaxKeys")[0]?.textContent!
+    ),
     CommonPrefixes: Array.from(
-      commonPrefixes ? commonPrefixes.querySelectorAll("Prefix") : [],
+      commonPrefixes ? commonPrefixes.getElementsByTagName("Prefix") : [],
       (prefix) => ({
         Prefix: prefix?.textContent!,
       })
     ),
-    EncodingType: doc.querySelector("EncodingType")?.textContent!,
-    KeyCount: Number.parseInt(doc.querySelector("KeyCount")?.textContent!),
-    ContinuationToken: doc.querySelector("ContinuationToken")?.textContent!,
-    NextContinuationToken: doc.querySelector("NextContinuationToken")
+    EncodingType: doc.getElementsByTagName("EncodingType")[0]?.textContent!,
+    KeyCount: Number.parseInt(
+      doc.getElementsByTagName("KeyCount")[0]?.textContent!
+    ),
+    ContinuationToken:
+      doc.getElementsByTagName("ContinuationToken")[0]?.textContent!,
+    NextContinuationToken: doc.getElementsByTagName("NextContinuationToken")[0]
       ?.textContent!,
-    StartAfter: doc.querySelector("StartAfter")?.textContent!,
+    StartAfter: doc.getElementsByTagName("StartAfter")[0]?.textContent!,
   };
 };
