@@ -3,7 +3,7 @@ import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { ResolvedRef, uuid } from "types";
 import * as jsdom from "jsdom";
-const dom = new jsdom.JSDOM("");
+import { DOMParser } from "@xmldom/xmldom";
 
 describe("mps3", () => {
   let session = Math.random().toString(16).substring(2, 7);
@@ -28,7 +28,7 @@ describe("mps3", () => {
         useVersioning: true,
         defaultBucket: `ver${session}`,
         s3Config: minioConfig,
-        parser: new dom.window.DOMParser(),
+        parser: new DOMParser(),
       },
     },
     {
@@ -39,7 +39,7 @@ describe("mps3", () => {
         // useVersioning: false, // is the default
         defaultBucket: `nov${session}`,
         s3Config: minioConfig,
-        parser: new dom.window.DOMParser(),
+        parser: new DOMParser(),
       },
     },
     {
@@ -55,7 +55,7 @@ describe("mps3", () => {
             secretAccessKey: "xSP++X5489ePnjT3Z9KrHWvYvuCtTmPbGcsHCcTU",
           },
         },
-        parser: new dom.window.DOMParser(),
+        parser: new DOMParser(),
       },
     },
   ];
