@@ -1,7 +1,6 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
-import { uuid } from "types";
 import { CentralisedCausalSystem } from "./consistency";
 import { DOMParser } from "@xmldom/xmldom";
 
