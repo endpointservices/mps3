@@ -2,7 +2,6 @@ import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { ResolvedRef, uuid } from "types";
-import * as jsdom from "jsdom";
 import { DOMParser } from "@xmldom/xmldom";
 
 describe("mps3", () => {
