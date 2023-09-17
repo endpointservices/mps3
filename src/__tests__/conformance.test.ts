@@ -42,17 +42,28 @@ describe("mps3", () => {
       },
     },
     {
-      label: "s3",
+      label: "aws",
       createBucket: false,
       config: {
         defaultBucket: `mps3-demo`,
-        useChecksum: true,
         s3Config: {
           region: "eu-central-1",
           credentials: {
             accessKeyId: "AKIAT4VAYEMIUJGSMOXP",
             secretAccessKey: "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",
           },
+        },
+        parser: new DOMParser(),
+      },
+    },
+    {
+      label: "proxy",
+      createBucket: false,
+      config: {
+        defaultBucket: `mps3-demo`,
+        // defaultManifest: `proxy`, TODO
+        s3Config: {
+          region: "eu-central-1",
         },
         parser: new DOMParser(),
       },

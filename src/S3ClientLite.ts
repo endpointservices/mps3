@@ -8,36 +8,40 @@ import {
   PutObjectCommandInput,
   PutObjectCommandOutput,
 } from "@aws-sdk/client-s3";
-import { AwsClient } from "aws4fetch";
 import { parseListObjectsV2CommandOutput } from "xml";
 
+export type FetchFn = (
+  url: string,
+  options?: object | undefined
+) => Promise<Response>;
+
 export class S3ClientLite {
-  client: AwsClient;
+  client: FetchFn;
   endpoint: string;
   parser: DOMParser;
-  constructor(client: AwsClient, endpoint: string, parser: DOMParser) {
-    this.client = client;
+  constructor(fetch: FetchFn, endpoint: string, parser: DOMParser) {
+    this.client = fetch;
     this.endpoint = endpoint;
     this.parser = parser;
   }
 
   async listObjectV2(
-    command: ListObjectsV2CommandInput,
+    command: ListObjectsV2CommandInput
   ): Promise<ListObjectsV2CommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}/?list-type=2&prefix=${
       command.Prefix
     }`;
-    const response = await this.client.fetch(url, {});
+    const response = await this.client(url, {});
     const xml = await response.text();
     const result = parseListObjectsV2CommandOutput(xml, this.parser);
     return result;
   }
 
   async putObject(
-    command: PutObjectCommandInput,
+    command: PutObjectCommandInput
   ): Promise<PutObjectCommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
-    const response = await this.client.fetch(url, {
+    const response = await this.client(url, {
       method: "PUT",
       body: <string>command.Body,
       headers: {
@@ -61,10 +65,10 @@ export class S3ClientLite {
   }
 
   async deleteObject(
-    command: DeleteObjectCommandInput,
+    command: DeleteObjectCommandInput
   ): Promise<DeleteObjectCommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
-    const response = await this.client.fetch(url, {
+    const response = await this.client(url, {
       method: "DELETE",
     });
     return {
@@ -75,12 +79,12 @@ export class S3ClientLite {
   }
 
   async getObject(
-    command: GetObjectCommandInput,
+    command: GetObjectCommandInput
   ): Promise<GetObjectCommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}/${command.Key}?${
       command.VersionId ? `versionId=${command.VersionId}` : ""
     }`;
-    const response = await this.client.fetch(url, {
+    const response = await this.client(url, {
       method: "GET",
       headers: {
         "If-None-Match": command.IfNoneMatch!,
