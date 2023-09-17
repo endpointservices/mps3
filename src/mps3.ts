@@ -437,5 +437,7 @@ async function sha256(message: string) {
   const arrayBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
 
   // convert ArrayBuffer to base64-encoded string
-  return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  return [...new Uint8Array(arrayBuffer)]
+    .map((bytes) => bytes.toString(16).padStart(2, "0"))
+    .join("");
 }

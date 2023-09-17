@@ -36,16 +36,16 @@ export class S3ClientLite {
   async putObject(
     command: PutObjectCommandInput,
   ): Promise<PutObjectCommandOutput> {
-    const url = `${this.endpoint}/${command.Bucket!}/${
-      command.Key
-    }?${new URLSearchParams({
-      ...(command.ChecksumSHA256 && {
-        "x-amz-content-sha256": command.ChecksumSHA256,
-      }),
-    }).toString()}}`;
+    const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
     const response = await this.client.fetch(url, {
       method: "PUT",
       body: <string>command.Body,
+      headers: {
+        "Content-Type": "application/json",
+        ...(command.ChecksumSHA256 && {
+          "x-amz-content-sha256": command.ChecksumSHA256,
+        }),
+      },
     });
     if (response.status != 200)
       throw new Error(`Failed to PUT: ${await response.text()}`);
