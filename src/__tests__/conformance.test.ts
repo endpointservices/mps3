@@ -62,7 +62,6 @@ describe("mps3", () => {
   configs.map((variant) =>
     describe(variant.label, () => {
       beforeAll(async () => {
-        console.log("beforeAll");
         const s3 = new S3(variant.config.s3Config);
         if (variant.createBucket !== false) {
           await s3.createBucket({

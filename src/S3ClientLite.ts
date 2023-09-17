@@ -24,7 +24,7 @@ export class S3ClientLite {
   async listObjectV2(
     command: ListObjectsV2CommandInput,
   ): Promise<ListObjectsV2CommandOutput> {
-    const url = `${this.endpoint}/${command.Bucket!}?list-type=2&prefix=${
+    const url = `${this.endpoint}/${command.Bucket!}/?list-type=2&prefix=${
       command.Prefix
     }`;
     const response = await this.client.fetch(url, {});
