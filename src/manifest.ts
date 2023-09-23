@@ -136,11 +136,12 @@ export class Manifest {
         return this.authoritative_state;
       }
 
+      const settledPoint = `${this.ref.key}@${time.lowerTimeBound()}`;
+
       // Find the most recent patch, whose base state is settled, and that we have a record for
       for (let index = objects.Contents.length - 1; index >= 0; index--) {
         const key = objects.Contents[index].Key!;
         if (key == this.ref.key) continue; // skip manifest read
-        const settledPoint = time.lowerTimeBound();
         const ref = {
           bucket: this.ref.bucket,
           key,
@@ -157,7 +158,6 @@ export class Manifest {
           });
           continue;
         }
-
         if (step.data.previous < settledPoint) {
           this.authoritative_key = step.data.previous;
           this.authoritative_state = step.data;
@@ -168,6 +168,11 @@ export class Manifest {
       for (let index = 0; index < objects.Contents.length; index++) {
         const key = objects.Contents[index].Key!;
         if (key == this.ref.key) continue; // skip manifest read
+        if (key < this.authoritative_key) {
+          // Its old we can skip
+          continue;
+        }
+
         // console.log(`step ${key} from ${this.authoritative_key}`);
         const step = await this.service._getObject<ManifestState>({
           operation: "SWEEP",
@@ -177,12 +182,8 @@ export class Manifest {
           },
         });
         const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
-        const settledPoint = time.lowerTimeBound();
 
-        if (key < this.authoritative_key) {
-          // Its old we can skip
-          // console.log("Skip step");
-        } else if (stepVersionid >= settledPoint) {
+        if (stepVersionid >= settledPoint) {
           console.log("Optimistic update");
           this.optimistic_state = apply(
             this.optimistic_state,

@@ -111,7 +111,7 @@ export class S3ClientLite {
         try {
           content = JSON.parse(responseText);
         } catch (e) {
-          throw new Error(responseText);
+          throw new Error(`Failed to parse response as JSON ${url}`);
         }
       }
     }
