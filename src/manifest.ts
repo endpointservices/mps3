@@ -141,20 +141,27 @@ export class Manifest {
         const key = objects.Contents[index].Key!;
         if (key == this.ref.key) continue; // skip manifest read
         const settledPoint = time.lowerTimeBound();
+        const ref = {
+          bucket: this.ref.bucket,
+          key,
+        };
         const step = await this.service._getObject<ManifestState>({
           operation: "LOOK_BACK",
-          ref: {
-            bucket: this.ref.bucket,
-            key,
-          },
+          ref,
         });
-        if (step.data === undefined) throw new Error("empty data");
+
+        if (step.data === undefined) {
+          await this.service._deleteObject({
+            operation: "CLEANUP",
+            ref,
+          });
+          continue;
+        }
 
         if (step.data.previous < settledPoint) {
           this.authoritative_key = step.data.previous;
           this.authoritative_state = step.data;
           break;
-        } else {
         }
       }
 
@@ -174,15 +181,22 @@ export class Manifest {
 
         if (key < this.authoritative_key) {
           // Its old we can skip
+          // console.log("Skip step");
         } else if (stepVersionid >= settledPoint) {
+          console.log("Optimistic update");
           this.optimistic_state = apply(
             this.optimistic_state,
             step.data?.update
           );
           // we cannot replay state into the inflight zone, its not authorative yet
         } else {
+          // console.log("settled update");
           this.authoritative_state = apply(
             this.authoritative_state,
+            step.data?.update
+          );
+          this.optimistic_state = apply(
+            this.optimistic_state,
             step.data?.update
           );
           this.authoritative_key = key;

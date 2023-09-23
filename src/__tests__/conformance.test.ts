@@ -60,10 +60,11 @@ describe("mps3", () => {
       label: "proxy",
       createBucket: false,
       config: {
-        defaultBucket: `mps3-demo`,
-        // defaultManifest: `proxy`, TODO
+        defaultBucket: `s3-demo`,
+        defaultManifest: `proxy`,
         s3Config: {
           region: "eu-central-1",
+          endpoint: "https://mps3-proxy.endpointservices.workers.dev",
         },
         parser: new DOMParser(),
       },

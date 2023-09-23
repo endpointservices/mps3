@@ -25,7 +25,7 @@ export interface MPS3Config {
    * operation's options
    * @defaultValue { bucket: defaultBucket, key: "manifest.json" }
    */
-  defaultManifest?: Ref;
+  defaultManifest?: string | Ref;
   /**
    * Feature toggle to use versioning on content objects. If not
    * using versioning content keys are appended with `@<version>`.
@@ -90,8 +90,11 @@ export class MPS3 {
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
       defaultManifest: {
-        bucket: config.defaultManifest?.bucket || config.defaultBucket,
-        key: config.defaultManifest?.key || "manifest.json",
+        bucket: (<Ref>config.defaultManifest)?.bucket || config.defaultBucket,
+        key:
+          typeof config.defaultManifest == "string"
+            ? config.defaultManifest
+            : config.defaultManifest?.key || "manifest.json",
       },
     };
 
@@ -114,7 +117,7 @@ export class MPS3 {
       });
       fetchFn = (...args) => client.fetch(...args);
     } else {
-      fetchFn = fetch;
+      fetchFn = (global || window).fetch.bind(global || window);
     }
 
     this.s3ClientLite = new S3ClientLite(
@@ -206,7 +209,7 @@ export class MPS3 {
           data: <T | undefined>apiResponse.Body,
         };
         console.log(
-          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId} ${response.data}}`
+          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId} ${response.data}`
         );
         this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
         return response;
@@ -372,6 +375,7 @@ export class MPS3 {
   }
   /** @internal */
   async _deleteObject(args: {
+    operation?: string;
     ref: ResolvedRef;
   }): Promise<DeleteObjectCommandOutput> {
     const command: DeleteObjectCommandInput = {
@@ -380,7 +384,9 @@ export class MPS3 {
     };
     const response = await this.s3ClientLite.deleteObject(command);
     console.log(
-      `${this.config.label} DELETE ${args.ref.bucket}/${args.ref.key} => ${response.VersionId}`
+      `${this.config.label} ${args.operation || "DELETE"} ${args.ref.bucket}/${
+        args.ref.key
+      } => ${response.VersionId}`
     );
     return response;
   }

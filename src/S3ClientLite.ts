@@ -95,8 +95,26 @@ export class S3ClientLite {
       err.name = "304";
       throw err;
     }
-
-    const content = response.status == 404 ? undefined : await response.json();
+    let content: any;
+    if (response.status == 404) {
+      content = undefined;
+    } else if (response.status == 403) {
+      throw new Error("Access denied");
+    } else if (response.headers.get("content-type") === "application/json") {
+      content = await response.json();
+    } else {
+      // still try to parse it as json
+      const responseText = await response.text();
+      if (responseText === "") {
+        content = undefined;
+      } else {
+        try {
+          content = JSON.parse(responseText);
+        } catch (e) {
+          throw new Error(responseText);
+        }
+      }
+    }
     return {
       $metadata: {
         httpStatusCode: response.status,
