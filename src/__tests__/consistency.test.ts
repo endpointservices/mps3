@@ -1,5 +1,11 @@
 import { expect, test, describe } from "bun:test";
-import { CentralisedCausalSystem, check, toJS, union } from "./consistency";
+import {
+  CentralisedCausalSystem,
+  CentralisedOfflineFirstCausalSystem,
+  check,
+  toJS,
+  union,
+} from "./consistency";
 describe("check", () => {
   test("check (true)", () => {
     const result = check(
@@ -9,7 +15,7 @@ describe("check", () => {
       },
       {
         "a < b": null,
-      },
+      }
     );
     expect(result).toBe(true);
   });
@@ -22,7 +28,7 @@ describe("check", () => {
       },
       {
         "a < b": null,
-      },
+      }
     );
     expect(result).toBe(false);
   });
@@ -37,7 +43,7 @@ describe("check", () => {
       {
         "a < b": null,
         "b < c": null,
-      },
+      }
     );
     expect(result).toBe(true);
   });
@@ -51,7 +57,7 @@ describe("check", () => {
       {
         "a < b": null,
         "b < c": null,
-      },
+      }
     );
     expect(result).toBe(false);
   });
@@ -137,5 +143,42 @@ describe("CausalSystem", () => {
     system.observe({ receiver: alice, sender: bob, send_time: 1 });
     console.log(toJS(system.grounding, system.knowledge_base));
     expect(system.causallyConsistent()).toBe(false); // alice hears bob's question
+  });
+});
+
+describe("Offline-first causal system", () => {
+  test("Carol offline-sync", () => {
+    const system = new CentralisedOfflineFirstCausalSystem();
+    const alice = 0,
+      bob = 1,
+      carol = 2; // carol is offline
+
+    // carol is offline
+    system.observe({ receiver: carol, sender: carol, send_time: 0 }); // carol writes to herself
+    expect(system.causallyConsistent()).toBe(true);
+
+    // online conversation between alice and bob
+    system.observe({ receiver: bob, sender: alice, send_time: 0 }); // bob send to alice
+    expect(system.causallyConsistent()).toBe(true);
+    system.observe({ receiver: alice, sender: bob, send_time: 1 }); // alice replies
+    expect(system.causallyConsistent()).toBe(true);
+
+    // carol comes online
+    system.observe({ receiver: carol, sender: carol, send_time: 1 }); // carol writes to herself
+    expect(system.causallyConsistent()).toBe(true);
+    system.observe({ receiver: carol, sender: alice, send_time: 0 }); // carol catches up
+    expect(system.causallyConsistent()).toBe(true);
+    system.observe({ receiver: carol, sender: bob, send_time: 1 }); // carol catches up
+    expect(system.causallyConsistent()).toBe(true);
+
+    // bob & alice receives carols offline seconds message
+    system.observe({ receiver: bob, sender: carol, send_time: 1 });
+    expect(system.causallyConsistent()).toBe(true);
+    system.observe({ receiver: alice, sender: carol, send_time: 1 });
+    expect(system.causallyConsistent()).toBe(true);
+
+    // bob receives carols seconds message, this is out-of-order!
+    system.observe({ receiver: bob, sender: carol, send_time: 0 });
+    expect(system.causallyConsistent()).toBe(false);
   });
 });

@@ -1,7 +1,10 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
-import { CentralisedCausalSystem } from "./consistency";
+import {
+  CentralisedCausalSystem,
+  CentralisedOfflineFirstCausalSystem,
+} from "./consistency";
 import { DOMParser } from "@xmldom/xmldom";
 
 describe("mps3", () => {
@@ -73,7 +76,7 @@ describe("mps3", () => {
           const key = "causal";
           await getClient().delete(key);
 
-          const system = new CentralisedCausalSystem();
+          const system = new CentralisedOfflineFirstCausalSystem();
           const max_steps = 100;
 
           type Message = {
