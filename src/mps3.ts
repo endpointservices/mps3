@@ -112,6 +112,7 @@ export class MPS3 {
         accessKeyId: this.config.s3Config.credentials.accessKeyId!, // required, akin to AWS_ACCESS_KEY_ID
         secretAccessKey: this.config.s3Config.credentials.secretAccessKey!, // required, akin to AWS_SECRET_ACCESS_KEY
         sessionToken: this.config.s3Config.credentials.sessionToken!, // akin to AWS_SESSION_TOKEN if using temp credentials
+        region: <string>this.config.s3Config.region || "us-east-1",
         service: "s3",
         retries: 0,
       });
