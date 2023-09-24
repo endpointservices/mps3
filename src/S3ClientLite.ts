@@ -28,13 +28,26 @@ export class S3ClientLite {
   async listObjectV2(
     command: ListObjectsV2CommandInput
   ): Promise<ListObjectsV2CommandOutput> {
-    const url = `${this.endpoint}/${command.Bucket!}/?list-type=2&prefix=${
-      command.Prefix
-    }`;
-    const response = await this.client(url, {});
-    const xml = await response.text();
-    const result = parseListObjectsV2CommandOutput(xml, this.parser);
-    return result;
+    // retry loop for 429
+    for (let i = 0; i < 10; i++) {
+      const url = `${this.endpoint}/${command.Bucket!}/?list-type=2&prefix=${
+        command.Prefix
+      }`;
+      const response = await this.client(url, {});
+      if (response.status === 200) {
+        const xml = await response.text();
+        const result = parseListObjectsV2CommandOutput(xml, this.parser);
+        return result;
+      } else if (response.status === 429) {
+        console.warn("listObjectV2: 429, retrying");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else {
+        throw new Error(
+          `Unexpected response: ${response.status} ${response.text()}`
+        );
+      }
+    }
+    throw new Error("Cannot contact server");
   }
 
   async putObject(

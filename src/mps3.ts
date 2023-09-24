@@ -209,7 +209,7 @@ export class MPS3 {
           data: <T | undefined>apiResponse.Body,
         };
         console.log(
-          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId} ${response.data}`
+          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
         );
         this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
         return response;

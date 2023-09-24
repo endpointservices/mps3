@@ -10,7 +10,7 @@ export const parseListObjectsV2CommandOutput = (
   const results = doc.getElementsByTagName("ListBucketResult")[0];
   const contents = doc.getElementsByTagName("Contents");
   const commonPrefixes = doc.getElementsByTagName("CommonPrefixes")[0];
-  if (results === null || contents === null) throw new Error("Invalid XML");
+  if (!results || !contents) throw new Error(`Invalid XML: ${xml}`);
   return {
     $metadata: {},
     IsTruncated:

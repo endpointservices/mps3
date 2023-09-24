@@ -3,6 +3,7 @@ import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
 import { ResolvedRef, uuid } from "types";
 import { DOMParser } from "@xmldom/xmldom";
+import cloudflareCredentials from "../../credentials/cloudflare.json";
 
 describe("mps3", () => {
   let session = Math.random().toString(16).substring(2, 7);
@@ -25,8 +26,24 @@ describe("mps3", () => {
       config: {
         pollFrequency: 100,
         useVersioning: true,
-        defaultBucket: `ver${session}`,
+        defaultBucket: `mps3-demo`,
         s3Config: minioConfig,
+        parser: new DOMParser(),
+      },
+    },
+    {
+      label: "cloudflare",
+      createBucket: false,
+      config: {
+        pollFrequency: 100,
+        useChecksum: false,
+        defaultBucket: `mps3-demo`,
+        s3Config: {
+          region: "auto",
+          endpoint:
+            "https://a3e2af584fbdedd172bede5ca0018aae.r2.cloudflarestorage.com",
+          credentials: cloudflareCredentials,
+        },
         parser: new DOMParser(),
       },
     },
@@ -35,7 +52,6 @@ describe("mps3", () => {
       config: {
         pollFrequency: 100,
         useChecksum: false,
-        // useVersioning: false, // is the default
         defaultBucket: `nov${session}`,
         s3Config: minioConfig,
         parser: new DOMParser(),
