@@ -69,6 +69,7 @@ describe("mps3", () => {
       test(
         "causal consistency all-to-all, single key",
         async (done) => {
+          let testFailed = false;
           const key = "causal";
           await getClient().delete(key);
 
@@ -81,26 +82,32 @@ describe("mps3", () => {
           };
           // Setup all clients to forward messages to the observer
           const clients = [...Array(3)].map((_, client_id) => {
-            const client = getClient({
-              label: system.client_labels[client_id],
-            });
+            const label = system.client_labels[client_id];
+            const client = getClient({ label });
             client.subscribe(key, (val) => {
               if (val) {
                 const message: Message = <Message>val;
+                console.log(
+                  `${system.global_time}: ${label}@${
+                    system.client_clocks[client_id]
+                  } rcvd ${system.client_labels[message.sender]}@${
+                    message.send_time
+                  }`
+                );
                 system.observe({
                   ...message,
                   receiver: client_id,
                 });
               }
 
-              if (system.global_time < max_steps) {
+              if (system.global_time < max_steps && !testFailed) {
                 // Check facts are causally consistent so far
-                const check_result = system.causallyConsistent();
-                if (!check_result) {
+                testFailed = !system.causallyConsistent();
+                if (testFailed) {
                   console.error(system.grounding);
                   console.error(system.knowledge_base);
                 }
-                expect(check_result).toBe(true);
+                expect(testFailed).toBe(false);
 
                 // Write a new message
                 system.observe({
@@ -108,8 +115,14 @@ describe("mps3", () => {
                   sender: client_id,
                   send_time: system.client_clocks[client_id] - 1,
                 });
+                testFailed = !system.causallyConsistent();
+                expect(testFailed).toBe(false);
 
-                expect(check_result).toBe(true);
+                console.log(
+                  `${system.global_time}: ${label}@${
+                    system.client_clocks[client_id] - 1
+                  } broadcast`
+                );
                 client.put(key, {
                   sender: client_id,
                   send_time: system.client_clocks[client_id] - 1,

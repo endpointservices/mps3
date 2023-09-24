@@ -205,12 +205,6 @@ export class Manifest {
         this.observeVersionId(stepVersionid);
       }
 
-      /*
-      Disable poll cache, as we sometimes need to gather the same thing twice to catchup
-      this.cache = {
-        etag: poll.ETag!,
-        data: state,
-      };*/
       return this.authoritative_state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {
@@ -238,30 +232,51 @@ export class Manifest {
     }
 
     const state = await this.getLatest();
+
+
     if (state === undefined) {
       this.pollInProgress = false;
       return; // no changes
     }
+
+    // calculate which values are set by optimistic updates
+    const mask: Map<string, JSONValue | DeleteValue> = new Map();
+    // Also play all pending writes over the top
+    this.pendingWrites.forEach((values) => {
+      values.forEach((value, ref) => {
+        mask.set(url(ref), value);
+      });
+    });
+
     this.subscribers.forEach(async (subscriber) => {
-      const fileState: FileState | null | undefined =
-        state.files[url(subscriber.ref)];
-      if (fileState) {
-        const content = this.service._getObject<any>({
-          operation: "GET_CONTENT",
-          ref: subscriber.ref,
-          version: fileState.version,
-        });
+      if (mask.has(url(subscriber.ref))) {
+        // console.log("mask", url(subscriber.ref));
         subscriber.notify(
           this.service.config.label,
-          fileState.version,
-          content.then((res) => res.data)
+          "local",
+          Promise.resolve(mask.get(url(subscriber.ref)))
         );
-      } else if (fileState === null) {
-        subscriber.notify(
-          this.service.config.label,
-          undefined,
-          Promise.resolve(undefined)
-        );
+      } else {
+        const fileState: FileState | null | undefined =
+          state.files[url(subscriber.ref)];
+        if (fileState) {
+          const content = this.service._getObject<any>({
+            operation: "GET_CONTENT",
+            ref: subscriber.ref,
+            version: fileState.version,
+          });
+          subscriber.notify(
+            this.service.config.label,
+            fileState.version,
+            content.then((res) => res.data)
+          );
+        } else if (fileState === null) {
+          subscriber.notify(
+            this.service.config.label,
+            undefined,
+            Promise.resolve(undefined)
+          );
+        }
       }
     });
     this.pollInProgress = false;
