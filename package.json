@@ -27,7 +27,8 @@
     "json-merge-patch": "^1.0.2",
     "rome": "^12.1.3",
     "typedoc": "^0.25.0",
-    "typedoc-plugin-markdown": "^3.16.0"
+    "typedoc-plugin-markdown": "^3.16.0",
+    "idb-keyval": "^6.2.1"
   },
   "files": [
     "dist"

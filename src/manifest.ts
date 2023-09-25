@@ -1,6 +1,7 @@
 import { OMap } from "OMap";
 import { MPS3 } from "mps3";
 import * as time from "time";
+import { OperationQueue } from "operation_queue";
 import {
   DeleteValue,
   JSONValue,
@@ -45,7 +46,7 @@ export class Subscriber {
   queue = Promise.resolve();
   constructor(
     ref: ResolvedRef,
-    handler: (value: JSONValue | DeleteValue) => void,
+    handler: (value: JSONValue | DeleteValue) => void
   ) {
     this.ref = ref;
     this.handler = handler;
@@ -54,7 +55,7 @@ export class Subscriber {
   notify(
     label: string,
     version: VersionId | undefined,
-    content: Promise<JSONValue | DeleteValue>,
+    content: Promise<JSONValue | DeleteValue>
   ) {
     this.queue = this.queue
       .then(() => content)
@@ -81,12 +82,7 @@ export class Manifest {
   authoritative_state = JSON.parse(JSON.stringify(INITIAL_STATE));
   optimistic_state = JSON.parse(JSON.stringify(INITIAL_STATE));
 
-  // Pending writes iterate in insertion order
-  // The key, promise, indicated the pending IO operations
-  pendingWrites: Map<Operation, OMap<ResolvedRef, JSONValue | DeleteValue>> =
-    new Map();
-
-  writtenOperations: Map<VersionId, Operation> = new Map();
+  operation_queue = new OperationQueue();
 
   constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
     console.log("New manifest", ref);
@@ -94,12 +90,7 @@ export class Manifest {
     this.ref = ref;
   }
   observeVersionId(versionId: VersionId) {
-    if (this.writtenOperations.has(versionId)) {
-      //console.log(`clearing pending write for observeVersionId ${versionId}`);
-      const operation = this.writtenOperations.get(versionId)!;
-      this.pendingWrites.delete(operation);
-      this.writtenOperations.delete(versionId);
-    }
+    this.operation_queue.observeVersionId(versionId);
   }
 
   async get(): Promise<ManifestState> {
@@ -187,18 +178,18 @@ export class Manifest {
           console.log("Optimistic update");
           this.optimistic_state = apply(
             this.optimistic_state,
-            step.data?.update,
+            step.data?.update
           );
           // we cannot replay state into the inflight zone, its not authorative yet
         } else {
           // console.log("settled update");
           this.authoritative_state = apply(
             this.authoritative_state,
-            step.data?.update,
+            step.data?.update
           );
           this.optimistic_state = apply(
             this.optimistic_state,
-            step.data?.update,
+            step.data?.update
           );
           this.authoritative_key = key;
         }
@@ -227,7 +218,7 @@ export class Manifest {
     if (this.subscriberCount > 0 && !this.poller) {
       this.poller = setInterval(
         () => this.poll(),
-        this.service.config.pollFrequency,
+        this.service.config.pollFrequency
       );
     }
 
@@ -241,7 +232,7 @@ export class Manifest {
     // calculate which values are set by optimistic updates
     const mask: Map<string, JSONValue | DeleteValue> = new Map();
     // Also play all pending writes over the top
-    this.pendingWrites.forEach((values) => {
+    this.operation_queue.pendingWrites.forEach((values) => {
       values.forEach((value, ref) => {
         mask.set(url(ref), value);
       });
@@ -253,7 +244,7 @@ export class Manifest {
         subscriber.notify(
           this.service.config.label,
           "local",
-          Promise.resolve(mask.get(url(subscriber.ref))),
+          Promise.resolve(mask.get(url(subscriber.ref)))
         );
       } else {
         const fileState: FileState | null | undefined =
@@ -267,13 +258,13 @@ export class Manifest {
           subscriber.notify(
             this.service.config.label,
             fileState.version,
-            content.then((res) => res.data),
+            content.then((res) => res.data)
           );
         } else if (fileState === null) {
           subscriber.notify(
             this.service.config.label,
             undefined,
-            Promise.resolve(undefined),
+            Promise.resolve(undefined)
           );
         }
       }
@@ -283,33 +274,34 @@ export class Manifest {
 
   async updateContent(
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
-    write: Promise<Map<ResolvedRef, string | DeleteValue>>,
+    write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
-    this.pendingWrites.set(write, values);
-    // console.loggit push(`updateContent pending ${this.pendingWrites.size}`);
+    this.operation_queue.pendingWrites.set(write, values);
+
+    const update = await write;
+    const state = await this.get();
+    state.previous = this.authoritative_key;
+    state.update = {
+      files: {},
+    };
+
+    for (let [ref, version] of update) {
+      const fileUrl = url(ref);
+      if (version) {
+        const fileState = {
+          version: version,
+        };
+        state.update.files[fileUrl] = fileState;
+      } else {
+        state.update.files[fileUrl] = null;
+      }
+    }
+    // put versioned write
+    const version = time.upperTimeBound() + "_" + uuid().substring(0, 2);
+    this.operation_queue.writtenOperations.set(version, write);
+    const manifest_key = this.ref.key + "@" + version;
 
     try {
-      const update = await write;
-      const state = await this.get();
-      state.previous = this.authoritative_key;
-      state.update = {
-        files: {},
-      };
-
-      for (let [ref, version] of update) {
-        const fileUrl = url(ref);
-        if (version) {
-          const fileState = {
-            version: version,
-          };
-          state.update.files[fileUrl] = fileState;
-        } else {
-          state.update.files[fileUrl] = null;
-        }
-      }
-      // put versioned write
-      const version = time.upperTimeBound() + "_" + uuid().substring(0, 2);
-      const manifest_key = this.ref.key + "@" + version;
       await this.service._putObject({
         operation: "PUT_MANIFEST",
         ref: {
@@ -328,12 +320,12 @@ export class Manifest {
         value: this.authoritative_key, // indicates how far we need to look back
       });
 
-      this.writtenOperations.set(version, write);
       this.poll();
       return response;
     } catch (err) {
       console.error(err);
-      this.pendingWrites.delete(write);
+      this.operation_queue.pendingWrites.delete(write);
+      this.operation_queue.writtenOperations.delete(version);
       throw err;
     }
   }
@@ -345,7 +337,7 @@ export class Manifest {
 
   subscribe(
     keyRef: ResolvedRef,
-    handler: (value: JSONValue | undefined) => void,
+    handler: (value: JSONValue | undefined) => void
   ): () => void {
     console.log(`SUBSCRIBE ${url(keyRef)} ${this.subscriberCount + 1}`);
     const sub = new Subscriber(keyRef, handler);

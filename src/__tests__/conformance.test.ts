@@ -5,6 +5,7 @@ import { ResolvedRef, uuid } from "types";
 import { DOMParser } from "@xmldom/xmldom";
 import cloudflareCredentials from "../../credentials/cloudflare.json";
 import gcsCredentials from "../../credentials/gcs.json";
+import { createStore } from "idb-keyval";
 
 describe("mps3", () => {
   let session = Math.random().toString(16).substring(2, 7);
