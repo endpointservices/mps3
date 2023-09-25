@@ -1,3 +1,14 @@
+import { OMap } from "OMap";
+import {
+  JSONValue,
+  Operation,
+  Ref,
+  ResolvedRef,
+  url,
+  DeleteValue,
+  VersionId,
+} from "./types";
+
 export class OperationQueue {
   // Pending writes iterate in insertion order
   // The key, promise, indicated the pending IO operations
@@ -13,5 +24,16 @@ export class OperationQueue {
       this.pendingWrites.delete(operation);
       this.writtenOperations.delete(versionId);
     }
+  }
+
+  flatten(): Map<string, JSONValue | undefined> {
+    // Also play all pending writes over the top
+    const mask = new Map();
+    this.pendingWrites.forEach((values) => {
+      values.forEach((value: any, ref: Ref) => {
+        mask.set(url(ref), value);
+      });
+    });
+    return mask;
   }
 }

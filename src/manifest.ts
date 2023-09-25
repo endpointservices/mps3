@@ -230,13 +230,8 @@ export class Manifest {
     }
 
     // calculate which values are set by optimistic updates
-    const mask: Map<string, JSONValue | DeleteValue> = new Map();
-    // Also play all pending writes over the top
-    this.operation_queue.pendingWrites.forEach((values) => {
-      values.forEach((value, ref) => {
-        mask.set(url(ref), value);
-      });
-    });
+    const mask: Map<string, JSONValue | DeleteValue> =
+      this.operation_queue.flatten();
 
     this.subscribers.forEach(async (subscriber) => {
       if (mask.has(url(subscriber.ref))) {
@@ -277,7 +272,6 @@ export class Manifest {
     write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
     this.operation_queue.pendingWrites.set(write, values);
-
     const update = await write;
     const state = await this.get();
     state.previous = this.authoritative_key;

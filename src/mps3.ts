@@ -152,17 +152,12 @@ export class MPS3 {
         this.config.defaultManifest.bucket,
       key: typeof ref === "string" ? ref : ref.key,
     };
-    let inCache = false;
-    let cachedValue = undefined;
-    for (const [_, values] of manifest.operation_queue.pendingWrites) {
-      if (values.has(contentRef)) {
-        inCache = true;
-        cachedValue = values.get(contentRef);
-      }
-    }
-    if (inCache) {
+
+    const inflight = manifest.operation_queue.flatten();
+    const contentUrl = url(contentRef);
+    if (inflight.has(contentUrl)) {
       console.log(`${this.config.label} get (cached) ${url(contentRef)}`);
-      return cachedValue;
+      return inflight.get(contentUrl);
     }
 
     const version = await manifest.getOptimisticVersion(contentRef);
