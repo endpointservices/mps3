@@ -90,7 +90,7 @@ export class Manifest {
     this.ref = ref;
   }
   observeVersionId(versionId: VersionId) {
-    this.operation_queue.observeVersionId(versionId);
+    this.operation_queue.resolve(versionId);
   }
 
   async get(): Promise<ManifestState> {
@@ -271,31 +271,32 @@ export class Manifest {
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
     write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
-    this.operation_queue.pendingWrites.set(write, values);
-    const update = await write;
-    const state = await this.get();
-    state.previous = this.authoritative_key;
-    state.update = {
-      files: {},
-    };
-
-    for (let [ref, version] of update) {
-      const fileUrl = url(ref);
-      if (version) {
-        const fileState = {
-          version: version,
-        };
-        state.update.files[fileUrl] = fileState;
-      } else {
-        state.update.files[fileUrl] = null;
-      }
-    }
-    // put versioned write
-    const version = time.upperTimeBound() + "_" + uuid().substring(0, 2);
-    this.operation_queue.writtenOperations.set(version, write);
-    const manifest_key = this.ref.key + "@" + version;
-
+    this.operation_queue.enqueue(write, values);
     try {
+      const update = await write;
+      const state = await this.get();
+      state.previous = this.authoritative_key;
+      state.update = {
+        files: {},
+      };
+
+      for (let [ref, version] of update) {
+        const fileUrl = url(ref);
+        if (version) {
+          const fileState = {
+            version: version,
+          };
+          state.update.files[fileUrl] = fileState;
+        } else {
+          state.update.files[fileUrl] = null;
+        }
+      }
+      // put versioned write
+      const manifest_version =
+        time.upperTimeBound() + "_" + uuid().substring(0, 2);
+      const manifest_key = this.ref.key + "@" + manifest_version;
+      this.operation_queue.assign(manifest_version, write);
+
       await this.service._putObject({
         operation: "PUT_MANIFEST",
         ref: {
@@ -318,8 +319,7 @@ export class Manifest {
       return response;
     } catch (err) {
       console.error(err);
-      this.operation_queue.pendingWrites.delete(write);
-      this.operation_queue.writtenOperations.delete(version);
+      this.operation_queue.abort(write);
       throw err;
     }
   }

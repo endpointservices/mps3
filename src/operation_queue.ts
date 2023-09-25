@@ -17,7 +17,26 @@ export class OperationQueue {
 
   writtenOperations: Map<VersionId, Operation> = new Map();
 
-  observeVersionId(versionId: string) {
+  abort(write: Operation) {
+    this.pendingWrites.delete(write);
+    this.writtenOperations.forEach((value, key) => {
+      if (value === write) {
+        this.writtenOperations.delete(key);
+      }
+    });
+  }
+  enqueue(
+    write: Operation,
+    values: OMap<ResolvedRef, JSONValue | DeleteValue>
+  ) {
+    this.pendingWrites.set(write, values);
+  }
+
+  assign(version: VersionId, write: Operation) {
+    this.writtenOperations.set(version, write);
+  }
+
+  resolve(versionId: VersionId) {
     if (this.writtenOperations.has(versionId)) {
       //console.log(`clearing pending write for observeVersionId ${versionId}`);
       const operation = this.writtenOperations.get(versionId)!;
