@@ -67,12 +67,12 @@ export class CentralisedCausalSystem extends CausalSystem {
       // Indicate the progression of time on the client clock
       [`/*P1*/ ${this.symbol(client, client_clock - 1)} < ${this.symbol(
         client,
-        client_clock
+        client_clock,
       )}`]: null,
       // The source tick happened-before the client clock
       [`/*P2*/ ${this.symbol(source, source_time)} < ${this.symbol(
         client,
-        client_clock
+        client_clock,
       )}`]: null,
     });
     if (this.previous_seen[client]) {
@@ -80,7 +80,7 @@ export class CentralisedCausalSystem extends CausalSystem {
         // The previously seen message happens before
         [`/*P3*/ ${this.previous_seen[client]} < ${this.symbol(
           source,
-          source_time
+          source_time,
         )}`]: null,
       });
     }
@@ -126,12 +126,12 @@ export class CentralisedOfflineFirstCausalSystem extends CausalSystem {
       // Indicate the progression of time on the client clock
       [`/*P1*/ ${this.symbol(client, client_clock - 1)} < ${this.symbol(
         client,
-        client_clock
+        client_clock,
       )}`]: null,
       // The source tick happened-before the client clock
       [`/*P2*/ ${this.symbol(source, source_time)} < ${this.symbol(
         client,
-        client_clock
+        client_clock,
       )}`]: null,
     });
 
@@ -140,7 +140,7 @@ export class CentralisedOfflineFirstCausalSystem extends CausalSystem {
         // The previously seen message happens before
         [`/*P3*/ ${this.previous_seen[client][source]} < ${this.symbol(
           source,
-          source_time
+          source_time,
         )}`]: null,
       });
     }
@@ -149,7 +149,7 @@ export class CentralisedOfflineFirstCausalSystem extends CausalSystem {
       // this is to support local caching.
       this.previous_seen[client][source] = `${this.symbol(
         source,
-        source_time
+        source_time,
       )}`;
     }
   }

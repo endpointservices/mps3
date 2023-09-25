@@ -12,7 +12,7 @@ import { parseListObjectsV2CommandOutput } from "xml";
 
 export type FetchFn = (
   url: string,
-  options?: object | undefined
+  options?: object | undefined,
 ) => Promise<Response>;
 
 export class S3ClientLite {
@@ -26,7 +26,7 @@ export class S3ClientLite {
   }
 
   async listObjectV2(
-    command: ListObjectsV2CommandInput
+    command: ListObjectsV2CommandInput,
   ): Promise<ListObjectsV2CommandOutput> {
     // retry loop for 429
     for (let i = 0; i < 10; i++) {
@@ -43,7 +43,7 @@ export class S3ClientLite {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
         throw new Error(
-          `Unexpected response: ${response.status} ${response.text()}`
+          `Unexpected response: ${response.status} ${response.text()}`,
         );
       }
     }
@@ -51,7 +51,7 @@ export class S3ClientLite {
   }
 
   async putObject(
-    command: PutObjectCommandInput
+    command: PutObjectCommandInput,
   ): Promise<PutObjectCommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
     const response = await this.client(url, {
@@ -78,7 +78,7 @@ export class S3ClientLite {
   }
 
   async deleteObject(
-    command: DeleteObjectCommandInput
+    command: DeleteObjectCommandInput,
   ): Promise<DeleteObjectCommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}/${command.Key}`;
     const response = await this.client(url, {
@@ -92,7 +92,7 @@ export class S3ClientLite {
   }
 
   async getObject(
-    command: GetObjectCommandInput
+    command: GetObjectCommandInput,
   ): Promise<GetObjectCommandOutput> {
     const url = `${this.endpoint}/${command.Bucket!}/${command.Key}?${
       command.VersionId ? `versionId=${command.VersionId}` : ""
