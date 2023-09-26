@@ -19,7 +19,6 @@ export interface ResolvedRef extends Ref {
 }
 
 export type UUID = string;
-export type Operation = Promise<unknown>;
 export type VersionId = string;
 
 export const uuid = (): UUID => crypto.randomUUID();

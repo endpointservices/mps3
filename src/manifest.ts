@@ -1,11 +1,10 @@
 import { OMap } from "OMap";
 import { MPS3 } from "mps3";
 import * as time from "time";
-import { OperationQueue } from "operation_queue";
+import { OperationQueue } from "operationQueue";
 import {
   DeleteValue,
   JSONValue,
-  Operation,
   ResolvedRef,
   VersionId,
   url,
@@ -90,7 +89,7 @@ export class Manifest {
     this.ref = ref;
   }
   observeVersionId(versionId: VersionId) {
-    this.operation_queue.resolve(versionId);
+    this.operation_queue.confirm(versionId);
   }
 
   async get(): Promise<ManifestState> {
@@ -271,7 +270,7 @@ export class Manifest {
     values: OMap<ResolvedRef, JSONValue | DeleteValue>,
     write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
-    this.operation_queue.enqueue(write, values);
+    this.operation_queue.propose(write, values);
     try {
       const update = await write;
       const state = await this.get();
@@ -295,7 +294,7 @@ export class Manifest {
       const manifest_version =
         time.upperTimeBound() + "_" + uuid().substring(0, 2);
       const manifest_key = this.ref.key + "@" + manifest_version;
-      this.operation_queue.assign(manifest_version, write);
+      this.operation_queue.label(write, manifest_version);
 
       await this.service._putObject({
         operation: "PUT_MANIFEST",
@@ -319,7 +318,7 @@ export class Manifest {
       return response;
     } catch (err) {
       console.error(err);
-      this.operation_queue.abort(write);
+      this.operation_queue.cancel(write);
       throw err;
     }
   }
