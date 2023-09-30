@@ -294,9 +294,7 @@ export class MPS3 {
       manifests: ResolvedRef[];
     }
   ) {
-    const webValues: OMap<URL, JSONValue | DeleteValue> = new OMap((url) =>
-      url.toString()
-    );
+    const webValues: Map<URL, JSONValue | DeleteValue> = new Map();
     const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
       new Promise(async (resolve, reject) => {
         const results = new Map<ResolvedRef, string | DeleteValue>();

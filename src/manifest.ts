@@ -268,7 +268,7 @@ export class Manifest {
   }
 
   async updateContent(
-    values: OMap<URL, JSONValue | DeleteValue>,
+    values: Map<URL, JSONValue | DeleteValue>,
     write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
     this.operation_queue.propose(write, values);
