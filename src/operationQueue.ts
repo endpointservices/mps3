@@ -4,6 +4,8 @@ import { UseStore, get, set, del, keys } from "idb-keyval";
 
 export type Operation = Promise<unknown>;
 
+const PADDING = 6;
+
 export class OperationQueue {
   private session = uuid();
   proposedOperations: Map<Operation, Map<URL, JSONValue | DeleteValue>> =
@@ -17,9 +19,10 @@ export class OperationQueue {
   }
 
   async propose(write: Operation, values: Map<URL, JSONValue | DeleteValue>) {
+    this.proposedOperations.set(write, values);
     if (this.db) {
       this.lastIndex++;
-      const key = `entry-${this.lastIndex}`;
+      const key = `entry-${this.lastIndex.toString().padStart(PADDING, "0")}`;
       (<any>write)[this.session] = this.lastIndex;
       await set(
         key,
@@ -27,8 +30,6 @@ export class OperationQueue {
         this.db
       );
     }
-
-    this.proposedOperations.set(write, values);
   }
 
   async label(write: Operation, label: string) {
@@ -113,7 +114,6 @@ export class OperationQueue {
       this.proposedOperations.set(op, values);
 
       if (label) {
-        console.log("about to label");
         this.label(op, label);
       }
 
