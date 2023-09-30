@@ -8,6 +8,7 @@ import {
   ResolvedRef,
   VersionId,
   url,
+  url2,
   uuid,
 } from "types";
 import { apply } from "json-merge-patch";
@@ -229,16 +230,16 @@ export class Manifest {
     }
 
     // calculate which values are set by optimistic updates
-    const mask: Map<string, JSONValue | DeleteValue> =
+    const mask: OMap<URL, JSONValue | DeleteValue> =
       this.operation_queue.flatten();
 
     this.subscribers.forEach(async (subscriber) => {
-      if (mask.has(url(subscriber.ref))) {
+      if (mask.has(url2(this.service.endpoint, subscriber.ref))) {
         // console.log("mask", url(subscriber.ref));
         subscriber.notify(
           this.service.config.label,
           "local",
-          Promise.resolve(mask.get(url(subscriber.ref)))
+          Promise.resolve(mask.get(url2(this.service.endpoint, subscriber.ref)))
         );
       } else {
         const fileState: FileState | null | undefined =
@@ -267,7 +268,7 @@ export class Manifest {
   }
 
   async updateContent(
-    values: OMap<ResolvedRef, JSONValue | DeleteValue>,
+    values: OMap<URL, JSONValue | DeleteValue>,
     write: Promise<Map<ResolvedRef, string | DeleteValue>>
   ) {
     this.operation_queue.propose(write, values);

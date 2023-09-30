@@ -11,7 +11,15 @@ import { AwsClient } from "aws4fetch";
 import { FetchFn, S3ClientLite } from "S3ClientLite";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
-import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
+import {
+  DeleteValue,
+  JSONValue,
+  Ref,
+  ResolvedRef,
+  url,
+  url2,
+  uuid,
+} from "types";
 
 export interface MPS3Config {
   /** @internal */
@@ -81,6 +89,10 @@ export class MPS3 {
     (input) =>
       `${input.Bucket}${input.Key}${input.VersionId}${input.IfNoneMatch}`
   );
+
+  /** @internal */
+  endpoint: string;
+
   constructor(config: MPS3Config) {
     this.config = {
       ...config,
@@ -100,7 +112,7 @@ export class MPS3 {
     if (this.config.s3Config?.credentials instanceof Function)
       throw Error("We can't do that yet");
 
-    const endpoint: string =
+    this.endpoint =
       <string>config.s3Config.endpoint ||
       `https://s3.${config.s3Config.region}.amazonaws.com`;
 
@@ -122,7 +134,7 @@ export class MPS3 {
 
     this.s3ClientLite = new S3ClientLite(
       fetchFn,
-      endpoint,
+      this.endpoint,
       config.parser || new DOMParser()
     );
   }
@@ -154,7 +166,7 @@ export class MPS3 {
     };
 
     const inflight = manifest.operation_queue.flatten();
-    const contentUrl = url(contentRef);
+    const contentUrl = url2(this.endpoint, contentRef);
     if (inflight.has(contentUrl)) {
       console.log(`${this.config.label} get (cached) ${url(contentRef)}`);
       return inflight.get(contentUrl);
@@ -282,6 +294,9 @@ export class MPS3 {
       manifests: ResolvedRef[];
     }
   ) {
+    const webValues: OMap<URL, JSONValue | DeleteValue> = new OMap((url) =>
+      url.toString()
+    );
     const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
       new Promise(async (resolve, reject) => {
         const results = new Map<ResolvedRef, string | DeleteValue>();
@@ -289,6 +304,7 @@ export class MPS3 {
         values.forEach((value, contentRef) => {
           if (value !== undefined) {
             let version = this.config.useVersioning ? undefined : uuid(); // TODO timestamped versions
+            webValues.set(url2(this.endpoint, contentRef), value);
             contentOperations.push(
               this._putObject({
                 operation: "PUT_CONTENT",
@@ -326,7 +342,7 @@ export class MPS3 {
     return Promise.all(
       options.manifests.map((ref) => {
         const manifest = this.getOrCreateManifest(ref);
-        return manifest.updateContent(values, contentVersions);
+        return manifest.updateContent(webValues, contentVersions);
       })
     );
   }

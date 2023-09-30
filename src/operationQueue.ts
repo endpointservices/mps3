@@ -1,42 +1,30 @@
 import { OMap } from "OMap";
-import {
-  JSONValue,
-  Ref,
-  ResolvedRef,
-  url,
-  DeleteValue,
-  VersionId,
-} from "./types";
+import { JSONValue, DeleteValue } from "./types";
 
 export type Operation = Promise<unknown>;
 
 export class OperationQueue {
   // Pending writes iterate in insertion order
   // The key, promise, indicated the pending IO operations
-  proposedOperations: Map<
-    Operation,
-    OMap<ResolvedRef, JSONValue | DeleteValue>
-  > = new Map();
+  proposedOperations: Map<Operation, OMap<URL, JSONValue | DeleteValue>> =
+    new Map();
 
-  operationLabels: Map<VersionId, Operation> = new Map();
+  operationLabels: Map<string, Operation> = new Map();
 
-  propose(
-    write: Operation,
-    values: OMap<ResolvedRef, JSONValue | DeleteValue>
-  ) {
+  propose(write: Operation, values: OMap<URL, JSONValue | DeleteValue>) {
     this.proposedOperations.set(write, values);
   }
 
-  label(write: Operation, version: VersionId) {
+  label(write: Operation, version: string) {
     this.operationLabels.set(version, write);
   }
 
-  confirm(versionId: VersionId) {
-    if (this.operationLabels.has(versionId)) {
-      //console.log(`clearing pending write for observeVersionId ${versionId}`);
-      const operation = this.operationLabels.get(versionId)!;
+  confirm(label: string) {
+    if (this.operationLabels.has(label)) {
+      //console.log(`clearing pending write for observelabel ${label}`);
+      const operation = this.operationLabels.get(label)!;
       this.proposedOperations.delete(operation);
-      this.operationLabels.delete(versionId);
+      this.operationLabels.delete(label);
     }
   }
 
@@ -49,12 +37,12 @@ export class OperationQueue {
     });
   }
 
-  flatten(): Map<string, JSONValue | undefined> {
+  flatten(): OMap<URL, JSONValue | undefined> {
     // Also play all pending writes over the top
-    const mask = new Map();
+    const mask = new OMap<URL, JSONValue | undefined>((a) => a.toString());
     this.proposedOperations.forEach((values) => {
-      values.forEach((value: any, ref: Ref) => {
-        mask.set(url(ref), value);
+      values.forEach((value: any, ref: URL) => {
+        mask.set(ref, value);
       });
     });
     return mask;
