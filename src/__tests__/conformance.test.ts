@@ -8,7 +8,7 @@ import gcsCredentials from "../../credentials/gcs.json";
 import { createStore } from "idb-keyval";
 
 describe("mps3", () => {
-  let session = Math.random().toString(16).substring(2, 7);
+  let session = uuid().toString(16).substring(2, 7);
   const minioConfig = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
@@ -131,7 +131,7 @@ describe("mps3", () => {
       test("Subscription deduplicate undefined", async (done) => {
         const mps3 = getClient();
         const listener = getClient();
-        const rnd = Math.random();
+        const rnd = uuid();
         await mps3.delete("dedupe", undefined);
 
         let notifications = 0;
@@ -151,7 +151,7 @@ describe("mps3", () => {
 
       test("Can see other's mutations after populating cache", async () => {
         const mps3 = getClient();
-        const rnd = Math.random();
+        const rnd = uuid();
         await mps3.put("rw", rnd);
         await getClient().delete("rw");
 
@@ -176,7 +176,7 @@ describe("mps3", () => {
       test("manifest cold start", async () => {
         console.log(
           "variant.config.defaultBucket",
-          variant.config.defaultBucket,
+          variant.config.defaultBucket
         );
         const s3 = new S3(variant.config.s3Config);
         const mps3 = getClient();
@@ -210,14 +210,14 @@ describe("mps3", () => {
           Key: versionFileKey,
         });
         const versionFileContent = JSON.parse(
-          await versionFile.Body?.transformToString()!,
+          await versionFile.Body?.transformToString()!
         );
         expect(versionFileContent.files).toEqual({}); // base version is empty
         console.log(versionFileContent);
         expect(
           versionFileContent.update.files[
             `${variant.config.defaultBucket}/unused_key_2`
-          ],
+          ]
         ).toBeDefined();
         expect(versionFileContent.previous).toBe(".");
 
@@ -261,7 +261,7 @@ describe("mps3", () => {
       });
 
       test("Can read a write", async () => {
-        const rnd = Math.random();
+        const rnd = uuid();
         await getClient().put("rw", rnd);
         const read = await getClient().get("rw");
         expect(read).toEqual(rnd);
@@ -289,9 +289,9 @@ describe("mps3", () => {
 
       test("Can read a write (cold manifest)", async () => {
         const manifest = {
-          key: `manifest_${Math.random()}`,
+          key: `manifest_${uuid()}`,
         };
-        const rnd = Math.random();
+        const rnd = uuid();
         await getClient().put("rw", rnd, {
           manifests: [manifest],
         });
@@ -303,7 +303,7 @@ describe("mps3", () => {
 
       test("Can read your write uses cache", async (done) => {
         const mps3 = getClient();
-        const rnd = Math.random();
+        const rnd = uuid();
         const promise = mps3.put("rw", rnd); // no await
         let has_read = false;
         promise.then(() => {
@@ -323,8 +323,8 @@ describe("mps3", () => {
 
       test("Subscribe to changes (single client, unseeen key)", async (done) => {
         const mps3 = getClient();
-        const rand_key = `subscribe_single_client/${Math.random().toString()}`;
-        const rnd = Math.random();
+        const rand_key = `subscribe_single_client/${uuid()}`;
+        const rnd = uuid();
         expect(mps3.subscriberCount).toEqual(0);
         let callbackCount = 0;
         const unsubscribe = mps3.subscribe(rand_key, (value) => {
@@ -332,6 +332,7 @@ describe("mps3", () => {
           if (callbackCount === 0) {
             expect(value).toEqual(undefined);
             callbackCount++;
+            mps3.put(rand_key, rnd);
           } else if (callbackCount === 1) {
             expect(value).toEqual(rnd);
             unsubscribe();
@@ -339,14 +340,13 @@ describe("mps3", () => {
             done();
           }
         });
-        mps3.put(rand_key, rnd);
         expect(mps3.subscriberCount).toEqual(1);
       });
 
       test("Subscribe to changes (cross-client, unseeen key)", async (done) => {
         const mps3 = getClient();
         const mps3_other = getClient();
-        const rand_key = `subscribe_multi_client/${Math.random().toString()}`;
+        const rand_key = `subscribe_multi_client/${uuid()}`;
         expect(mps3.subscriberCount).toEqual(0);
         expect(mps3_other.subscriberCount).toEqual(0);
         let callbackCount = 0;
@@ -354,18 +354,18 @@ describe("mps3", () => {
           if (callbackCount === 0) {
             expect(value).toEqual(undefined);
             callbackCount++;
+            mps3.put(rand_key, "_");
           } else if (callbackCount === 1) {
             expect(value).toEqual("_");
             unsubscribe();
             done();
           }
         });
-        mps3.put(rand_key, "_");
       });
 
       test("Subscribe get notified of committed initial value first", async (done) => {
         const mps3 = getClient();
-        const rnd = Math.random();
+        const rnd = uuid();
         await mps3.put("subscribe_initial", rnd);
 
         const unsubscribe = mps3.subscribe("subscribe_initial", (value) => {
@@ -377,16 +377,16 @@ describe("mps3", () => {
 
       test("Subscribe get notified of optimistic value first", async (done) => {
         const mps3 = getClient();
-        const rnd = Math.random();
-        mps3.put("subscribe_initial", rnd);
+        const rnd = uuid();
+        mps3.put("subscribe_initial_optimistic", rnd);
 
         const unsubscribe = await mps3.subscribe(
-          "subscribe_initial",
+          "subscribe_initial_optimistic",
           (value) => {
             expect(value).toEqual(rnd);
             unsubscribe();
             done();
-          },
+          }
         );
       });
 
@@ -395,7 +395,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${uuid()}`
         );
 
         // put in parallel
@@ -410,7 +410,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${uuid()}`
         );
 
         // put in parallel
@@ -418,7 +418,7 @@ describe("mps3", () => {
 
         // read in parallel
         const reads = await Promise.all(
-          rand_keys.map((key, i) => clients[n - i - 1].get(key)),
+          rand_keys.map((key, i) => clients[n - i - 1].get(key))
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -427,13 +427,13 @@ describe("mps3", () => {
       test("Parallel puts commute - cold manifest", async () => {
         const manifests = [
           {
-            key: Math.random().toString(),
+            key: uuid(),
           },
         ];
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${uuid()}`
         );
 
         // put in parallel
@@ -441,8 +441,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[i].put(key, i, {
               manifests,
-            }),
-          ),
+            })
+          )
         );
 
         // read in parallel
@@ -450,8 +450,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[n - i - 1].get(key, {
               manifest: manifests[0],
-            }),
-          ),
+            })
+          )
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -461,7 +461,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${Math.random().toString()}`,
+          (_, i) => `parallel_put/${i}_${uuid()}`
         );
 
         // collect results
@@ -471,9 +471,9 @@ describe("mps3", () => {
               new Promise((resolve) =>
                 getClient().subscribe(key, (val) => {
                   if (val !== undefined) resolve(val);
-                }),
-              ),
-          ),
+                })
+              )
+          )
         );
 
         // put in parallel
@@ -481,6 +481,6 @@ describe("mps3", () => {
 
         expect(await results).toEqual([0, 1, 2]);
       });
-    }),
+    })
   );
 });
