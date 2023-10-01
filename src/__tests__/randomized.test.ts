@@ -1,22 +1,51 @@
 import { S3 } from "@aws-sdk/client-s3";
-import { expect, test, describe, beforeAll } from "bun:test";
-import { MPS3, MPS3Config } from "mps3";
 import {
-  CentralisedCausalSystem,
-  CentralisedOfflineFirstCausalSystem,
-} from "./consistency";
+  expect,
+  test,
+  describe,
+  beforeAll,
+  beforeEach,
+  afterEach,
+} from "bun:test";
+import { MPS3, MPS3Config } from "mps3";
+import { CentralisedOfflineFirstCausalSystem } from "./consistency";
 import { DOMParser } from "@xmldom/xmldom";
 
 describe("mps3", () => {
   let s3: S3;
   let session = Math.random().toString(16).substring(2, 7);
-  const s3Config = {
+  const stableConfig = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
     credentials: {
       accessKeyId: "mps3",
       secretAccessKey: "ZOAmumEzdsUUcVlQ",
     },
+  };
+
+  const unstableConfig = {
+    endpoint: "http://127.0.0.1:9104",
+    region: "eu-central-1",
+    credentials: {
+      accessKeyId: "mps3",
+      secretAccessKey: "ZOAmumEzdsUUcVlQ",
+    },
+  };
+
+  fetch("localhost:8474/proxies/minio", {
+    method: "POST",
+    body: JSON.stringify({
+      enabled: Math.random() > 0.5,
+    }),
+  });
+
+  const setOnline = async (state: boolean) => {
+    fetch("localhost:8474/proxies/minio", {
+      method: "POST",
+      body: JSON.stringify({
+        enabled: state,
+      }),
+    });
   };
 
   const configs: {
@@ -29,7 +58,7 @@ describe("mps3", () => {
         pollFrequency: 100,
         useVersioning: true,
         defaultBucket: `ver${session}`,
-        s3Config: s3Config,
+        s3Config: unstableConfig,
         parser: new DOMParser(),
       },
     },
@@ -40,7 +69,7 @@ describe("mps3", () => {
         useChecksum: false,
         // useVersioning: false, // is the default
         defaultBucket: `nov${session}`,
-        s3Config: s3Config,
+        s3Config: unstableConfig,
         parser: new DOMParser(),
       },
     },
@@ -48,8 +77,9 @@ describe("mps3", () => {
 
   configs.map((variant) =>
     describe(variant.label, () => {
+      let networkTwiddler: NodeJS.Timeout;
       beforeAll(async () => {
-        s3 = new S3(variant.config.s3Config);
+        s3 = new S3(stableConfig);
 
         await s3.createBucket({
           Bucket: variant.config.defaultBucket,
@@ -64,6 +94,19 @@ describe("mps3", () => {
           });
         }
       });
+
+      beforeEach(async () => {
+        await setOnline(true);
+        networkTwiddler = setInterval(() => {
+          setOnline(Math.random() > 0.5);
+        }, 100);
+      });
+
+      afterEach(async () => {
+        clearInterval(networkTwiddler);
+        await setOnline(true);
+      });
+
       const getClient = (args?: { label?: string }) =>
         new MPS3({
           label: args?.label,
@@ -95,7 +138,7 @@ describe("mps3", () => {
                     system.client_clocks[client_id]
                   } rcvd ${system.client_labels[message.sender]}@${
                     message.send_time
-                  }`,
+                  }`
                 );
                 system.observe({
                   ...message,
@@ -124,7 +167,7 @@ describe("mps3", () => {
                 console.log(
                   `${system.global_time}: ${label}@${
                     system.client_clocks[client_id] - 1
-                  } broadcast`,
+                  } broadcast`
                 );
                 client.put(key, {
                   sender: client_id,
@@ -132,7 +175,7 @@ describe("mps3", () => {
                 });
               } else if (system.global_time === max_steps) {
                 clients.forEach((c) =>
-                  c.manifests.forEach((m) => m.subscribers.clear()),
+                  c.manifests.forEach((m) => m.subscribers.clear())
                 );
                 done();
               }
@@ -142,8 +185,8 @@ describe("mps3", () => {
         },
         {
           timeout: 60 * 1000,
-        },
+        }
       );
-    }),
+    })
   );
 });
