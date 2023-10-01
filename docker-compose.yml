@@ -18,9 +18,17 @@ services:
     environment:
       LOG_LEVEL: "DEBUG"
   
-  toxiproxy-config:
+  toxiproxy-config-0:
     image: "ghcr.io/shopify/toxiproxy"
-    entrypoint: "/toxiproxy-cli -h toxiproxy:8474 create -l 0.0.0.0:9104 -u minio:9000 minio"
+    entrypoint: >
+      /toxiproxy-cli -h toxiproxy:8474 create -l 0.0.0.0:9104 -u minio:9000 minio 
     depends_on: 
       - toxiproxy
+
+  # toxiproxy-config-1:
+  #   image: "ghcr.io/shopify/toxiproxy"
+  #   entrypoint: >
+  #     /toxiproxy-cli -h toxiproxy:8474 toxic add --type reset_peer --attribute timeout=1 --toxicity 0.1 minio
+  #   depends_on: 
+  #     - toxiproxy-config-0
     
