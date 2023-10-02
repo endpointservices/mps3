@@ -4,57 +4,44 @@ import { ListObjectsV2CommandOutput } from "@aws-sdk/client-s3";
 
 export const parseListObjectsV2CommandOutput = (
   xml: string,
-  domParser: DOMParser,
+  domParser: DOMParser
 ): ListObjectsV2CommandOutput => {
   const doc = domParser.parseFromString(xml, "text/xml");
   const results = doc.getElementsByTagName("ListBucketResult")[0];
   const contents = doc.getElementsByTagName("Contents");
-  const commonPrefixes = doc.getElementsByTagName("CommonPrefixes")[0];
   if (!results || !contents) throw new Error(`Invalid XML: ${xml}`);
+
+  const val = (el: Element | Document, name: string) =>
+    el.getElementsByTagName(name)[0]?.textContent;
+
   return {
     $metadata: {},
-    IsTruncated:
-      results.getElementsByTagName("IsTruncated")[0]?.textContent === "true",
+    IsTruncated: val(results, "IsTruncated") === "true",
     Contents: Array.from(contents).map((content) => ({
-      ChecksumAlgorithm: [
-        content.getElementsByTagName("ChecksumAlgorithm")[0]?.textContent!,
-      ],
-      ETag: content.getElementsByTagName("ETag")[0]?.textContent!,
-      Key: content.getElementsByTagName("Key")[0]?.textContent!,
-      LastModified: new Date(
-        content.getElementsByTagName("LastModified")[0]?.textContent!,
-      ),
+      ChecksumAlgorithm: [val(content, "ChecksumAlgorithm")!],
+      ETag: val(content, "ETag")!,
+      Key: val(content, "Key")!,
+      LastModified: new Date(val(content, "LastModified")!),
       Owner: {
-        DisplayName:
-          content.getElementsByTagName("DisplayName")[0]?.textContent!,
-        ID: content.getElementsByTagName("ID")[0]?.textContent!,
+        DisplayName: val(content, "DisplayName")!,
+        ID: val(content, "ID")!,
       },
-      Size: Number.parseInt(
-        content.getElementsByTagName("Size")[0]?.textContent!,
-      ),
-      StorageClass:
-        content.getElementsByTagName("StorageClass")[0]?.textContent!,
+      Size: parseInt(val(content, "Size")!),
+      StorageClass: val(content, "StorageClass")!,
     })),
-    Name: doc.getElementsByTagName("Name")[0]?.textContent!,
-    Prefix: doc.getElementsByTagName("Prefix")[0]?.textContent!,
-    Delimiter: doc.getElementsByTagName("Delimiter")[0]?.textContent!,
-    MaxKeys: Number.parseInt(
-      doc.getElementsByTagName("MaxKeys")[0]?.textContent!,
-    ),
+    Name: val(doc, "Name")!,
+    Prefix: val(doc, "Prefix")!,
+    Delimiter: val(doc, "Delimiter")!,
+    MaxKeys: parseInt(val(doc, "MaxKeys")!),
     CommonPrefixes: Array.from(
-      commonPrefixes ? commonPrefixes.getElementsByTagName("Prefix") : [],
-      (prefix) => ({
-        Prefix: prefix?.textContent!,
-      }),
-    ),
-    EncodingType: doc.getElementsByTagName("EncodingType")[0]?.textContent!,
-    KeyCount: Number.parseInt(
-      doc.getElementsByTagName("KeyCount")[0]?.textContent!,
-    ),
-    ContinuationToken:
-      doc.getElementsByTagName("ContinuationToken")[0]?.textContent!,
-    NextContinuationToken: doc.getElementsByTagName("NextContinuationToken")[0]
-      ?.textContent!,
-    StartAfter: doc.getElementsByTagName("StartAfter")[0]?.textContent!,
+      doc
+        .getElementsByTagName("CommonPrefixes")[0]
+        ?.getElementsByTagName("Prefix") || []
+    ).map((prefix) => ({ Prefix: prefix.textContent! })),
+    EncodingType: val(doc, "EncodingType")!,
+    KeyCount: parseInt(val(doc, "KeyCount")!),
+    ContinuationToken: val(doc, "ContinuationToken")!,
+    NextContinuationToken: val(doc, "NextContinuationToken")!,
+    StartAfter: val(doc, "StartAfter")!,
   };
 };
