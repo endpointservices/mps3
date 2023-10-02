@@ -1,6 +1,14 @@
 import { OMap } from "OMap";
 import { JSONValue, DeleteValue, uuid } from "./types";
-import { UseStore, get, set, del, keys } from "idb-keyval";
+import {
+  UseStore,
+  getMany,
+  get,
+  set,
+  setMany,
+  delMany,
+  keys,
+} from "idb-keyval";
 
 export type Operation = Promise<unknown>;
 
@@ -24,9 +32,13 @@ export class OperationQueue {
       this.lastIndex++;
       const key = `entry-${this.lastIndex.toString().padStart(PADDING, "0")}`;
       (<any>write)[this.session] = this.lastIndex;
-      await set(
-        key,
-        [...values.entries()].map(([url, val]) => [url.toString(), val]),
+      await setMany(
+        [
+          [
+            key,
+            [...values.entries()].map(([url, val]) => [url.toString(), val]),
+          ],
+        ],
         this.db
       );
     }
@@ -51,8 +63,7 @@ export class OperationQueue {
       this.operationLabels.delete(label);
       if (this.db) {
         const index = (<any>operation)[this.session];
-        await del(`entry-${index}`, this.db);
-        await del(`label-${index}`, this.db);
+        await delMany([`entry-${index}`, `label-${index}`], this.db);
       }
     }
   }
@@ -67,8 +78,7 @@ export class OperationQueue {
     this.proposedOperations.delete(operation);
     if (this.db) {
       const index = (<any>operation)[this.session];
-      await del(`entry-${index}`, this.db);
-      await del(`label-${index}`, this.db);
+      await delMany([`entry-${index}`, `label-${index}`], this.db);
     }
   }
 
@@ -92,16 +102,15 @@ export class OperationQueue {
     this.lastIndex = 0;
 
     const allKeys: string[] = await keys(this.db);
-    const entries = allKeys
+    const entryKeys = allKeys
       .filter((key: any) => key.startsWith("entry-"))
       .sort();
+    const entryValues = await getMany(entryKeys, this.db);
 
-    for (const key of entries) {
+    for (let i = 0; i < entryKeys.length; i++) {
+      const key = entryKeys[i];
       const index = parseInt(key.split("-")[1]);
-      const entry = await get<[string, JSONValue | DeleteValue][]>(
-        key,
-        this.db
-      );
+      const entry = entryValues[i];
       const label = await get<string>(`label-${index}`, this.db);
       if (!entry) continue;
 
