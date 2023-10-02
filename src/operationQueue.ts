@@ -1,5 +1,5 @@
 import { OMap } from "OMap";
-import { JSONValue, DeleteValue, uuid } from "./types";
+import { JSONValue, DeleteValue, uuid, ResolvedRef } from "./types";
 import {
   UseStore,
   getMany,
@@ -16,8 +16,10 @@ const PADDING = 6;
 
 export class OperationQueue {
   private session = uuid();
-  proposedOperations: Map<Operation, Map<URL, JSONValue | DeleteValue>> =
-    new Map();
+  proposedOperations: Map<
+    Operation,
+    Map<ResolvedRef, JSONValue | DeleteValue>
+  > = new Map();
   operationLabels: Map<string, Operation> = new Map();
   private db?: UseStore;
   private lastIndex: number = 0;
@@ -26,7 +28,10 @@ export class OperationQueue {
     this.db = store;
   }
 
-  async propose(write: Operation, values: Map<URL, JSONValue | DeleteValue>) {
+  async propose(
+    write: Operation,
+    values: Map<ResolvedRef, JSONValue | DeleteValue>
+  ) {
     this.proposedOperations.set(write, values);
     if (this.db) {
       this.lastIndex++;
@@ -69,7 +74,6 @@ export class OperationQueue {
   }
 
   async cancel(operation: Operation) {
-    let keyToDelete: string | undefined;
     this.operationLabels.forEach((value, key) => {
       if (value === operation) {
         this.operationLabels.delete(key);
@@ -82,10 +86,12 @@ export class OperationQueue {
     }
   }
 
-  flatten(): OMap<URL, JSONValue | undefined> {
-    const mask = new OMap<URL, JSONValue | undefined>((a) => a.toString());
+  flatten(): OMap<ResolvedRef, JSONValue | undefined> {
+    const mask = new OMap<ResolvedRef, JSONValue | undefined>((a) =>
+      a.toString()
+    );
     this.proposedOperations.forEach((values) => {
-      values.forEach((value: any, ref: URL) => {
+      values.forEach((value: any, ref: ResolvedRef) => {
         mask.set(ref, value);
       });
     });
@@ -94,7 +100,7 @@ export class OperationQueue {
 
   async restore(
     store: UseStore,
-    schedule: (write: Map<URL, JSONValue | DeleteValue>) => Operation
+    schedule: (write: Map<ResolvedRef, JSONValue | DeleteValue>) => Operation
   ) {
     this.db = store;
     this.proposedOperations.clear();
@@ -113,11 +119,7 @@ export class OperationQueue {
       const entry = entryValues[i];
       const label = await get<string>(`label-${index}`, this.db);
       if (!entry) continue;
-
-      const entries: [URL, JSONValue | DeleteValue][] = entry.map(
-        ([url, val]) => [new URL(url), val]
-      );
-      const values = new Map<URL, JSONValue | DeleteValue>(entries);
+      const values = new Map<ResolvedRef, JSONValue | DeleteValue>(entry);
       const op = schedule(values);
       (<any>op)[this.session] = index;
       this.proposedOperations.set(op, values);

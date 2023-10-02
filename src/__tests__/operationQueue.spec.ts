@@ -1,7 +1,6 @@
 import { expect, test, describe } from "bun:test";
 import { OperationQueue } from "../operationQueue";
-import { OMap } from "../OMap";
-import { JSONValue, uuid } from "types";
+import { JSONValue, ResolvedRef, uuid } from "types";
 import { createStore } from "idb-keyval";
 import "fake-indexeddb/auto";
 
@@ -9,8 +8,11 @@ describe("operation_queue", () => {
   test("Proposed ops appear in mask", () => {
     const q = new OperationQueue();
     const op = Promise.resolve("a");
-    const values = new Map<URL, JSONValue>();
-    const key = new URL("https://example.com/foo");
+    const values = new Map<ResolvedRef, JSONValue>();
+    const key = {
+      key: "foo",
+      bucket: "bar",
+    };
     values.set(key, "b");
     q.propose(op, values);
     expect(q.flatten().get(key)).toBe("b");
@@ -19,8 +21,11 @@ describe("operation_queue", () => {
   test("Proposed ops can be labelled and confirmed", () => {
     const q = new OperationQueue();
     const op = Promise.resolve("a");
-    const values = new Map<URL, JSONValue>();
-    const key = new URL("https://example.com/foo");
+    const values = new Map<ResolvedRef, JSONValue>();
+    const key = {
+      key: "foo",
+      bucket: "bar",
+    };
     values.set(key, "b");
     q.propose(op, values);
     expect(q.flatten().get(key)).toBe("b");
@@ -32,8 +37,11 @@ describe("operation_queue", () => {
   test("Proposed ops can be labelled and cancelled", () => {
     const q = new OperationQueue();
     const op = Promise.resolve("a");
-    const values = new Map<URL, JSONValue>();
-    const key = new URL("https://example.com/foo");
+    const values = new Map<ResolvedRef, JSONValue>();
+    const key = {
+      key: "foo",
+      bucket: "bar",
+    };
     values.set(key, "b");
     q.propose(op, values);
     expect(q.flatten().get(key)).toBe("b");
@@ -44,7 +52,10 @@ describe("operation_queue", () => {
   test("Order of operations is preserved after confirmations", async () => {
     const q = new OperationQueue();
 
-    const key = new URL("https://example.com/");
+    const key = {
+      key: "foo",
+      bucket: "bar",
+    };
     const totalOps = 100;
 
     // Propose and label 100 operations
@@ -67,8 +78,11 @@ describe("operation_queue", () => {
     const store = createStore(uuid(), uuid());
     const q = new OperationQueue(store);
     const op = Promise.resolve("a");
-    const values = new Map<URL, JSONValue>();
-    const key = new URL("https://example.com/foo");
+    const values = new Map<ResolvedRef, JSONValue>();
+    const key = {
+      key: "foo",
+      bucket: "bar",
+    };
     values.set(key, "b");
     q.propose(op, values);
 
@@ -87,8 +101,11 @@ describe("operation_queue", () => {
     const store = createStore(uuid(), uuid());
     const q = new OperationQueue(store);
     const op = Promise.resolve("a");
-    const values = new Map<URL, JSONValue>();
-    const key = new URL("https://example.com/foo");
+    const values = new Map<ResolvedRef, JSONValue>();
+    const key = {
+      key: "foo",
+      bucket: "bar",
+    };
     values.set(key, "b");
     q.propose(op, values);
     q.label(op, "a");
@@ -105,7 +122,10 @@ describe("operation_queue", () => {
     const store = createStore(uuid(), uuid());
     const q = new OperationQueue(store);
 
-    const key = new URL("https://example.com/");
+    const key = {
+      key: "foo",
+      bucket: "bar",
+    };
     const totalOps = 100;
 
     // Propose and label 100 operations

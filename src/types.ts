@@ -24,8 +24,6 @@ export type VersionId = string;
 export const uuid = (): UUID => crypto.randomUUID();
 export const eq = (a: Ref, b: Ref) => a.bucket === b.bucket && a.key === b.key;
 export const url = (ref: Ref): string => `${ref.bucket}/${ref.key}`;
-export const url2 = (endpoint: string, ref: Ref): URL =>
-  new URL(`${endpoint}/${ref.bucket}/${ref.key}`);
 export const parseUrl = (url: string): ResolvedRef => {
   const [bucket, ...key] = url.split("/");
   return {

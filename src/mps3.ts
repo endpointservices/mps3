@@ -11,15 +11,8 @@ import { AwsClient } from "aws4fetch";
 import { FetchFn, S3ClientLite } from "S3ClientLite";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
-import {
-  DeleteValue,
-  JSONValue,
-  Ref,
-  ResolvedRef,
-  url,
-  url2,
-  uuid,
-} from "types";
+import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
+import { createStore } from "idb-keyval";
 
 export interface MPS3Config {
   /** @internal */
@@ -64,6 +57,16 @@ export interface MPS3Config {
    * @defaultValue new window.DOMParser()
    */
   parser?: DOMParser;
+
+  /**
+   * Should the client write to upstreams?
+   */
+  online?: boolean;
+
+  /**
+   * Should the client write to upstreams?
+   */
+  offlineStorage?: boolean;
 }
 
 interface ResolvedMPS3Config extends MPS3Config {
@@ -72,6 +75,8 @@ interface ResolvedMPS3Config extends MPS3Config {
   useVersioning: boolean;
   useChecksum: boolean;
   pollFrequency: number;
+  online: boolean;
+  offlineStorage: boolean;
 }
 
 export class MPS3 {
@@ -98,6 +103,8 @@ export class MPS3 {
       ...config,
       label: config.label || uuid().substring(0, 3),
       useChecksum: config.useChecksum === false ? false : true,
+      online: config.online === false ? false : true,
+      offlineStorage: config.online === false ? false : false,
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
       defaultManifest: {
@@ -133,7 +140,7 @@ export class MPS3 {
     }
 
     this.s3ClientLite = new S3ClientLite(
-      fetchFn,
+      this.config.online ? fetchFn : () => new Promise(() => {}),
       this.endpoint,
       config.parser || new DOMParser()
     );
@@ -141,7 +148,17 @@ export class MPS3 {
   /** @internal */
   getOrCreateManifest(ref: ResolvedRef): Manifest {
     if (!this.manifests.has(ref)) {
-      this.manifests.set(ref, new Manifest(this, ref));
+      let db = undefined;
+      if (this.config.offlineStorage) {
+        const dbName = `mps3-${ref.bucket}-${ref.key}`;
+        db = createStore(dbName, "v0");
+      }
+      this.manifests.set(
+        ref,
+        new Manifest(this, ref, {
+          db,
+        })
+      );
     }
     return this.manifests.get(ref)!;
   }
@@ -166,10 +183,9 @@ export class MPS3 {
     };
 
     const inflight = manifest.operation_queue.flatten();
-    const contentUrl = url2(this.endpoint, contentRef);
-    if (inflight.has(contentUrl)) {
-      console.log(`${this.config.label} get (cached) ${url(contentRef)}`);
-      return inflight.get(contentUrl);
+    if (inflight.has(contentRef)) {
+      console.log(`${this.config.label} get (cached) ${contentRef}`);
+      return inflight.get(contentRef);
     }
 
     const version = await manifest.getOptimisticVersion(contentRef);
@@ -294,7 +310,7 @@ export class MPS3 {
       manifests: ResolvedRef[];
     }
   ) {
-    const webValues: Map<URL, JSONValue | DeleteValue> = new Map();
+    const webValues: Map<ResolvedRef, JSONValue | DeleteValue> = new Map();
     const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
       new Promise(async (resolve, reject) => {
         const results = new Map<ResolvedRef, string | DeleteValue>();
@@ -302,7 +318,7 @@ export class MPS3 {
         values.forEach((value, contentRef) => {
           if (value !== undefined) {
             let version = this.config.useVersioning ? undefined : uuid(); // TODO timestamped versions
-            webValues.set(url2(this.endpoint, contentRef), value);
+            webValues.set(contentRef, value);
             contentOperations.push(
               this._putObject({
                 operation: "PUT_CONTENT",

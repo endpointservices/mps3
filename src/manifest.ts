@@ -9,10 +9,10 @@ import {
   VersionId,
   clone,
   url,
-  url2,
   uuid,
 } from "types";
 import { apply } from "json";
+import { UseStore } from "idb-keyval";
 
 interface FileState {
   version: string;
@@ -76,10 +76,31 @@ export class Manifest {
   authoritative_state = clone(INITIAL_STATE);
   optimistic_state = clone(INITIAL_STATE);
 
-  operation_queue = new OperationQueue();
+  operation_queue;
 
-  constructor(public service: MPS3, public ref: ResolvedRef, options?: {}) {
-    console.log("New manifest", ref);
+  constructor(
+    public service: MPS3,
+    public ref: ResolvedRef,
+    options: {
+      db?: UseStore;
+    } = {}
+  ) {
+    console.log("Create manifest", url(ref));
+    this.operation_queue = new OperationQueue(options.db);
+    if (options.db) {
+      /*
+      this.operation_queue.restore(
+        options.db,
+        (write: Map<ResolvedRef, JSONValue | DeleteValue>) => {
+          // TODO: we nee
+
+          // this.updateContent;
+          //this.service._putAll(write);
+          //service.put;
+          return new Promise(() => {});
+        }
+      );*/
+    }
   }
   observeVersionId(versionId: VersionId) {
     this.operation_queue.confirm(versionId);
@@ -222,16 +243,16 @@ export class Manifest {
     }
 
     // calculate which values are set by optimistic updates
-    const mask: OMap<URL, JSONValue | DeleteValue> =
+    const mask: OMap<ResolvedRef, JSONValue | DeleteValue> =
       this.operation_queue.flatten();
 
     this.subscribers.forEach(async (subscriber) => {
-      if (mask.has(url2(this.service.endpoint, subscriber.ref))) {
+      if (mask.has(subscriber.ref)) {
         // console.log("mask", url(subscriber.ref));
         subscriber.notify(
           this.service.config.label,
           "local",
-          Promise.resolve(mask.get(url2(this.service.endpoint, subscriber.ref)))
+          Promise.resolve(mask.get(subscriber.ref))
         );
       } else {
         const fileState: FileState | null | undefined =
@@ -260,8 +281,8 @@ export class Manifest {
   }
 
   async updateContent(
-    values: Map<URL, JSONValue | DeleteValue>,
-    write: Promise<Map<ResolvedRef, string | DeleteValue>>
+    values: Map<ResolvedRef, JSONValue | DeleteValue>,
+    write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>
   ) {
     this.operation_queue.propose(write, values);
     try {

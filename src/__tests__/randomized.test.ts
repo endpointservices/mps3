@@ -10,10 +10,12 @@ import {
 import { MPS3, MPS3Config } from "mps3";
 import { CentralisedOfflineFirstCausalSystem } from "./consistency";
 import { DOMParser } from "@xmldom/xmldom";
+import { uuid } from "types";
+import "fake-indexeddb/auto";
 
 describe("mps3", () => {
   let s3: S3;
-  let session = Math.random().toString(16).substring(2, 7);
+  let session = uuid().substring(32);
   const stableConfig = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
@@ -31,13 +33,6 @@ describe("mps3", () => {
       secretAccessKey: "ZOAmumEzdsUUcVlQ",
     },
   };
-
-  fetch("localhost:8474/proxies/minio", {
-    method: "POST",
-    body: JSON.stringify({
-      enabled: Math.random() > 0.5,
-    }),
-  });
 
   const setOnline = async (state: boolean) => {
     fetch("localhost:8474/proxies/minio", {
