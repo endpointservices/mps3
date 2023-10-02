@@ -455,6 +455,7 @@ export class MPS3 {
 }
 /** @internal */
 async function sha256(message: string) {
+  // TODO: this code is actually already in aws4fetch
   // encode as UTF-8
   const msgBuffer = new TextEncoder().encode(message);
 
