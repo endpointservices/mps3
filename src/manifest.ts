@@ -12,7 +12,7 @@ import {
   url2,
   uuid,
 } from "types";
-import { apply } from "json-merge-patch";
+import { apply } from "json";
 
 interface FileState {
   version: string;
