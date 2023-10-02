@@ -7,6 +7,7 @@ import {
   JSONValue,
   ResolvedRef,
   VersionId,
+  clone,
   url,
   url2,
   uuid,
@@ -28,7 +29,7 @@ export interface ManifestState {
   update: Merge;
 }
 
-const INITIAL_STATE: ManifestState = {
+const INITIAL_STATE: ManifestState & JSONValue = {
   previous: ".",
   files: {},
   update: {},
@@ -39,18 +40,14 @@ interface HttpCacheEntry<T> {
   data: T;
 }
 
-export class Subscriber {
-  ref: ResolvedRef;
-  handler: (value: any) => void;
-  lastVersion?: VersionId;
+class Subscriber {
   queue = Promise.resolve();
+
   constructor(
-    ref: ResolvedRef,
-    handler: (value: JSONValue | DeleteValue) => void
-  ) {
-    this.ref = ref;
-    this.handler = handler;
-  }
+    public ref: ResolvedRef,
+    public handler: (value: JSONValue | DeleteValue) => void,
+    public lastVersion?: VersionId
+  ) {}
 
   notify(
     label: string,
@@ -60,8 +57,7 @@ export class Subscriber {
     this.queue = this.queue
       .then(() => content)
       .then((response) => {
-        if (version === this.lastVersion) return;
-        else {
+        if (version !== this.lastVersion) {
           console.log(`${label} NOTIFY ${url(this.ref)} ${version}`);
           this.lastVersion = version;
           this.handler(response);
@@ -71,23 +67,19 @@ export class Subscriber {
 }
 
 export class Manifest {
-  service: MPS3;
-  ref: ResolvedRef;
   subscribers = new Set<Subscriber>();
   poller?: Timer;
   cache?: HttpCacheEntry<ManifestState>;
   pollInProgress: boolean = false;
 
   authoritative_key: string = "";
-  authoritative_state = JSON.parse(JSON.stringify(INITIAL_STATE));
-  optimistic_state = JSON.parse(JSON.stringify(INITIAL_STATE));
+  authoritative_state = clone(INITIAL_STATE);
+  optimistic_state = clone(INITIAL_STATE);
 
   operation_queue = new OperationQueue();
 
-  constructor(service: MPS3, ref: ResolvedRef, options?: {}) {
+  constructor(public service: MPS3, public ref: ResolvedRef, options?: {}) {
     console.log("New manifest", ref);
-    this.service = service;
-    this.ref = ref;
   }
   observeVersionId(versionId: VersionId) {
     this.operation_queue.confirm(versionId);
@@ -122,8 +114,8 @@ export class Manifest {
 
       // Play the missing patches over the base state, oldest first
       if (objects.Contents === undefined) {
-        this.authoritative_state = JSON.parse(JSON.stringify(INITIAL_STATE));
-        this.optimistic_state = JSON.parse(JSON.stringify(INITIAL_STATE));
+        this.authoritative_state = clone(INITIAL_STATE);
+        this.optimistic_state = clone(INITIAL_STATE);
         return this.authoritative_state;
       }
 

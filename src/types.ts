@@ -33,3 +33,5 @@ export const parseUrl = (url: string): ResolvedRef => {
     key: key.join("/"),
   };
 };
+
+export const clone = (state: JSONValue) => JSON.parse(JSON.stringify(state));
