@@ -184,7 +184,7 @@ export class MPS3 {
 
     const inflight = manifest.operation_queue.flatten();
     if (inflight.has(contentRef)) {
-      console.log(`${this.config.label} get (cached) ${contentRef}`);
+      console.log(`${this.config.label} GET (cached) ${contentRef} ${inflight.get(contentRef)}`);
       return inflight.get(contentRef);
     }
 

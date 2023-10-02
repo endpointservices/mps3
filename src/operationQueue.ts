@@ -1,5 +1,5 @@
 import { OMap } from "OMap";
-import { JSONValue, DeleteValue, uuid, ResolvedRef } from "./types";
+import { JSONValue, DeleteValue, uuid, ResolvedRef, url } from "./types";
 import {
   UseStore,
   getMany,
@@ -87,9 +87,7 @@ export class OperationQueue {
   }
 
   flatten(): OMap<ResolvedRef, JSONValue | undefined> {
-    const mask = new OMap<ResolvedRef, JSONValue | undefined>((a) =>
-      a.toString()
-    );
+    const mask = new OMap<ResolvedRef, JSONValue | undefined>(url);
     this.proposedOperations.forEach((values) => {
       values.forEach((value: any, ref: ResolvedRef) => {
         mask.set(ref, value);
