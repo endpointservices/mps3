@@ -179,7 +179,7 @@ export class MPS3 {
       key: typeof ref === "string" ? ref : ref.key,
     };
 
-    const inflight = manifest.operation_queue.flatten();
+    const inflight = await manifest.operation_queue.flatten();
     if (inflight.has(contentRef)) {
       console.log(
         `${this.config.label} GET (cached) ${contentRef} ${inflight.get(
@@ -279,6 +279,7 @@ export class MPS3 {
     options: {
       manifests?: Ref[];
       await?: "local" | "remote";
+      isLoad?: boolean;
     } = {}
   ) {
     const resolvedValues = new Map<ResolvedRef, JSONValue | DeleteValue>(
@@ -312,6 +313,7 @@ export class MPS3 {
     options: {
       manifests: ResolvedRef[];
       await: "local" | "remote";
+      isLoad?: boolean;
     }
   ) {
     const webValues: Map<ResolvedRef, JSONValue | DeleteValue> = new Map();
@@ -362,6 +364,7 @@ export class MPS3 {
         const manifest = this.getOrCreateManifest(ref);
         return manifest.updateContent(webValues, contentVersions, {
           await: options.await,
+          isLoad: options.isLoad === true,
         });
       })
     );

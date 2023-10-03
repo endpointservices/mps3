@@ -94,6 +94,7 @@ export class Manifest {
           await this.service._putAll(values, {
             manifests: [this.ref],
             await: "local",
+            isLoad: true,
           });
         } else {
           // the content was uploaded, but we don't know if the manifest was
@@ -105,6 +106,7 @@ export class Manifest {
             ),
             {
               await: "local",
+              isLoad: true,
             }
           );
         }
@@ -253,7 +255,7 @@ export class Manifest {
 
     // calculate which values are set by optimistic updates
     const mask: OMap<ResolvedRef, JSONValue | DeleteValue> =
-      this.operation_queue.flatten();
+      await this.operation_queue.flatten();
 
     this.subscribers.forEach(async (subscriber) => {
       if (mask.has(subscriber.ref)) {
@@ -294,9 +296,14 @@ export class Manifest {
     write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>,
     options: {
       await: "local" | "remote";
+      isLoad: boolean;
     }
   ): Promise<unknown> {
-    const localPersistence = this.operation_queue.propose(write, values);
+    const localPersistence = this.operation_queue.propose(
+      write,
+      values,
+      options.isLoad
+    );
     const remotePersistency = localPersistence.then(async () => {
       try {
         const update = await write;
@@ -321,7 +328,7 @@ export class Manifest {
         const manifest_version =
           time.upperTimeBound() + "_" + uuid().substring(0, 2);
         const manifest_key = this.ref.key + "@" + manifest_version;
-        this.operation_queue.label(write, manifest_version);
+        this.operation_queue.label(write, manifest_version, options.isLoad);
 
         await this.service._putObject({
           operation: "PUT_MANIFEST",
@@ -345,7 +352,7 @@ export class Manifest {
         return response;
       } catch (err) {
         console.error(err);
-        this.operation_queue.cancel(write);
+        this.operation_queue.cancel(write, options.isLoad);
         throw err;
       }
     });

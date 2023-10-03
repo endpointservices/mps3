@@ -1,14 +1,6 @@
 import { OMap } from "OMap";
 import { JSONValue, DeleteValue, uuid, ResolvedRef, url } from "./types";
-import {
-  UseStore,
-  getMany,
-  get,
-  set,
-  setMany,
-  delMany,
-  keys,
-} from "idb-keyval";
+import { UseStore, getMany, get, set, delMany, keys } from "idb-keyval";
 
 export type Operation = Promise<unknown>;
 
@@ -23,6 +15,7 @@ export class OperationQueue {
   operationLabels: Map<string, Operation> = new Map();
   private db?: UseStore;
   private lastIndex: number = 0;
+  private load?: Promise<unknown> = undefined;
 
   constructor(store?: UseStore) {
     this.db = store;
@@ -30,10 +23,12 @@ export class OperationQueue {
 
   async propose(
     write: Operation,
-    values: Map<ResolvedRef, JSONValue | DeleteValue>
+    values: Map<ResolvedRef, JSONValue | DeleteValue>,
+    isLoad: boolean = false
   ) {
     this.proposedOperations.set(write, values);
     if (this.db) {
+      if (this.load && !isLoad) await this.load;
       this.lastIndex++;
       const key = `entry-${this.lastIndex.toString().padStart(PADDING, "0")}`;
       (<any>write)[this.session] = this.lastIndex;
@@ -46,10 +41,11 @@ export class OperationQueue {
     }
   }
 
-  async label(write: Operation, label: string) {
+  async label(write: Operation, label: string, isLoad: boolean = false) {
     this.operationLabels.set(label, write);
 
     if (this.db) {
+      if (this.load && !isLoad) await this.load;
       const index = (<any>write)[this.session];
 
       if (index === undefined)
@@ -60,19 +56,20 @@ export class OperationQueue {
     }
   }
 
-  async confirm(label: string) {
+  async confirm(label: string, isLoad: boolean = false) {
     if (this.operationLabels.has(label)) {
       const operation = this.operationLabels.get(label)!;
       this.proposedOperations.delete(operation);
       this.operationLabels.delete(label);
       if (this.db) {
+        if (this.load && !isLoad) await this.load;
         const index = (<any>operation)[this.session];
         await delMany([`entry-${index}`, `label-${index}`], this.db);
       }
     }
   }
 
-  async cancel(operation: Operation) {
+  async cancel(operation: Operation, isLoad: boolean = false) {
     this.operationLabels.forEach((value, key) => {
       if (value === operation) {
         this.operationLabels.delete(key);
@@ -80,12 +77,14 @@ export class OperationQueue {
     });
     this.proposedOperations.delete(operation);
     if (this.db) {
+      if (this.load && !isLoad) await this.load;
       const index = (<any>operation)[this.session];
       await delMany([`entry-${index}`, `label-${index}`], this.db);
     }
   }
 
-  flatten(): OMap<ResolvedRef, JSONValue | undefined> {
+  async flatten(): Promise<OMap<ResolvedRef, JSONValue | undefined>> {
+    if (this.load) await this.load;
     const mask = new OMap<ResolvedRef, JSONValue | undefined>(url);
     this.proposedOperations.forEach((values) => {
       values.forEach((value: any, ref: ResolvedRef) => {
@@ -102,35 +101,39 @@ export class OperationQueue {
       label?: string
     ) => Promise<unknown>
   ) {
-    this.db = store;
-    this.proposedOperations.clear();
-    this.operationLabels.clear();
-    this.lastIndex = 0;
+    this.load = new Promise(async (resolve) => {
+      this.db = store;
+      this.proposedOperations.clear();
+      this.operationLabels.clear();
+      this.lastIndex = 0;
 
-    const allKeys: string[] = await keys(this.db);
-    const entryKeys = allKeys
-      .filter((key: any) => key.startsWith("entry-"))
-      .sort();
-    const entryValues = await getMany(entryKeys, this.db);
+      const allKeys: string[] = await keys(this.db);
+      const entryKeys = allKeys
+        .filter((key: any) => key.startsWith("entry-"))
+        .sort();
+      const entryValues = await getMany(entryKeys, this.db);
 
-    for (let i = 0; i < entryKeys.length; i++) {
-      const index = parseInt(entryKeys[i].split("-")[1]);
-      this.lastIndex = Math.max(this.lastIndex, index);
-    }
+      for (let i = 0; i < entryKeys.length; i++) {
+        const index = parseInt(entryKeys[i].split("-")[1]);
+        this.lastIndex = Math.max(this.lastIndex, index);
+      }
 
-    for (let i = 0; i < entryKeys.length; i++) {
-      const key = entryKeys[i];
-      const index = parseInt(key.split("-")[1]);
-      const entry = entryValues[i].map(([ref, val]: [string, any]) => [
-        JSON.parse(ref),
-        val,
-      ]);
-      const label = await get<string>(`label-${index}`, this.db);
-      if (!entry) continue;
-      const values = new Map<ResolvedRef, JSONValue | DeleteValue>(entry);
-      await schedule(values, label);
-      // delete entries after confirmation
-      await delMany([`entry-${index}`, `label-${index}`], this.db);
-    }
+      for (let i = 0; i < entryKeys.length; i++) {
+        const key = entryKeys[i];
+        const index = parseInt(key.split("-")[1]);
+        const entry = entryValues[i].map(([ref, val]: [string, any]) => [
+          JSON.parse(ref),
+          val,
+        ]);
+        const label = await get<string>(`label-${index}`, this.db);
+        if (!entry) continue;
+        const values = new Map<ResolvedRef, JSONValue | DeleteValue>(entry);
+        await schedule(values, label);
+        // delete entries after confirmation
+        await delMany([`entry-${index}`, `label-${index}`], this.db);
+      }
+      resolve(undefined);
+    });
+    return this.load;
   }
 }

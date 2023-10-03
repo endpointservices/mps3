@@ -139,10 +139,7 @@ describe("mps3", () => {
           label: "restore-1",
           online: false,
         });
-        // TODO kill this
-        restored.getOrCreateManifest(restored.config.defaultManifest);
 
-        await new Promise((resolve) => setTimeout(resolve, 200)); // TODO Problem with async here
         expect(await restored.get("restore-1")).toBe("foo");
       });
     })
