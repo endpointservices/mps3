@@ -1,18 +1,36 @@
 import { expect, test, describe } from "bun:test";
 import { OperationQueue } from "../operationQueue";
-import { JSONValue, ResolvedRef, uuid } from "types";
+import { DeleteValue, JSONValue, ResolvedRef, uuid } from "types";
 import { createStore } from "idb-keyval";
 import "fake-indexeddb/auto";
+
+const requeue = (
+  q: OperationQueue
+): ((
+  values: Map<ResolvedRef, JSONValue | DeleteValue>,
+  label?: string
+) => Promise<void>) => {
+  return async (
+    values: Map<ResolvedRef, JSONValue | DeleteValue>,
+    label?: string
+  ) => {
+    const op = Promise.resolve("op");
+    await q.propose(op, values);
+    if (label) await q.label(op, label);
+  };
+};
+
+const DEFAULT_KEY = {
+  key: "foo",
+  bucket: "bar",
+};
 
 describe("operation_queue", () => {
   test("Proposed ops appear in mask", () => {
     const q = new OperationQueue();
     const op = Promise.resolve("a");
     const values = new Map<ResolvedRef, JSONValue>();
-    const key = {
-      key: "foo",
-      bucket: "bar",
-    };
+    const key = DEFAULT_KEY;
     values.set(key, "b");
     q.propose(op, values);
     expect(q.flatten().get(key)).toBe("b");
@@ -22,10 +40,7 @@ describe("operation_queue", () => {
     const q = new OperationQueue();
     const op = Promise.resolve("a");
     const values = new Map<ResolvedRef, JSONValue>();
-    const key = {
-      key: "foo",
-      bucket: "bar",
-    };
+    const key = DEFAULT_KEY;
     values.set(key, "b");
     q.propose(op, values);
     expect(q.flatten().get(key)).toBe("b");
@@ -38,10 +53,7 @@ describe("operation_queue", () => {
     const q = new OperationQueue();
     const op = Promise.resolve("a");
     const values = new Map<ResolvedRef, JSONValue>();
-    const key = {
-      key: "foo",
-      bucket: "bar",
-    };
+    const key = DEFAULT_KEY;
     values.set(key, "b");
     q.propose(op, values);
     expect(q.flatten().get(key)).toBe("b");
@@ -52,10 +64,7 @@ describe("operation_queue", () => {
   test("Order of operations is preserved after confirmations", async () => {
     const q = new OperationQueue();
 
-    const key = {
-      key: "foo",
-      bucket: "bar",
-    };
+    const key = DEFAULT_KEY;
     const totalOps = 100;
 
     // Propose and label 100 operations
@@ -79,22 +88,16 @@ describe("operation_queue", () => {
     const q = new OperationQueue(store);
     const op = Promise.resolve("a");
     const values = new Map<ResolvedRef, JSONValue>();
-    const key = {
-      key: "foo",
-      bucket: "bar",
-    };
+    const key = DEFAULT_KEY;
     values.set(key, "b");
     q.propose(op, values);
 
+    expect(q.flatten().get(key)).toBe("b");
     const restored = new OperationQueue();
-    await restored.restore(store, (val) => op);
+    await restored.restore(store, requeue(restored));
 
+    console.log(restored.flatten());
     expect(restored.flatten().get(key)).toBe("b");
-
-    restored.label(op, "a");
-    restored.confirm("a");
-
-    expect(restored.flatten().get(key)).toBe(undefined);
   });
 
   test("Labelled operations can be stored to disk, restored and confirmed", async () => {
@@ -102,16 +105,13 @@ describe("operation_queue", () => {
     const q = new OperationQueue(store);
     const op = Promise.resolve("a");
     const values = new Map<ResolvedRef, JSONValue>();
-    const key = {
-      key: "foo",
-      bucket: "bar",
-    };
+    const key = DEFAULT_KEY;
     values.set(key, "b");
     q.propose(op, values);
     q.label(op, "a");
 
     const restored = new OperationQueue();
-    await restored.restore(store, (val) => op);
+    await restored.restore(store, requeue(restored));
 
     expect(restored.flatten().get(key)).toBe("b");
     restored.confirm("a");
@@ -122,10 +122,7 @@ describe("operation_queue", () => {
     const store = createStore(uuid(), uuid());
     const q = new OperationQueue(store);
 
-    const key = {
-      key: "foo",
-      bucket: "bar",
-    };
+    const key = DEFAULT_KEY;
     const totalOps = 100;
 
     // Propose and label 100 operations
@@ -137,7 +134,7 @@ describe("operation_queue", () => {
     }
 
     const restored = new OperationQueue();
-    await restored.restore(store, () => Promise.resolve(undefined));
+    await restored.restore(store, requeue(restored));
 
     expect(restored.flatten().get(key)).toBe(totalOps - 1);
     // Confirm operations and check the decrement in flatten output

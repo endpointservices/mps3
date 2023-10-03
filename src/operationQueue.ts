@@ -41,7 +41,10 @@ export class OperationQueue {
         [
           [
             key,
-            [...values.entries()].map(([url, val]) => [url.toString(), val]),
+            [...values.entries()].map(([ref, val]) => [
+              JSON.stringify(ref),
+              val,
+            ]),
           ],
         ],
         this.db
@@ -101,7 +104,7 @@ export class OperationQueue {
     schedule: (
       write: Map<ResolvedRef, JSONValue | DeleteValue>,
       label?: string
-    ) => [Operation, boolean]
+    ) => Promise<unknown>
   ) {
     this.db = store;
     this.proposedOperations.clear();
@@ -117,19 +120,16 @@ export class OperationQueue {
     for (let i = 0; i < entryKeys.length; i++) {
       const key = entryKeys[i];
       const index = parseInt(key.split("-")[1]);
-      const entry = entryValues[i];
+      const entry = entryValues[i].map(([ref, val]: [string, any]) => [
+        JSON.parse(ref),
+        val,
+      ]);
       const label = await get<string>(`label-${index}`, this.db);
       if (!entry) continue;
       const values = new Map<ResolvedRef, JSONValue | DeleteValue>(entry);
-      const [op, keepstate] = schedule(values, label);
-      (<any>op)[this.session] = index;
-      this.proposedOperations.set(op, values);
-
-      if (label) {
-        this.label(op, label);
-      }
-
-      this.lastIndex = Math.max(this.lastIndex, index);
+      await schedule(values, label);
+      // delete entries after confirmation
+      await delMany([`entry-${index}`, `label-${index}`], this.db);
     }
   }
 }

@@ -88,20 +88,18 @@ export class Manifest {
     if (db) {
       this.operation_queue.restore(
         db,
-        (values: Map<ResolvedRef, JSONValue | DeleteValue>, label?: string): boolean => {
+        (values: Map<ResolvedRef, JSONValue | DeleteValue>, label?: string) => {
           if (!label) {
             // this write has not been attempted at all
             // we do a write from scratch
             this.service._putAll(values, {
               manifests: [this.ref],
-            })
-            return [false];
+            });
           } else {
             // the content was uploaded, but we don't know if the manifest was
+            // so we do a manifest write
+            this.updateContent(values, Promise.resolve(new Map<ResolvedRef, VersionId>([[this.ref, label]])));
           }
-
-          //this.service._putAll(values)
-          return new Promise(() => {});
         }
       );
     }
