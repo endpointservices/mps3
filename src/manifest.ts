@@ -88,7 +88,7 @@ export class Manifest {
     if (db) {
       this.operation_queue.restore(
         db,
-        (values: Map<ResolvedRef, JSONValue | DeleteValue>, label?: string) => {
+        async (values: Map<ResolvedRef, JSONValue | DeleteValue>, label?: string) => {
           if (!label) {
             // this write has not been attempted at all
             // we do a write from scratch
