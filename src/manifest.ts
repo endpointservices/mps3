@@ -81,7 +81,7 @@ export class Manifest {
   constructor(public service: MPS3, public ref: ResolvedRef) {
     console.log("Create manifest", url(ref));
   }
-  load(db: UseStore) {
+  async load(db: UseStore) {
     this.operation_queue.restore(
       db,
       async (
@@ -91,17 +91,21 @@ export class Manifest {
         if (!label) {
           // this write has not been attempted at all
           // we do a write from scratch
-          this.service._putAll(values, {
+          await this.service._putAll(values, {
             manifests: [this.ref],
+            await: "local",
           });
         } else {
           // the content was uploaded, but we don't know if the manifest was
           // so we do a manifest write
-          this.updateContent(
+          await this.updateContent(
             values,
             Promise.resolve(
               new Map<ResolvedRef, VersionId>([[this.ref, label]])
-            )
+            ),
+            {
+              await: "local",
+            }
           );
         }
       }
@@ -285,60 +289,70 @@ export class Manifest {
     this.pollInProgress = false;
   }
 
-  async updateContent(
+  updateContent(
     values: Map<ResolvedRef, JSONValue | DeleteValue>,
-    write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>
-  ) {
-    this.operation_queue.propose(write, values);
-    try {
-      const update = await write;
-      const state = await this.get();
-      state.previous = this.authoritative_key;
-      state.update = {
-        files: {},
-      };
+    write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>,
+    options: {
+      await: "local" | "remote";
+    }
+  ): Promise<unknown> {
+    const localPersistence = this.operation_queue.propose(write, values);
+    const remotePersistency = localPersistence.then(async () => {
+      try {
+        const update = await write;
+        const state = await this.get();
+        state.previous = this.authoritative_key;
+        state.update = {
+          files: {},
+        };
 
-      for (let [ref, version] of update) {
-        const fileUrl = url(ref);
-        if (version) {
-          const fileState = {
-            version: version,
-          };
-          state.update.files[fileUrl] = fileState;
-        } else {
-          state.update.files[fileUrl] = null;
+        for (let [ref, version] of update) {
+          const fileUrl = url(ref);
+          if (version) {
+            const fileState = {
+              version: version,
+            };
+            state.update.files[fileUrl] = fileState;
+          } else {
+            state.update.files[fileUrl] = null;
+          }
         }
+        // put versioned write
+        const manifest_version =
+          time.upperTimeBound() + "_" + uuid().substring(0, 2);
+        const manifest_key = this.ref.key + "@" + manifest_version;
+        this.operation_queue.label(write, manifest_version);
+
+        await this.service._putObject({
+          operation: "PUT_MANIFEST",
+          ref: {
+            key: manifest_key,
+            bucket: this.ref.bucket,
+          },
+          value: state,
+        });
+        // update pollers with write to known location
+        const response = await this.service._putObject({
+          operation: "PUT_POLL",
+          ref: {
+            key: this.ref.key,
+            bucket: this.ref.bucket,
+          },
+          value: this.authoritative_key, // indicates how far we need to look back
+        });
+
+        this.poll();
+        return response;
+      } catch (err) {
+        console.error(err);
+        this.operation_queue.cancel(write);
+        throw err;
       }
-      // put versioned write
-      const manifest_version =
-        time.upperTimeBound() + "_" + uuid().substring(0, 2);
-      const manifest_key = this.ref.key + "@" + manifest_version;
-      this.operation_queue.label(write, manifest_version);
-
-      await this.service._putObject({
-        operation: "PUT_MANIFEST",
-        ref: {
-          key: manifest_key,
-          bucket: this.ref.bucket,
-        },
-        value: state,
-      });
-      // update pollers with write to known location
-      const response = await this.service._putObject({
-        operation: "PUT_POLL",
-        ref: {
-          key: this.ref.key,
-          bucket: this.ref.bucket,
-        },
-        value: this.authoritative_key, // indicates how far we need to look back
-      });
-
-      this.poll();
-      return response;
-    } catch (err) {
-      console.error(err);
-      this.operation_queue.cancel(write);
-      throw err;
+    });
+    if (options.await === "local") {
+      return localPersistence;
+    } else {
+      return remotePersistency;
     }
   }
 

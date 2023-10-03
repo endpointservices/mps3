@@ -117,11 +117,10 @@ describe("mps3", () => {
         const writer = getClient({
           online: false,
         });
-        writer.put("offline", true);
-        // we can't await the promise because it is offline
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await writer.put("offline", true);
 
         const reader = getClient({
+          label: "other",
           online: true,
         });
         expect(await reader.get("offline")).toBe(undefined);
@@ -133,8 +132,7 @@ describe("mps3", () => {
           label: "restore-1",
           online: false,
         });
-        writer.put("restore-1", true);
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await writer.put("restore-1", "foo");
 
         console.log("Restore");
         const restored = getClient({
@@ -144,8 +142,8 @@ describe("mps3", () => {
         // TODO kill this
         restored.getOrCreateManifest(restored.config.defaultManifest);
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        expect(await restored.get("restore-1")).toBe(true);
+        await new Promise((resolve) => setTimeout(resolve, 200)); // TODO Problem with async here
+        expect(await restored.get("restore-1")).toBe("foo");
       });
     })
   );

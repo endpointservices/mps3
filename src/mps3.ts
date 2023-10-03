@@ -268,6 +268,7 @@ export class MPS3 {
     value: JSONValue | DeleteValue,
     options: {
       manifests?: Ref[];
+      await?: "local" | "remote";
     } = {}
   ) {
     return this.putAll(new Map([[ref, value]]), options);
@@ -277,6 +278,7 @@ export class MPS3 {
     values: Map<string | Ref, JSONValue | DeleteValue>,
     options: {
       manifests?: Ref[];
+      await?: "local" | "remote";
     } = {}
   ) {
     const resolvedValues = new Map<ResolvedRef, JSONValue | DeleteValue>(
@@ -301,6 +303,7 @@ export class MPS3 {
 
     return this._putAll(resolvedValues, {
       manifests,
+      await: options.await || this.config.online ? "remote" : "local",
     });
   }
   /** @internal */
@@ -308,6 +311,7 @@ export class MPS3 {
     values: Map<ResolvedRef, JSONValue | DeleteValue>,
     options: {
       manifests: ResolvedRef[];
+      await: "local" | "remote";
     }
   ) {
     const webValues: Map<ResolvedRef, JSONValue | DeleteValue> = new Map();
@@ -356,7 +360,9 @@ export class MPS3 {
     return Promise.all(
       options.manifests.map((ref) => {
         const manifest = this.getOrCreateManifest(ref);
-        return manifest.updateContent(webValues, contentVersions);
+        return manifest.updateContent(webValues, contentVersions, {
+          await: options.await,
+        });
       })
     );
   }
