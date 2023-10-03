@@ -76,31 +76,36 @@ export class Manifest {
   authoritative_state = clone(INITIAL_STATE);
   optimistic_state = clone(INITIAL_STATE);
 
-  operation_queue;
+  operation_queue = new OperationQueue();
 
   constructor(
     public service: MPS3,
-    public ref: ResolvedRef,
-    options: {
-      db?: UseStore;
-    } = {}
+    public ref: ResolvedRef
   ) {
     console.log("Create manifest", url(ref));
-    this.operation_queue = new OperationQueue(options.db);
-    if (options.db) {
-      /*
+  }
+  load(db: UseStore) {
+    if (db) {
       this.operation_queue.restore(
-        options.db,
-        (write: Map<ResolvedRef, JSONValue | DeleteValue>) => {
-          // TODO: we nee
+        db,
+        (values: Map<ResolvedRef, JSONValue | DeleteValue>, label?: string): boolean => {
+          if (!label) {
+            // this write has not been attempted at all
+            // we do a write from scratch
+            this.service._putAll(values, {
+              manifests: [this.ref],
+            })
+            return [false];
+          } else {
+            // the content was uploaded, but we don't know if the manifest was
+          }
 
-          // this.updateContent;
-          //this.service._putAll(write);
-          //service.put;
+          //this.service._putAll(values)
           return new Promise(() => {});
         }
-      );*/
+      );
     }
+
   }
   observeVersionId(versionId: VersionId) {
     this.operation_queue.confirm(versionId);

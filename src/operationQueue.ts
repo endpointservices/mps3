@@ -98,7 +98,10 @@ export class OperationQueue {
 
   async restore(
     store: UseStore,
-    schedule: (write: Map<ResolvedRef, JSONValue | DeleteValue>) => Operation
+    schedule: (
+      write: Map<ResolvedRef, JSONValue | DeleteValue>,
+      label?: string
+    ) => [Operation, boolean]
   ) {
     this.db = store;
     this.proposedOperations.clear();
@@ -118,7 +121,7 @@ export class OperationQueue {
       const label = await get<string>(`label-${index}`, this.db);
       if (!entry) continue;
       const values = new Map<ResolvedRef, JSONValue | DeleteValue>(entry);
-      const op = schedule(values);
+      const [op, keepstate] = schedule(values, label);
       (<any>op)[this.session] = index;
       this.proposedOperations.set(op, values);
 

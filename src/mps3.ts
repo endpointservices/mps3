@@ -104,7 +104,7 @@ export class MPS3 {
       label: config.label || uuid().substring(0, 3),
       useChecksum: config.useChecksum === false ? false : true,
       online: config.online === false ? false : true,
-      offlineStorage: config.online === false ? false : false,
+      offlineStorage: config.online === false ? false : true,
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
       defaultManifest: {
@@ -153,12 +153,9 @@ export class MPS3 {
         const dbName = `mps3-${ref.bucket}-${ref.key}`;
         db = createStore(dbName, "v0");
       }
-      this.manifests.set(
-        ref,
-        new Manifest(this, ref, {
-          db,
-        })
-      );
+      const manifest = new Manifest(this, ref);
+      this.manifests.set(ref, new Manifest(this, ref));
+      // manifest.load(db);
     }
     return this.manifests.get(ref)!;
   }
@@ -184,7 +181,11 @@ export class MPS3 {
 
     const inflight = manifest.operation_queue.flatten();
     if (inflight.has(contentRef)) {
-      console.log(`${this.config.label} GET (cached) ${contentRef} ${inflight.get(contentRef)}`);
+      console.log(
+        `${this.config.label} GET (cached) ${contentRef} ${inflight.get(
+          contentRef
+        )}`
+      );
       return inflight.get(contentRef);
     }
 
@@ -278,8 +279,7 @@ export class MPS3 {
       manifests?: Ref[];
     } = {}
   ) {
-    const resolvedValues = new OMap<ResolvedRef, JSONValue | DeleteValue>(
-      url,
+    const resolvedValues = new Map<ResolvedRef, JSONValue | DeleteValue>(
       [...values].map(([ref, value]) => [
         {
           bucket:
@@ -305,7 +305,7 @@ export class MPS3 {
   }
   /** @internal */
   async _putAll(
-    values: OMap<ResolvedRef, JSONValue | DeleteValue>,
+    values: Map<ResolvedRef, JSONValue | DeleteValue>,
     options: {
       manifests: ResolvedRef[];
     }
