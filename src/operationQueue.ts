@@ -37,18 +37,12 @@ export class OperationQueue {
       this.lastIndex++;
       const key = `entry-${this.lastIndex.toString().padStart(PADDING, "0")}`;
       (<any>write)[this.session] = this.lastIndex;
-      await setMany(
-        [
-          [
-            key,
-            [...values.entries()].map(([ref, val]) => [
-              JSON.stringify(ref),
-              val,
-            ]),
-          ],
-        ],
+      await set(
+        key,
+        [...values.entries()].map(([ref, val]) => [JSON.stringify(ref), val]),
         this.db
       );
+      console.log(`STORE ${key} ${JSON.stringify([...values.entries()])}`);
     }
   }
 
@@ -60,7 +54,9 @@ export class OperationQueue {
 
       if (index === undefined)
         throw new Error("Cannot label an unproposed operation");
-      await set(`label-${index}`, label, this.db);
+      const key = `label-${index}`;
+      await set(key, label, this.db);
+      console.log(`STORE ${key}`);
     }
   }
 
@@ -118,6 +114,11 @@ export class OperationQueue {
     const entryValues = await getMany(entryKeys, this.db);
 
     for (let i = 0; i < entryKeys.length; i++) {
+      const index = parseInt(entryKeys[i].split("-")[1]);
+      this.lastIndex = Math.max(this.lastIndex, index);
+    }
+
+    for (let i = 0; i < entryKeys.length; i++) {
       const key = entryKeys[i];
       const index = parseInt(key.split("-")[1]);
       const entry = entryValues[i].map(([ref, val]: [string, any]) => [
@@ -131,5 +132,7 @@ export class OperationQueue {
       // delete entries after confirmation
       await delMany([`entry-${index}`, `label-${index}`], this.db);
     }
+
+    console.log("Finished restore", this.flatten());
   }
 }

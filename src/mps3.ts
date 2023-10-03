@@ -101,10 +101,10 @@ export class MPS3 {
   constructor(config: MPS3Config) {
     this.config = {
       ...config,
-      label: config.label || uuid().substring(0, 3),
+      label: config.label || "default",
       useChecksum: config.useChecksum === false ? false : true,
       online: config.online === false ? false : true,
-      offlineStorage: config.online === false ? false : true,
+      offlineStorage: config.offlineStorage === false ? false : true,
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
       defaultManifest: {
@@ -148,14 +148,13 @@ export class MPS3 {
   /** @internal */
   getOrCreateManifest(ref: ResolvedRef): Manifest {
     if (!this.manifests.has(ref)) {
-      let db = undefined;
-      if (this.config.offlineStorage) {
-        const dbName = `mps3-${ref.bucket}-${ref.key}`;
-        db = createStore(dbName, "v0");
-      }
       const manifest = new Manifest(this, ref);
-      this.manifests.set(ref, new Manifest(this, ref));
-      // manifest.load(db);
+      this.manifests.set(ref, manifest);
+      if (this.config.offlineStorage) {
+        const dbName = `mps3-${this.config.label}-${ref.bucket}-${ref.key}`;
+        const db = createStore(dbName, "v0");
+        manifest.load(db);
+      }
     }
     return this.manifests.get(ref)!;
   }

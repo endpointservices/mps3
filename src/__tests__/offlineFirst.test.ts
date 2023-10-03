@@ -10,6 +10,7 @@ import {
 import { MPS3, MPS3Config } from "mps3";
 import { DOMParser } from "@xmldom/xmldom";
 import { uuid } from "types";
+import "fake-indexeddb/auto";
 
 describe("mps3", () => {
   let s3: S3;
@@ -127,6 +128,7 @@ describe("mps3", () => {
       });
 
       test("Restored online client has populated cache", async () => {
+        console.log("Setup writer");
         const writer = getClient({
           label: "restore-1",
           online: false,
@@ -134,10 +136,16 @@ describe("mps3", () => {
         writer.put("restore-1", true);
         await new Promise((resolve) => setTimeout(resolve, 50));
 
+        console.log("Restore");
         const restored = getClient({
           label: "restore-1",
           online: false,
         });
+        // TODO kill this
+        restored.getOrCreateManifest(restored.config.defaultManifest);
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log("Get");
         expect(await restored.get("restore-1")).toBe(true);
       });
     })

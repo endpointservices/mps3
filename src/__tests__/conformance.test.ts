@@ -5,9 +5,7 @@ import { ResolvedRef, uuid, clone} from "types";
 import { DOMParser } from "@xmldom/xmldom";
 import cloudflareCredentials from "../../credentials/cloudflare.json";
 import gcsCredentials from "../../credentials/gcs.json";
-import { createStore } from "idb-keyval";
 import "fake-indexeddb/auto";
-
 
 describe("mps3", () => {
   let session = uuid().toString(16).substring(2, 7);
@@ -126,7 +124,7 @@ describe("mps3", () => {
       });
       const getClient = (args?: { label?: string }) =>
         new MPS3({
-          label: args?.label,
+          label: args?.label || uuid().substring(32),
           ...variant.config,
         });
 
