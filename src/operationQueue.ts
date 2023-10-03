@@ -28,7 +28,13 @@ export class OperationQueue {
   ) {
     this.proposedOperations.set(write, values);
     if (this.db) {
-      if (this.load && !isLoad) await this.load;
+      if (this.load && !isLoad) {
+        await this.load;
+        // Get operations in the right order
+        // TODO test this logic
+        this.proposedOperations.delete(write);
+        this.proposedOperations.set(write, values);
+      }
       this.lastIndex++;
       const key = `entry-${this.lastIndex.toString().padStart(PADDING, "0")}`;
       (<any>write)[this.session] = this.lastIndex;
