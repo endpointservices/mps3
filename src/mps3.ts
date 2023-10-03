@@ -153,6 +153,7 @@ export class MPS3 {
       if (this.config.offlineStorage) {
         const dbName = `mps3-${this.config.label}-${ref.bucket}-${ref.key}`;
         const db = createStore(dbName, "v0");
+        console.log(`${this.config.label} Restoring manifest from ${dbName}`);
         manifest.load(db);
       }
     }

@@ -145,7 +145,6 @@ describe("mps3", () => {
         restored.getOrCreateManifest(restored.config.defaultManifest);
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        console.log("Get");
         expect(await restored.get("restore-1")).toBe(true);
       });
     })

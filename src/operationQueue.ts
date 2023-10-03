@@ -132,7 +132,5 @@ export class OperationQueue {
       // delete entries after confirmation
       await delMany([`entry-${index}`, `label-${index}`], this.db);
     }
-
-    console.log("Finished restore", this.flatten());
   }
 }

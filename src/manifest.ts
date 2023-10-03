@@ -78,14 +78,10 @@ export class Manifest {
 
   operation_queue = new OperationQueue();
 
-  constructor(
-    public service: MPS3,
-    public ref: ResolvedRef
-  ) {
+  constructor(public service: MPS3, public ref: ResolvedRef) {
     console.log("Create manifest", url(ref));
   }
   load(db: UseStore) {
-    console.log("Restoring manifest from disk");
     this.operation_queue.restore(
       db,
       async (
@@ -110,7 +106,6 @@ export class Manifest {
         }
       }
     );
-
   }
   observeVersionId(versionId: VersionId) {
     this.operation_queue.confirm(versionId);
