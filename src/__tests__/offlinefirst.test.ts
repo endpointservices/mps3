@@ -142,6 +142,25 @@ describe("mps3", () => {
 
         expect(await restored.get("restore-1")).toBe("foo");
       });
+
+
+      test("Restored online respects ordering", async () => {
+        console.log("Setup writer");
+        const writer = getClient({
+          label: "restore-2",
+          online: false,
+        });
+        await writer.put("restore-2", "1");
+
+        console.log("Restore");
+        const restored = getClient({
+          label: "restore-2",
+          online: false,
+        });
+
+        writer.put("restore-2", "2");
+        expect(await restored.get("restore-2")).toBe("2");
+      });
     })
   );
 });

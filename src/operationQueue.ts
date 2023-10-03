@@ -31,7 +31,6 @@ export class OperationQueue {
       if (this.load && !isLoad) {
         await this.load;
         // Get operations in the right order
-        // TODO test this logic
         this.proposedOperations.delete(write);
         this.proposedOperations.set(write, values);
       }
@@ -107,12 +106,11 @@ export class OperationQueue {
       label?: string
     ) => Promise<unknown>
   ) {
+    this.db = store;
+    this.proposedOperations.clear();
+    this.operationLabels.clear();
+    this.lastIndex = 0;
     this.load = new Promise(async (resolve) => {
-      this.db = store;
-      this.proposedOperations.clear();
-      this.operationLabels.clear();
-      this.lastIndex = 0;
-
       const allKeys: string[] = await keys(this.db);
       const entryKeys = allKeys
         .filter((key: any) => key.startsWith("entry-"))
