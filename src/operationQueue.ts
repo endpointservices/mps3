@@ -6,6 +6,8 @@ export type Operation = Promise<unknown>;
 
 const PADDING = 6;
 
+const entryKey = (index: number): string => `entry-${index.toString().padStart(PADDING, "0")}`
+
 export class OperationQueue {
   private session = uuid();
   proposedOperations: Map<
@@ -35,7 +37,7 @@ export class OperationQueue {
         this.proposedOperations.set(write, values);
       }
       this.lastIndex++;
-      const key = `entry-${this.lastIndex.toString().padStart(PADDING, "0")}`;
+      const key = entryKey(this.lastIndex);
       (<any>write)[this.session] = this.lastIndex;
       await set(
         key,
@@ -69,7 +71,9 @@ export class OperationQueue {
       if (this.db) {
         if (this.load && !isLoad) await this.load;
         const index = (<any>operation)[this.session];
-        await delMany([`entry-${index}`, `label-${index}`], this.db);
+        const keys = [entryKey(index), `label-${index}`];
+        await delMany(keys, this.db);
+        console.log(`DEL ${keys}`);
       }
     }
   }
@@ -115,6 +119,7 @@ export class OperationQueue {
       const entryKeys = allKeys
         .filter((key: any) => key.startsWith("entry-"))
         .sort();
+      console.log("RESTORE", entryKeys);
       const entryValues = await getMany(entryKeys, this.db);
 
       for (let i = 0; i < entryKeys.length; i++) {

@@ -14,7 +14,7 @@ import "fake-indexeddb/auto";
 
 describe("mps3", () => {
   let s3: S3;
-  let session = uuid().substring(32);
+  let session = uuid().substring(31);
   const stableConfig = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
@@ -127,39 +127,57 @@ describe("mps3", () => {
       });
 
       test("Restored online client has populated cache", async () => {
-        console.log("Setup writer");
+        const ID = "restore-1";
         const writer = getClient({
-          label: "restore-1",
+          label: ID,
           online: false,
         });
-        await writer.put("restore-1", "foo");
+        await writer.put(ID, "foo");
 
         console.log("Restore");
         const restored = getClient({
-          label: "restore-1",
+          label: ID,
           online: false,
         });
 
-        expect(await restored.get("restore-1")).toBe("foo");
+        expect(await restored.get(ID)).toBe("foo");
       });
 
-
       test("Restored online respects ordering", async () => {
-        console.log("Setup writer");
+        const ID = "restore-2";
         const writer = getClient({
-          label: "restore-2",
+          label: ID,
           online: false,
         });
-        await writer.put("restore-2", "1");
+        await writer.put(ID, "1");
 
         console.log("Restore");
         const restored = getClient({
-          label: "restore-2",
+          label: ID,
           online: false,
         });
 
-        writer.put("restore-2", "2");
-        expect(await restored.get("restore-2")).toBe("2");
+        writer.put(ID, "2");
+        expect(await restored.get(ID)).toBe("2");
+      });
+
+      test("Restored client remembers committed keys", async () => {
+        const ID = "restore-3";
+        const writer = getClient({
+          label: ID,
+        });
+        writer.subscribe(ID, () => {});
+        await writer.put(ID, "1");
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await writer.refresh();
+
+        console.log("Restore");
+        const restored = getClient({
+          label: ID,
+          online: false,
+        });
+
+        expect(await restored.get(ID)).toBe("1");
       });
     })
   );

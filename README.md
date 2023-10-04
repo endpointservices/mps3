@@ -1,9 +1,9 @@
 # MPS3
 ⚠️ Under development
 
-## Infraless Database over any s3 storage API. 
+## Vendorless Database over any s3 storage API. 
 
-A browser database client for any S3-compatible API.
+An offline-first browser database over any S3-compatible API.
 
 - Avoid vendor lock-in, your data stays with you.
 - Built for operational simplicity
@@ -12,9 +12,10 @@ A browser database client for any S3-compatible API.
 - Designed for correctness
     - sync protocol is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
 - Web optimized, it's currently 20kb, making it significantly lighter-weight than the AWS S3 browser client (300kb).
+- Offline-first
 
 
-Tested with S3, Backblaze or self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)). R2 should work.
+Tested with S3, Backblaze, R2 and self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)).
 
 ## Concepts
 

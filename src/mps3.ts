@@ -189,6 +189,12 @@ export class MPS3 {
       return inflight.get(contentRef);
     }
 
+    if (!this.config.online) {
+      throw new Error(
+        `${this.config.label} Offline and value not cached for ${contentRef}`
+      );
+    }
+
     const version = await manifest.getOptimisticVersion(contentRef);
     if (version === undefined) return undefined;
     return (
