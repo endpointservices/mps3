@@ -70,7 +70,7 @@ For the client to work properly some CORS configuration is required on the bucke
 ```
 ### Authorization
 
-There is no authorization. Do one thing and do it well. Every use-case needs different authorization. A malicious user could sabotage the manifest file if they have unrestricted write permissions to the manifest file, but not all use-cases have malicious users. There are a few options:-
+There is no in-built authorization. Every use-case needs different authorization. A malicious user could sabotage the manifest file if they have unrestricted write permissions to the manifest file, but not all use-cases have malicious users. There are a few options:-
 
 - Share access key only to trusted personal.
 - If using S3 and IAM, issue STS tokens that grant access to a subpath of a bucket per user/team
