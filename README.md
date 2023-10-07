@@ -11,8 +11,8 @@ An offline-first browser database over any S3-compatible API.
     - intuitive storage representation that can be manipulated directly
 - Designed for correctness
     - sync protocol is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
-- Web optimized, it's currently 20kb, making it significantly lighter-weight than the AWS S3 browser client (300kb).
-- Offline-first
+- Web optimized, it's currently 25kb, making it significantly lighter-weight than the AWS S3 browser client (300kb).
+- Offline-first (WIP)
 
 
 Tested with S3, Backblaze, R2 and self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)).
