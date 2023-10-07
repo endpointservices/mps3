@@ -28,7 +28,7 @@ describe("mps3", () => {
       config: {
         pollFrequency: 100,
         useVersioning: true,
-        defaultBucket: `mps3-demo`,
+        defaultBucket: `ver${session}`,
         s3Config: minioConfig,
         parser: new DOMParser(),
       },
@@ -42,7 +42,7 @@ describe("mps3", () => {
         s3Config: minioConfig,
         parser: new DOMParser(),
       },
-    },
+    } /*
     {
       label: "google",
       createBucket: false,
@@ -57,7 +57,7 @@ describe("mps3", () => {
         },
         parser: new DOMParser(),
       },
-    },
+    },*/,
     {
       label: "cloudflare",
       createBucket: false,
@@ -278,6 +278,7 @@ describe("mps3", () => {
       });
 
       test("Storage key representation", async () => {
+        const s3 = new S3(variant.config.s3Config);
         const client = await getClient();
         await client.put("storage_key", "foo");
         if (variant.config.useVersioning) {

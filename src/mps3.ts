@@ -179,7 +179,7 @@ export class MPS3 {
       key: typeof ref === "string" ? ref : ref.key,
     };
 
-    const inflight = await manifest.operation_queue.flatten();
+    const inflight = await manifest.operationQueue.flatten();
     if (inflight.has(contentRef)) {
       console.log(
         `${this.config.label} GET (cached) ${contentRef} ${inflight.get(
