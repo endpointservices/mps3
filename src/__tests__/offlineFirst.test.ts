@@ -180,14 +180,14 @@ describe("mps3", () => {
         expect(await restored.get(ID)).toBe("1");
       });
 
-      test("Subscribe to non-cached key does not hang", async () => {
-        await expect(
-          async () =>
-            await getClient({
-              label: "hang-1",
-              online: false,
-            }).subscribe("hang-1", () => {})
-        ).toThrow();
+      test("Subscribe to non-cached key errors", async (done) => {
+        await getClient({
+          label: "hang-1",
+          online: false,
+        }).subscribe("hang-1", (_, err) => {
+          expect(err).toBeTruthy();
+          done();
+        });
       });
 
       test("Restored client remembers subscribed keys", async () => {
