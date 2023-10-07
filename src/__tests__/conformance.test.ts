@@ -267,6 +267,16 @@ describe("mps3", () => {
         expect(read).toEqual(rnd);
       });
 
+      test("Unsubscribe releases client", async () => {
+        const mps3 = getClient({
+          label: "unsubscribe",
+        });
+        const unsubscribe = mps3.subscribe("unused_key", () => {});
+        expect(mps3.subscriberCount).toEqual(1);
+        unsubscribe();
+        expect(mps3.subscriberCount).toEqual(0);
+      });
+
       test("Storage key representation", async () => {
         const client = await getClient();
         await client.put("storage_key", "foo");

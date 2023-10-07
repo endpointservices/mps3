@@ -439,7 +439,7 @@ export class MPS3 {
    */
   public subscribe(
     key: string | Ref,
-    handler: (value: JSONValue | DeleteValue) => void,
+    handler: (value: JSONValue | DeleteValue, error?: Error) => void,
     options?: {
       manifest?: Ref;
     }
@@ -457,15 +457,19 @@ export class MPS3 {
     const unsubscribe = manifest.subscribe(keyRef, handler);
     this.get(keyRef, {
       manifest: manifestRef,
-    }).then((initial) => {
-      console.log(`${this.config.label} NOTIFY (initial) ${url(keyRef)}`);
-      // if the data is cached we don't want the subscriber called in the same tick as
-      // the unsubscribe return value will not be initialized
-      queueMicrotask(() => {
-        handler(initial);
-        manifest.poll();
+    })
+      .then((initial) => {
+        console.log(`${this.config.label} NOTIFY (initial) ${url(keyRef)}`);
+        // if the data is cached we don't want the subscriber called in the same tick as
+        // the unsubscribe return value will not be initialized
+        queueMicrotask(() => {
+          handler(initial, undefined);
+          manifest.poll();
+        });
+      })
+      .catch((error) => {
+        handler(undefined, error);
       });
-    });
 
     return unsubscribe;
   }

@@ -6,7 +6,8 @@ export type Operation = Promise<unknown>;
 
 const PADDING = 6;
 
-const entryKey = (index: number): string => `entry-${index.toString().padStart(PADDING, "0")}`
+const entryKey = (index: number): string =>
+  `write-${index.toString().padStart(PADDING, "0")}`;
 
 export class OperationQueue {
   private session = uuid();
@@ -88,7 +89,7 @@ export class OperationQueue {
     if (this.db) {
       if (this.load && !isLoad) await this.load;
       const index = (<any>operation)[this.session];
-      await delMany([`entry-${index}`, `label-${index}`], this.db);
+      await delMany([`write-${index}`, `label-${index}`], this.db);
     }
   }
 
@@ -117,7 +118,7 @@ export class OperationQueue {
     this.load = new Promise(async (resolve) => {
       const allKeys: string[] = await keys(this.db);
       const entryKeys = allKeys
-        .filter((key: any) => key.startsWith("entry-"))
+        .filter((key: any) => key.startsWith("write-"))
         .sort();
       console.log("RESTORE", entryKeys);
       const entryValues = await getMany(entryKeys, this.db);
@@ -139,7 +140,7 @@ export class OperationQueue {
         const values = new Map<ResolvedRef, JSONValue | DeleteValue>(entry);
         await schedule(values, label);
         // delete entries after confirmation
-        await delMany([`entry-${index}`, `label-${index}`], this.db);
+        await delMany([`write-${index}`, `label-${index}`], this.db);
       }
       resolve(undefined);
     });

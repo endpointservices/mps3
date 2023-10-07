@@ -179,6 +179,48 @@ describe("mps3", () => {
 
         expect(await restored.get(ID)).toBe("1");
       });
+
+      test("Subscribe to non-cached key does not hang", async () => {
+        await expect(
+          async () =>
+            await getClient({
+              label: "hang-1",
+              online: false,
+            }).subscribe("hang-1", () => {})
+        ).toThrow();
+      });
+
+      test("Restored client remembers subscribed keys", async () => {
+        const ID = "restore-4";
+        await getClient({
+          label: `setup-4`,
+        }).put(ID, "1");
+
+        const read = await new Promise(async (resolve) => {
+          await getClient({
+            label: ID,
+          }).subscribe(ID, (val) => {
+            resolve(val);
+          });
+        });
+
+        // confirm we have subscribed to the value
+        // so it should be cached
+        expect(read).toBe("1");
+
+        // now subscribe with an offline client
+        const offlineRead = await new Promise((resolve, reject) => {
+          getClient({
+            label: ID,
+            online: false,
+          }).subscribe(ID, (val, err) => {
+            if (err) reject(err);
+            resolve(val);
+          });
+        });
+
+        expect(offlineRead).toBe("1");
+      });
     })
   );
 });
