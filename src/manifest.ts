@@ -51,6 +51,7 @@ export class Manifest {
     console.log("Create manifest", url(ref));
   }
   load(db: UseStore) {
+    this.manifestState.restore(db);
     this.operationQueue.restore(
       db,
       async (

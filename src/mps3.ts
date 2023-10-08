@@ -12,7 +12,7 @@ import { FetchFn, S3ClientLite } from "S3ClientLite";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
 import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
-import { createStore } from "idb-keyval";
+import { UseStore, createStore, get, set } from "idb-keyval";
 
 export interface MPS3Config {
   /** @internal */
@@ -79,6 +79,14 @@ interface ResolvedMPS3Config extends MPS3Config {
   offlineStorage: boolean;
 }
 
+interface GetResponse<T> {
+  $metadata: {
+    httpStatusCode?: number;
+  };
+  ETag?: string;
+  data: T | undefined;
+}
+
 export class MPS3 {
   /** @internal */
   config: ResolvedMPS3Config;
@@ -87,13 +95,16 @@ export class MPS3 {
   /** @internal */
   manifests = new OMap<ResolvedRef, Manifest>(url);
   /** @internal */
-  getCache = new OMap<
+  memCache = new OMap<
     GetObjectCommandInput,
     Promise<GetObjectCommandOutput & { data: any }>
   >(
     (input) =>
       `${input.Bucket}${input.Key}${input.VersionId}${input.IfNoneMatch}`
   );
+
+  /** @internal */
+  diskCache?: UseStore;
 
   /** @internal */
   endpoint: string;
@@ -137,6 +148,11 @@ export class MPS3 {
       fetchFn = (...args) => client.fetch(...args);
     } else {
       fetchFn = (global || window).fetch.bind(global || window);
+    }
+
+    if (this.config.offlineStorage) {
+      const dbName = `mps3-${this.config.label}`;
+      this.diskCache = createStore(dbName, "v0");
     }
 
     this.s3ClientLite = new S3ClientLite(
@@ -188,15 +204,9 @@ export class MPS3 {
       );
       return inflight.get(contentRef);
     }
-
-    if (!this.config.online) {
-      throw new Error(
-        `${this.config.label} Offline and value not cached for ${contentRef}`
-      );
-    }
-
     const version = await manifest.getOptimisticVersion(contentRef);
     if (version === undefined) return undefined;
+
     return (
       await this._getObject<any>({
         operation: "GET",
@@ -205,13 +215,14 @@ export class MPS3 {
       })
     ).data;
   }
+
   /** @internal */
   async _getObject<T>(args: {
     operation: string;
     ref: ResolvedRef;
     version?: string;
     ifNoneMatch?: string;
-  }): Promise<GetObjectCommandOutput & { data: T | undefined }> {
+  }): Promise<GetResponse<T>> {
     let command: GetObjectCommandInput;
     if (this.config.useVersioning) {
       command = {
@@ -227,21 +238,43 @@ export class MPS3 {
         IfNoneMatch: args.ifNoneMatch,
       };
     }
-    if (this.getCache.has(command)) {
-      return await this.getCache.get(command)!;
+    if (this.memCache.has(command)) {
+      console.log(
+        `${this.config.label} ${args.operation} (mem cached) ${command.Bucket}/${command.Key}`
+      );
+      return this.memCache.get(command)!;
+    }
+    const key = `${command.Bucket}${command.Key}${command.VersionId}`;
+    if (this.diskCache) {
+      const cached = await get<
+        GetObjectCommandOutput & { data: T | undefined }
+      >(key, this.diskCache);
+      if (cached) {
+        console.log(
+          `${this.config.label} ${args.operation} (disk cached) ${key}`
+        );
+        this.memCache.set(command, Promise.resolve(cached));
+        return cached;
+      }
+    }
+
+    if (!this.config.online) {
+      throw new Error(
+        `${this.config.label} Offline and value not cached for ${key}`
+      );
     }
 
     const work = this.s3ClientLite
       .getObject(command)
       .then(async (apiResponse) => {
-        const response = {
-          ...apiResponse,
+        const response: GetResponse<T> = {
+          $metadata: apiResponse.$metadata,
+          ETag: apiResponse.ETag,
           data: <T | undefined>apiResponse.Body,
         };
         console.log(
           `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
         );
-        this.getCache.set(command, work); // it be nice to cache this earlier but I hit some race conditions
         return response;
       })
       .catch((err: any) => {
@@ -257,6 +290,20 @@ export class MPS3 {
         }
       });
 
+    this.memCache.set(command, work);
+    if (this.diskCache) {
+      work.then((response) => {
+        set(
+          `${command.Bucket}${command.Key}${command.VersionId}`,
+          response,
+          this.diskCache!
+        ).then(() =>
+          console.log(
+            `${this.config.label} STORE ${command.Bucket}${command.Key}`
+          )
+        );
+      });
+    }
     return work;
   }
 
@@ -277,6 +324,7 @@ export class MPS3 {
       await?: "local" | "remote";
     } = {}
   ) {
+    if (!this.diskCache) throw new Error("No store");
     return this.putAll(new Map([[ref, value]]), options);
   }
 
@@ -331,6 +379,7 @@ export class MPS3 {
           if (value !== undefined) {
             let version = this.config.useVersioning ? undefined : uuid(); // TODO timestamped versions
             webValues.set(contentRef, value);
+
             contentOperations.push(
               this._putObject({
                 operation: "PUT_CONTENT",
@@ -410,6 +459,23 @@ export class MPS3 {
     console.log(
       `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
     );
+
+    if (this.diskCache) {
+      const diskKey = `${command.Bucket}${command.Key}${
+        args.version || response.VersionId
+      }`;
+      await set(
+        diskKey,
+        {
+          $metadata: {
+            httpStatusCode: 200,
+          },
+          etag: response.ETag,
+          data: JSON.parse(content),
+        },
+        this.diskCache
+      ).then(() => console.log(`${this.config.label} STORE ${diskKey}`));
+    }
 
     return response;
   }

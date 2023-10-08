@@ -181,6 +181,7 @@ describe("mps3", () => {
       });
 
       test("Subscribe to non-cached key errors", async (done) => {
+        // Maybe returning undefined is correct behaviour?
         await getClient({
           label: "hang-1",
           online: false,
@@ -207,6 +208,8 @@ describe("mps3", () => {
         // confirm we have subscribed to the value
         // so it should be cached
         expect(read).toBe("1");
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // now subscribe with an offline client
         const offlineRead = await new Promise((resolve, reject) => {

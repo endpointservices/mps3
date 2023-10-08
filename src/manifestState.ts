@@ -2,6 +2,7 @@ import { apply } from "json";
 import { Manifest } from "manifest";
 import { JSONValue, clone } from "types";
 import * as time from "time";
+import { UseStore, get, set } from "idb-keyval";
 
 interface FileState {
   version: string;
@@ -17,7 +18,7 @@ export interface ManifestState {
   // JSON-merge-patch update that *this* operation was, the files do not include this
   update: Merge;
 }
-
+const MANIFEST_KEY = "manifest";
 const INITIAL_STATE: ManifestState & JSONValue = {
   previous: ".",
   files: {},
@@ -34,11 +35,32 @@ export class ManifestState {
   authoritative_state: ManifestState = clone(INITIAL_STATE);
   optimistic_state: ManifestState = clone(INITIAL_STATE);
 
+  loading?: Promise<unknown>;
   cache?: HttpCacheEntry<ManifestState>;
+  db?: UseStore;
 
   constructor(private manifest: Manifest) {}
 
+  async restore(db: UseStore) {
+    this.db = db;
+    this.loading = get(MANIFEST_KEY, db).then((loaded) => {
+      if (loaded) {
+        this.authoritative_state = loaded;
+        this.optimistic_state = loaded;
+        console.log(
+          `${this.manifest.service.config.label} RESTORE ${MANIFEST_KEY}`
+        );
+      }
+    });
+  }
+
   async getLatest(): Promise<ManifestState> {
+    if (this.loading) await this.loading;
+    this.loading = undefined;
+
+    if (!this.manifest.service.config.online) {
+      return this.authoritative_state;
+    }
     try {
       const poll = await this.manifest.service._getObject<string>({
         operation: "POLL_TIME",
@@ -46,7 +68,7 @@ export class ManifestState {
         ifNoneMatch: this.cache?.etag,
       });
       if (poll.$metadata.httpStatusCode === 304) {
-        return this.authoritative_state
+        return this.authoritative_state;
       }
 
       if (poll.data === undefined) {
@@ -136,7 +158,7 @@ export class ManifestState {
         }
         this.manifest.observeVersionId(stepVersionid);
       }
-
+      if (this.db) set(MANIFEST_KEY, this.authoritative_state, this.db);
       return this.authoritative_state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {

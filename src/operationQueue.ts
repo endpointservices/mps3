@@ -60,7 +60,7 @@ export class OperationQueue {
         throw new Error("Cannot label an unproposed operation");
       const key = `label-${index}`;
       await set(key, label, this.db);
-      console.log(`STORE ${key}`);
+      console.log(`STORE ${key} ${label}`);
     }
   }
 
