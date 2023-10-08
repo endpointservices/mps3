@@ -14,7 +14,7 @@ export type FetchFn = (url: string, options?: object) => Promise<Response>;
 
 const retry = async <T>(
   fn: () => Promise<T>,
-  { retries = Number.MAX_VALUE, delay = 100 } = {}
+  { retries = Number.MAX_VALUE, delay = 100 } = {},
 ): Promise<T> => {
   try {
     return await fn();
@@ -31,7 +31,7 @@ export class S3ClientLite {
   constructor(
     private fetch: FetchFn,
     private endpoint: string,
-    private parser: DOMParser
+    private parser: DOMParser,
   ) {}
 
   private getUrl(bucket: string, key?: string, additional?: string) {
@@ -41,27 +41,27 @@ export class S3ClientLite {
   }
 
   async listObjectV2(
-    command: ListObjectsV2CommandInput
+    command: ListObjectsV2CommandInput,
   ): Promise<ListObjectsV2CommandOutput> {
     for (let i = 0; i < 10; i++) {
       const url = this.getUrl(
         command.Bucket!,
         undefined,
-        `/?list-type=2&prefix=${command.Prefix}`
+        `/?list-type=2&prefix=${command.Prefix}`,
       );
       const response = await retry(() => this.fetch(url, {}));
 
       if (response.status === 200) {
         return parseListObjectsV2CommandOutput(
           await response.text(),
-          this.parser
+          this.parser,
         );
       } else if (response.status === 429) {
         console.warn("listObjectV2: 429, retrying");
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
         throw new Error(
-          `Unexpected response: ${response.status} ${await response.text()}`
+          `Unexpected response: ${response.status} ${await response.text()}`,
         );
       }
     }
@@ -83,7 +83,7 @@ export class S3ClientLite {
           "Content-Type": "application/json",
           ...(ChecksumSHA256 && { "x-amz-content-sha256": ChecksumSHA256 }),
         },
-      })
+      }),
     );
     if (response.status !== 200)
       throw new Error(`Failed to PUT: ${await response.text()}`);
@@ -101,7 +101,7 @@ export class S3ClientLite {
     Key,
   }: DeleteObjectCommandInput): Promise<DeleteObjectCommandOutput> {
     const response = await retry(() =>
-      this.fetch(this.getUrl(Bucket!, Key), { method: "DELETE" })
+      this.fetch(this.getUrl(Bucket!, Key), { method: "DELETE" }),
     );
     return { $metadata: { httpStatusCode: response.status } };
   }
@@ -115,13 +115,13 @@ export class S3ClientLite {
     const url = this.getUrl(
       Bucket!,
       Key,
-      VersionId ? `?versionId=${VersionId}` : ""
+      VersionId ? `?versionId=${VersionId}` : "",
     );
     const response = await retry(() =>
       this.fetch(url, {
         method: "GET",
         headers: { "If-None-Match": IfNoneMatch! },
-      })
+      }),
     );
 
     switch (response.status) {

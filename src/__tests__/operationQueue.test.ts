@@ -5,14 +5,14 @@ import { createStore } from "idb-keyval";
 import "fake-indexeddb/auto";
 
 const requeue = (
-  q: OperationQueue
+  q: OperationQueue,
 ): ((
   values: Map<ResolvedRef, JSONValue | DeleteValue>,
-  label?: string
+  label?: string,
 ) => Promise<void>) => {
   return async (
     values: Map<ResolvedRef, JSONValue | DeleteValue>,
-    label?: string
+    label?: string,
   ) => {
     const op = Promise.resolve("op");
     await q.propose(op, values);

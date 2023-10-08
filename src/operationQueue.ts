@@ -27,7 +27,7 @@ export class OperationQueue {
   async propose(
     write: Operation,
     values: Map<ResolvedRef, JSONValue | DeleteValue>,
-    isLoad: boolean = false
+    isLoad: boolean = false,
   ) {
     this.proposedOperations.set(write, values);
     if (this.db) {
@@ -43,7 +43,7 @@ export class OperationQueue {
       await set(
         key,
         [...values.entries()].map(([ref, val]) => [JSON.stringify(ref), val]),
-        this.db
+        this.db,
       );
       console.log(`STORE ${key} ${JSON.stringify([...values.entries()])}`);
     }
@@ -108,8 +108,8 @@ export class OperationQueue {
     store: UseStore,
     schedule: (
       write: Map<ResolvedRef, JSONValue | DeleteValue>,
-      label?: string
-    ) => Promise<unknown>
+      label?: string,
+    ) => Promise<unknown>,
   ) {
     this.db = store;
     this.proposedOperations.clear();

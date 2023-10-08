@@ -48,7 +48,7 @@ export class ManifestState {
         this.authoritative_state = loaded;
         this.optimistic_state = loaded;
         console.log(
-          `${this.manifest.service.config.label} RESTORE ${MANIFEST_KEY}`
+          `${this.manifest.service.config.label} RESTORE ${MANIFEST_KEY}`,
         );
       }
     });
@@ -141,18 +141,18 @@ export class ManifestState {
           console.log("Optimistic update");
           this.optimistic_state = apply(
             this.optimistic_state,
-            step.data?.update
+            step.data?.update,
           );
           // we cannot replay state into the inflight zone, its not authorative yet
         } else {
           // console.log("settled update");
           this.authoritative_state = apply(
             this.authoritative_state,
-            step.data?.update
+            step.data?.update,
           );
           this.optimistic_state = apply(
             this.optimistic_state,
-            step.data?.update
+            step.data?.update,
           );
           this.authoritative_key = key;
         }

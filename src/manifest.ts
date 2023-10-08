@@ -19,13 +19,13 @@ class Subscriber {
   constructor(
     public ref: ResolvedRef,
     public handler: (value: JSONValue | DeleteValue) => void,
-    public lastVersion?: VersionId
+    public lastVersion?: VersionId,
   ) {}
 
   notify(
     label: string,
     version: VersionId | undefined,
-    content: Promise<JSONValue | DeleteValue>
+    content: Promise<JSONValue | DeleteValue>,
   ) {
     this.queue = this.queue
       .then(() => content)
@@ -56,7 +56,7 @@ export class Manifest {
       db,
       async (
         values: Map<ResolvedRef, JSONValue | DeleteValue>,
-        label?: string
+        label?: string,
       ) => {
         if (!label) {
           // this write has not been attempted at all
@@ -72,15 +72,15 @@ export class Manifest {
           await this.updateContent(
             values,
             Promise.resolve(
-              new Map<ResolvedRef, VersionId>([[this.ref, label]])
+              new Map<ResolvedRef, VersionId>([[this.ref, label]]),
             ),
             {
               await: "local",
               isLoad: true,
-            }
+            },
           );
         }
-      }
+      },
     );
   }
   observeVersionId(versionId: VersionId) {
@@ -98,7 +98,7 @@ export class Manifest {
     if (this.subscriberCount > 0 && !this.poller) {
       this.poller = setInterval(
         () => this.poll(),
-        this.service.config.pollFrequency
+        this.service.config.pollFrequency,
       );
     }
 
@@ -119,7 +119,7 @@ export class Manifest {
         subscriber.notify(
           this.service.config.label,
           "local",
-          Promise.resolve(mask.get(subscriber.ref))
+          Promise.resolve(mask.get(subscriber.ref)),
         );
       } else {
         const fileState = state.files[url(subscriber.ref)];
@@ -132,13 +132,13 @@ export class Manifest {
           subscriber.notify(
             this.service.config.label,
             fileState.version,
-            content.then((res) => res.data)
+            content.then((res) => res.data),
           );
         } else if (fileState === null) {
           subscriber.notify(
             this.service.config.label,
             undefined,
-            Promise.resolve(undefined)
+            Promise.resolve(undefined),
           );
         }
       }
@@ -152,12 +152,12 @@ export class Manifest {
     options: {
       await: "local" | "remote";
       isLoad: boolean;
-    }
+    },
   ): Promise<unknown> {
     const localPersistence = this.operationQueue.propose(
       write,
       values,
-      options.isLoad
+      options.isLoad,
     );
     const remotePersistency = localPersistence.then(async () => {
       try {
@@ -225,7 +225,7 @@ export class Manifest {
 
   subscribe(
     keyRef: ResolvedRef,
-    handler: (value: JSONValue | undefined) => void
+    handler: (value: JSONValue | undefined) => void,
   ): () => void {
     console.log(`SUBSCRIBE ${url(keyRef)} ${this.subscriberCount + 1}`);
     const sub = new Subscriber(keyRef, handler);

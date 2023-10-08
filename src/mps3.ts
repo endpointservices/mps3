@@ -100,7 +100,7 @@ export class MPS3 {
     Promise<GetObjectCommandOutput & { data: any }>
   >(
     (input) =>
-      `${input.Bucket}${input.Key}${input.VersionId}${input.IfNoneMatch}`
+      `${input.Bucket}${input.Key}${input.VersionId}${input.IfNoneMatch}`,
   );
 
   /** @internal */
@@ -158,7 +158,7 @@ export class MPS3 {
     this.s3ClientLite = new S3ClientLite(
       this.config.online ? fetchFn : () => new Promise(() => {}),
       this.endpoint,
-      config.parser || new DOMParser()
+      config.parser || new DOMParser(),
     );
   }
   /** @internal */
@@ -180,7 +180,7 @@ export class MPS3 {
     ref: string | Ref,
     options: {
       manifest?: Ref;
-    } = {}
+    } = {},
   ): Promise<JSONValue | DeleteValue> {
     const manifestRef: ResolvedRef = {
       ...this.config.defaultManifest,
@@ -199,8 +199,8 @@ export class MPS3 {
     if (inflight.has(contentRef)) {
       console.log(
         `${this.config.label} GET (cached) ${contentRef} ${inflight.get(
-          contentRef
-        )}`
+          contentRef,
+        )}`,
       );
       return inflight.get(contentRef);
     }
@@ -240,7 +240,7 @@ export class MPS3 {
     }
     if (this.memCache.has(command)) {
       console.log(
-        `${this.config.label} ${args.operation} (mem cached) ${command.Bucket}/${command.Key}`
+        `${this.config.label} ${args.operation} (mem cached) ${command.Bucket}/${command.Key}`,
       );
       return this.memCache.get(command)!;
     }
@@ -251,7 +251,7 @@ export class MPS3 {
       >(key, this.diskCache);
       if (cached) {
         console.log(
-          `${this.config.label} ${args.operation} (disk cached) ${key}`
+          `${this.config.label} ${args.operation} (disk cached) ${key}`,
         );
         this.memCache.set(command, Promise.resolve(cached));
         return cached;
@@ -260,7 +260,7 @@ export class MPS3 {
 
     if (!this.config.online) {
       throw new Error(
-        `${this.config.label} Offline and value not cached for ${key}`
+        `${this.config.label} Offline and value not cached for ${key}`,
       );
     }
 
@@ -273,7 +273,7 @@ export class MPS3 {
           data: <T | undefined>apiResponse.Body,
         };
         console.log(
-          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
+          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`,
         );
         return response;
       })
@@ -296,11 +296,11 @@ export class MPS3 {
         set(
           `${command.Bucket}${command.Key}${command.VersionId}`,
           response,
-          this.diskCache!
+          this.diskCache!,
         ).then(() =>
           console.log(
-            `${this.config.label} STORE ${command.Bucket}${command.Key}`
-          )
+            `${this.config.label} STORE ${command.Bucket}${command.Key}`,
+          ),
         );
       });
     }
@@ -311,7 +311,7 @@ export class MPS3 {
     ref: string | Ref,
     options: {
       manifests?: Ref[];
-    } = {}
+    } = {},
   ) {
     return this.putAll(new Map([[ref, undefined]]), options);
   }
@@ -322,7 +322,7 @@ export class MPS3 {
     options: {
       manifests?: Ref[];
       await?: "local" | "remote";
-    } = {}
+    } = {},
   ) {
     if (!this.diskCache) throw new Error("No store");
     return this.putAll(new Map([[ref, value]]), options);
@@ -334,7 +334,7 @@ export class MPS3 {
       manifests?: Ref[];
       await?: "local" | "remote";
       isLoad?: boolean;
-    } = {}
+    } = {},
   ) {
     const resolvedValues = new Map<ResolvedRef, JSONValue | DeleteValue>(
       [...values].map(([ref, value]) => [
@@ -346,7 +346,7 @@ export class MPS3 {
           key: typeof ref === "string" ? ref : ref.key,
         },
         value,
-      ])
+      ]),
     );
 
     const manifests: ResolvedRef[] = (
@@ -368,7 +368,7 @@ export class MPS3 {
       manifests: ResolvedRef[];
       await: "local" | "remote";
       isLoad?: boolean;
-    }
+    },
   ) {
     const webValues: Map<ResolvedRef, JSONValue | DeleteValue> = new Map();
     const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
@@ -391,14 +391,14 @@ export class MPS3 {
                   if (fileUpdate.VersionId === undefined) {
                     console.error(fileUpdate);
                     throw Error(
-                      `Bucket ${contentRef.bucket} is not version enabled!`
+                      `Bucket ${contentRef.bucket} is not version enabled!`,
                     );
                   } else {
                     version = fileUpdate.VersionId;
                   }
                 }
                 results.set(contentRef, version);
-              })
+              }),
             );
           } else {
             contentOperations.push(
@@ -406,7 +406,7 @@ export class MPS3 {
                 ref: contentRef,
               }).then((_) => {
                 results.set(contentRef, undefined);
-              })
+              }),
             );
           }
         });
@@ -421,7 +421,7 @@ export class MPS3 {
           await: options.await,
           isLoad: options.isLoad === true,
         });
-      })
+      }),
     );
   }
   /** @internal */
@@ -457,7 +457,7 @@ export class MPS3 {
 
     const response = await this.s3ClientLite.putObject(command);
     console.log(
-      `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
+      `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`,
     );
 
     if (this.diskCache) {
@@ -473,7 +473,7 @@ export class MPS3 {
           etag: response.ETag,
           data: JSON.parse(content),
         },
-        this.diskCache
+        this.diskCache,
       ).then(() => console.log(`${this.config.label} STORE ${diskKey}`));
     }
 
@@ -492,7 +492,7 @@ export class MPS3 {
     console.log(
       `${this.config.label} ${args.operation || "DELETE"} ${args.ref.bucket}/${
         args.ref.key
-      } => ${response.VersionId}`
+      } => ${response.VersionId}`,
     );
     return response;
   }
@@ -508,7 +508,7 @@ export class MPS3 {
     handler: (value: JSONValue | DeleteValue, error?: Error) => void,
     options?: {
       manifest?: Ref;
-    }
+    },
   ): () => void {
     const manifestRef: ResolvedRef = {
       ...this.config.defaultManifest,
@@ -543,14 +543,14 @@ export class MPS3 {
   /** @internal */
   refresh(): Promise<unknown> {
     return Promise.all(
-      [...this.manifests.values()].map((manifest) => manifest.poll())
+      [...this.manifests.values()].map((manifest) => manifest.poll()),
     );
   }
   /** @internal */
   get subscriberCount(): number {
     return [...this.manifests.values()].reduce(
       (count, manifest) => count + manifest.subscriberCount,
-      0
+      0,
     );
   }
 }

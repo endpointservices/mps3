@@ -4,7 +4,7 @@ import { ListObjectsV2CommandOutput } from "@aws-sdk/client-s3";
 
 export const parseListObjectsV2CommandOutput = (
   xml: string,
-  domParser: DOMParser
+  domParser: DOMParser,
 ): ListObjectsV2CommandOutput => {
   const doc = domParser.parseFromString(xml, "text/xml");
   const results = doc.getElementsByTagName("ListBucketResult")[0];
@@ -36,7 +36,7 @@ export const parseListObjectsV2CommandOutput = (
     CommonPrefixes: Array.from(
       doc
         .getElementsByTagName("CommonPrefixes")[0]
-        ?.getElementsByTagName("Prefix") || []
+        ?.getElementsByTagName("Prefix") || [],
     ).map((prefix) => ({ Prefix: prefix.textContent! })),
     EncodingType: val(doc, "EncodingType")!,
     KeyCount: parseInt(val(doc, "KeyCount")!),

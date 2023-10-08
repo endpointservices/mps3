@@ -224,6 +224,6 @@ describe("mps3", () => {
 
         expect(offlineRead).toBe("1");
       });
-    })
+    }),
   );
 });

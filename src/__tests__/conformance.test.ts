@@ -1,7 +1,7 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
-import { ResolvedRef, uuid, clone} from "types";
+import { ResolvedRef, uuid, clone } from "types";
 import { DOMParser } from "@xmldom/xmldom";
 import cloudflareCredentials from "../../credentials/cloudflare.json";
 import gcsCredentials from "../../credentials/gcs.json";
@@ -176,7 +176,7 @@ describe("mps3", () => {
       test("manifest cold start", async () => {
         console.log(
           "variant.config.defaultBucket",
-          variant.config.defaultBucket
+          variant.config.defaultBucket,
         );
         const s3 = new S3(variant.config.s3Config);
         const mps3 = getClient();
@@ -210,14 +210,14 @@ describe("mps3", () => {
           Key: versionFileKey,
         });
         const versionFileContent = JSON.parse(
-          await versionFile.Body?.transformToString()!
+          await versionFile.Body?.transformToString()!,
         );
         expect(versionFileContent.files).toEqual({}); // base version is empty
         console.log(versionFileContent);
         expect(
           versionFileContent.update.files[
             `${variant.config.defaultBucket}/unused_key_2`
-          ]
+          ],
         ).toBeDefined();
         expect(versionFileContent.previous).toBe(".");
 
@@ -397,7 +397,7 @@ describe("mps3", () => {
             expect(value).toEqual(rnd);
             unsubscribe();
             done();
-          }
+          },
         );
       });
 
@@ -406,7 +406,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${uuid()}`
+          (_, i) => `parallel_put/${i}_${uuid()}`,
         );
 
         // put in parallel
@@ -421,7 +421,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${uuid()}`
+          (_, i) => `parallel_put/${i}_${uuid()}`,
         );
 
         // put in parallel
@@ -429,7 +429,7 @@ describe("mps3", () => {
 
         // read in parallel
         const reads = await Promise.all(
-          rand_keys.map((key, i) => clients[n - i - 1].get(key))
+          rand_keys.map((key, i) => clients[n - i - 1].get(key)),
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -444,7 +444,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${uuid()}`
+          (_, i) => `parallel_put/${i}_${uuid()}`,
         );
 
         // put in parallel
@@ -452,8 +452,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[i].put(key, i, {
               manifests,
-            })
-          )
+            }),
+          ),
         );
 
         // read in parallel
@@ -461,8 +461,8 @@ describe("mps3", () => {
           rand_keys.map((key, i) =>
             clients[n - i - 1].get(key, {
               manifest: manifests[0],
-            })
-          )
+            }),
+          ),
         );
 
         expect(reads).toEqual([...Array(n)].map((_, i) => i));
@@ -472,7 +472,7 @@ describe("mps3", () => {
         const n = 3;
         const clients = [...Array(n)].map((_) => getClient());
         const rand_keys = [...Array(n)].map(
-          (_, i) => `parallel_put/${i}_${uuid()}`
+          (_, i) => `parallel_put/${i}_${uuid()}`,
         );
 
         // collect results
@@ -482,9 +482,9 @@ describe("mps3", () => {
               new Promise((resolve) =>
                 getClient().subscribe(key, (val) => {
                   if (val !== undefined) resolve(val);
-                })
-              )
-          )
+                }),
+              ),
+          ),
         );
 
         // put in parallel
@@ -492,6 +492,6 @@ describe("mps3", () => {
 
         expect(await results).toEqual([0, 1, 2]);
       });
-    })
+    }),
   );
 });
