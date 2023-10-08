@@ -66,6 +66,7 @@ export class ManifestState {
         operation: "POLL_TIME",
         ref: this.manifest.ref,
         ifNoneMatch: this.cache?.etag,
+        useCache: false,
       });
       if (poll.$metadata.httpStatusCode === 304) {
         return this.authoritative_state;

@@ -14,14 +14,18 @@ export type FetchFn = (url: string, options?: object) => Promise<Response>;
 
 const retry = async <T>(
   fn: () => Promise<T>,
-  { retries = Number.MAX_VALUE, delay = 100 } = {},
+  { retries = Number.MAX_VALUE, delay = 100, max_delay = 10000 } = {}
 ): Promise<T> => {
   try {
     return await fn();
   } catch (e) {
     if (retries > 0) {
       await new Promise((resolve) => setTimeout(resolve, delay));
-      return retry(fn, { retries: retries - 1, delay });
+      return retry(fn, {
+        retries: retries - 1,
+        max_delay,
+        delay: Math.min(delay * 1.5, max_delay),
+      });
     }
     throw e;
   }
