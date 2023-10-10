@@ -47,9 +47,7 @@ export class ManifestState {
       if (loaded) {
         this.authoritative_state = loaded;
         this.optimistic_state = loaded;
-        console.log(
-          `${this.manifest.service.config.label} RESTORE ${MANIFEST_KEY}`,
-        );
+        this.manifest.service.config(`RESTORE ${MANIFEST_KEY}`);
       }
     });
   }
@@ -86,8 +84,8 @@ export class ManifestState {
         })
       );
 
-      console.log(
-        `${this.manifest.service.config.label} LIST ${t}ms ${this.manifest.ref.bucket}/${this.manifest.ref.key}`
+      this.manifest.service.config.log(
+        `LIST ${t}ms ${this.manifest.ref.bucket}/${this.manifest.ref.key}`
       );
 
       // Play the missing patches over the base state, oldest first
@@ -134,7 +132,7 @@ export class ManifestState {
           continue;
         }
 
-        // console.log(`step ${key} from ${this.authoritative_key}`);
+        // this.manifest.service.config(`step ${key} from ${this.authoritative_key}`);
         const step = await this.manifest.service._getObject<ManifestState>({
           operation: "SWEEP",
           ref: {
@@ -145,21 +143,21 @@ export class ManifestState {
         const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
 
         if (stepVersionid >= settledPoint) {
-          console.log("Optimistic update");
+          this.manifest.service.config("Optimistic update");
           this.optimistic_state = apply(
             this.optimistic_state,
-            step.data?.update,
+            step.data?.update
           );
           // we cannot replay state into the inflight zone, its not authorative yet
         } else {
           // console.log("settled update");
           this.authoritative_state = apply(
             this.authoritative_state,
-            step.data?.update,
+            step.data?.update
           );
           this.optimistic_state = apply(
             this.optimistic_state,
-            step.data?.update,
+            step.data?.update
           );
           this.authoritative_key = key;
         }
