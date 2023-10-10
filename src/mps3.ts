@@ -13,6 +13,7 @@ import { OMap } from "OMap";
 import { Manifest } from "manifest";
 import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
 import { UseStore, createStore, get, set } from "idb-keyval";
+import * as time from "time";
 
 export interface MPS3Config {
   /** @internal */
@@ -67,6 +68,11 @@ export interface MPS3Config {
    * Should the client write to upstreams?
    */
   offlineStorage?: boolean;
+
+  /**
+   * Bring your own logger
+   */
+  log?: (...args: any) => void;
 }
 
 interface ResolvedMPS3Config extends MPS3Config {
@@ -77,6 +83,7 @@ interface ResolvedMPS3Config extends MPS3Config {
   pollFrequency: number;
   online: boolean;
   offlineStorage: boolean;
+  log: (...args: any) => void;
 }
 
 interface GetResponse<T> {
@@ -125,6 +132,7 @@ export class MPS3 {
             ? config.defaultManifest
             : config.defaultManifest?.key || "manifest.json",
       },
+      log: (...args) => (config.log || console.log)(this.config.label, ...args),
     };
 
     if (this.config.s3Config?.credentials instanceof Function)
@@ -169,7 +177,7 @@ export class MPS3 {
       if (this.config.offlineStorage) {
         const dbName = `mps3-${this.config.label}-${ref.bucket}-${ref.key}`;
         const db = createStore(dbName, "v0");
-        console.log(`${this.config.label} Restoring manifest from ${dbName}`);
+        this.config.log(`Restoring manifest from ${dbName}`);
         manifest.load(db);
       }
     }
@@ -197,11 +205,7 @@ export class MPS3 {
 
     const inflight = await manifest.operationQueue.flatten();
     if (inflight.has(contentRef)) {
-      console.log(
-        `${this.config.label} GET (cached) ${contentRef} ${inflight.get(
-          contentRef
-        )}`
-      );
+      this.config.log(`GET (cached) ${contentRef} ${inflight.get(contentRef)}`);
       return inflight.get(contentRef);
     }
     const version = await manifest.getOptimisticVersion(contentRef);
@@ -239,23 +243,21 @@ export class MPS3 {
         IfNoneMatch: args.ifNoneMatch,
       };
     }
+    const key = `${command.Bucket}${command.Key}${command.VersionId}`;
     if (args.useCache !== false) {
       if (this.memCache.has(command)) {
         /*
-        console.log(
+        this.config.log(
           `${this.config.label} ${args.operation} (mem cached) ${command.Bucket}/${command.Key}`,
         );*/
         return this.memCache.get(command)!;
       }
-      const key = `${command.Bucket}${command.Key}${command.VersionId}`;
       if (this.diskCache) {
         const cached = await get<
           GetObjectCommandOutput & { data: T | undefined }
         >(key, this.diskCache);
         if (cached) {
-          console.log(
-            `${this.config.label} ${args.operation} (disk cached) ${key}`
-          );
+          this.config.log(`${args.operation} (disk cached) ${key}`);
           this.memCache.set(command, Promise.resolve(cached));
           return cached;
         }
@@ -268,16 +270,16 @@ export class MPS3 {
       );
     }
 
-    const work = this.s3ClientLite
-      .getObject(command)
-      .then(async (apiResponse) => {
+    const work = time
+      .measure(this.s3ClientLite.getObject(command))
+      .then(async ([apiResponse, time]) => {
         const response: GetResponse<T> = {
           $metadata: apiResponse.$metadata,
           ETag: apiResponse.ETag,
           data: <T | undefined>apiResponse.Body,
         };
-        console.log(
-          `${this.config.label} ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
+        this.config.log(
+          `${time}ms ${args.operation} ${args.ref.bucket}/${args.ref.key}@${args.version} => ${response.VersionId}`
         );
         return response;
       })
@@ -303,9 +305,7 @@ export class MPS3 {
             response,
             this.diskCache!
           ).then(() =>
-            console.log(
-              `${this.config.label} STORE ${command.Bucket}${command.Key}`
-            )
+            this.config.log(`STORE ${command.Bucket}${command.Key}`)
           );
         });
       }
@@ -461,9 +461,11 @@ export class MPS3 {
       };
     }
 
-    const response = await this.s3ClientLite.putObject(command);
-    console.log(
-      `${this.config.label} ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
+    const [response, dt] = await time.measure(
+      this.s3ClientLite.putObject(command)
+    );
+    this.config.log(
+      `${dt}ms ${args.operation} ${command.Bucket}/${command.Key} => ${response.VersionId}`
     );
 
     if (this.diskCache) {
@@ -480,7 +482,7 @@ export class MPS3 {
           data: JSON.parse(content),
         },
         this.diskCache
-      ).then(() => console.log(`${this.config.label} STORE ${diskKey}`));
+      ).then(() => this.config.log(`STORE ${diskKey}`));
     }
 
     return response;
@@ -494,9 +496,11 @@ export class MPS3 {
       Bucket: args.ref.bucket,
       Key: args.ref.key,
     };
-    const response = await this.s3ClientLite.deleteObject(command);
-    console.log(
-      `${this.config.label} ${args.operation || "DELETE"} ${args.ref.bucket}/${
+    const [response, dt] = await time.measure(
+      this.s3ClientLite.deleteObject(command)
+    );
+    this.config.log(
+      `${dt}ms ${args.operation || "DELETE"} ${args.ref.bucket}/${
         args.ref.key
       } => ${response.VersionId}`
     );
@@ -531,7 +535,7 @@ export class MPS3 {
       manifest: manifestRef,
     })
       .then((initial) => {
-        console.log(`${this.config.label} NOTIFY (initial) ${url(keyRef)}`);
+        this.config.log(`NOTIFY (initial) ${url(keyRef)}`);
         // if the data is cached we don't want the subscriber called in the same tick as
         // the unsubscribe return value will not be initialized
         queueMicrotask(() => {

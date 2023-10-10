@@ -78,11 +78,17 @@ export class ManifestState {
         this.authoritative_key = poll.data;
       }
 
-      const objects = await this.manifest.service.s3ClientLite.listObjectV2({
-        Bucket: this.manifest.ref.bucket,
-        Prefix: this.manifest.ref.key,
-        StartAfter: this.authoritative_key,
-      });
+      const [objects, t] = await time.measure(
+        this.manifest.service.s3ClientLite.listObjectV2({
+          Bucket: this.manifest.ref.bucket,
+          Prefix: this.manifest.ref.key,
+          StartAfter: this.authoritative_key,
+        })
+      );
+
+      console.log(
+        `${this.manifest.service.config.label} LIST ${t}ms ${this.manifest.ref.bucket}/${this.manifest.ref.key}`
+      );
 
       // Play the missing patches over the base state, oldest first
       if (objects.Contents === undefined) {
