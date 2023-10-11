@@ -48,6 +48,11 @@ describe("mps3", () => {
       createBucket: false,
       config: {
         parser: new DOMParser(),
+        defaultBucket: "l1",
+        offlineStorage: false,
+        s3Config: {
+          endpoint: MPS3.LOCAL_ENDPOINT,
+        },
       },
     },
     /*

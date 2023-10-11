@@ -14,7 +14,7 @@ import { Manifest } from "manifest";
 import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
 import { UseStore, createStore, get, set } from "idb-keyval";
 import * as time from "time";
-
+import * as offlineFetch from "offlineFetch";
 export interface MPS3Config {
   /** @internal */
   label?: string;
@@ -65,7 +65,7 @@ export interface MPS3Config {
   online?: boolean;
 
   /**
-   * Should the client write to upstreams?
+   * Should the client store writes locally?
    */
   offlineStorage?: boolean;
 
@@ -95,6 +95,8 @@ interface GetResponse<T> {
 }
 
 export class MPS3 {
+  static LOCAL_ENDPOINT = "indexdb://";
+
   /** @internal */
   config: ResolvedMPS3Config;
   /** @internal */
@@ -154,6 +156,8 @@ export class MPS3 {
         retries: 0,
       });
       fetchFn = (...args) => client.fetch(...args);
+    } else if (this.endpoint == MPS3.LOCAL_ENDPOINT) {
+      fetchFn = offlineFetch.fetchFn;
     } else {
       fetchFn = (global || window).fetch.bind(global || window);
     }
@@ -330,7 +334,6 @@ export class MPS3 {
       await?: "local" | "remote";
     } = {}
   ) {
-    if (!this.diskCache) throw new Error("No store");
     return this.putAll(new Map([[ref, value]]), options);
   }
 
