@@ -15,9 +15,9 @@ export const fetchFn = async (
   if (params.get("list-type")) {
     const prefix = params.get("prefix") || "";
     const list = (await keys(db)).filter((k) => `${k}`.startsWith(prefix));
-    body = `<?xml version="1.0" encoding="UTF-8"?><ListBucketResult>
-        ${list.map((key) => `<Contents><Key>${key}</Key></Contents>`)}
-    </ListBucketResult>`;
+    body = `<ListBucketResult>${list.map(
+      (key) => `<Contents><Key>${key}</Key></Contents>`
+    )}</ListBucketResult>`;
   } else if (init?.method === "GET") {
     body = await get(key, db);
     status = body === undefined ? 404 : 200;
