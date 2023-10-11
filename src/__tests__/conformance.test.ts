@@ -42,7 +42,15 @@ describe("mps3", () => {
         s3Config: minioConfig,
         parser: new DOMParser(),
       },
-    } /*
+    },
+    {
+      label: "localfirst",
+      createBucket: false,
+      config: {
+        parser: new DOMParser(),
+      },
+    },
+    /*
     {
       label: "google",
       createBucket: false,
@@ -57,8 +65,7 @@ describe("mps3", () => {
         },
         parser: new DOMParser(),
       },
-    },*/,
-    {
+    },*/ {
       label: "cloudflare",
       createBucket: false,
       config: {

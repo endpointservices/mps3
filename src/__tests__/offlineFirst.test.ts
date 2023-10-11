@@ -180,13 +180,23 @@ describe("mps3", () => {
         expect(await restored.get(ID)).toBe("1");
       });
 
-      test("Subscribe to non-cached key errors", async (done) => {
-        // Maybe returning undefined is correct behaviour?
+
+      test("Read your write", async () => {
+        const client = await getClient({
+          label: "rw-1",
+          online: false,
+        });
+
+        client.put("key", "value");
+        expect(await client.get("key")).toBe("value");
+      });
+
+      test("Subscribe to non-cached key is undefined", async (done) => {
         await getClient({
           label: "hang-1",
           online: false,
-        }).subscribe("hang-1", (_, err) => {
-          expect(err).toBeTruthy();
+        }).subscribe("hang-1", (val) => {
+          expect(val).toBeUndefined();
           done();
         });
       });

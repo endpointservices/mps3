@@ -47,7 +47,7 @@ export class ManifestState {
       if (loaded) {
         this.authoritative_state = loaded;
         this.optimistic_state = loaded;
-        this.manifest.service.config(`RESTORE ${MANIFEST_KEY}`);
+        this.manifest.service.config.log(`RESTORE ${MANIFEST_KEY}`);
       }
     });
   }
@@ -76,7 +76,7 @@ export class ManifestState {
         this.authoritative_key = poll.data;
       }
 
-      const [objects, t] = await time.measure(
+      const [objects, dt] = await time.measure(
         this.manifest.service.s3ClientLite.listObjectV2({
           Bucket: this.manifest.ref.bucket,
           Prefix: this.manifest.ref.key,
@@ -85,7 +85,7 @@ export class ManifestState {
       );
 
       this.manifest.service.config.log(
-        `LIST ${t}ms ${this.manifest.ref.bucket}/${this.manifest.ref.key}`
+        `${dt}ms LIST ${this.manifest.ref.bucket}/${this.manifest.ref.key}`
       );
 
       // Play the missing patches over the base state, oldest first
@@ -143,7 +143,7 @@ export class ManifestState {
         const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
 
         if (stepVersionid >= settledPoint) {
-          this.manifest.service.config("Optimistic update");
+          this.manifest.service.config.log("Optimistic update");
           this.optimistic_state = apply(
             this.optimistic_state,
             step.data?.update
