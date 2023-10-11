@@ -1,5 +1,4 @@
 import { createStore, get, set, del, keys } from "idb-keyval";
-
 export const fetchFn = async (
   url_: string,
   init?: RequestInit
@@ -17,13 +16,11 @@ export const fetchFn = async (
     const prefix = params.get("prefix") || "";
     const list = (await keys(db)).filter((k) => `${k}`.startsWith(prefix));
     body = `<?xml version="1.0" encoding="UTF-8"?><ListBucketResult>
-${list.map((key) => `<Contents><Key>${key}</Key></Contents>`)}
-</ListBucketResult>`;
+        ${list.map((key) => `<Contents><Key>${key}</Key></Contents>`)}
+    </ListBucketResult>`;
   } else if (init?.method === "GET") {
     body = await get(key, db);
-    if (body === undefined) {
-      status = 404;
-    }
+    status = body === undefined ? 404 : 200;
   } else if (init?.method === "PUT") {
     body = await init.body;
     await set(key, body, db);
