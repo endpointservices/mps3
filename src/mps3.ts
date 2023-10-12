@@ -14,7 +14,7 @@ import { Manifest } from "manifest";
 import { DeleteValue, JSONValue, Ref, ResolvedRef, url, uuid } from "types";
 import { UseStore, createStore, get, set } from "idb-keyval";
 import * as time from "time";
-import * as offlineFetch from "offlineFetch";
+import * as offlineFetch from "indexdb";
 export interface MPS3Config {
   /** @internal */
   label?: string;

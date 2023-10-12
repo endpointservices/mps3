@@ -7,38 +7,42 @@ export const parseListObjectsV2CommandOutput = (
   domParser: DOMParser,
 ): ListObjectsV2CommandOutput => {
   const doc = domParser.parseFromString(xml, "text/xml");
-  const results = doc.getElementsByTagName("ListBucketResult")[0];
+  if (!doc) throw new Error(`Invalid XML: ${xml}`);
+  // const results = doc.getElementsByTagName("ListBucketResult")[0];
   const contents = doc.getElementsByTagName("Contents");
-  if (!results || !contents) throw new Error(`Invalid XML: ${xml}`);
+  //if (!contents) throw new Error(`Invalid XML: ${xml}`);
 
   const val = (el: Element | Document, name: string) =>
     el.getElementsByTagName(name)[0]?.textContent;
 
   return {
     $metadata: {},
-    IsTruncated: val(results, "IsTruncated") === "true",
+    //IsTruncated: val(results, "IsTruncated") === "true",
     Contents: Array.from(contents).map((content) => ({
-      ChecksumAlgorithm: [val(content, "ChecksumAlgorithm")!],
+      //ChecksumAlgorithm: [val(content, "ChecksumAlgorithm")!],
       ETag: val(content, "ETag")!,
       Key: val(content, "Key")!,
-      LastModified: new Date(val(content, "LastModified")!),
+      //LastModified: new Date(val(content, "LastModified")!),
+      /*
       Owner: {
         DisplayName: val(content, "DisplayName")!,
         ID: val(content, "ID")!,
-      },
-      Size: parseInt(val(content, "Size")!),
-      StorageClass: val(content, "StorageClass")!,
+      },*/
+      //Size: parseInt(val(content, "Size")!),
+      //StorageClass: val(content, "StorageClass")!,
     })),
-    Name: val(doc, "Name")!,
-    Prefix: val(doc, "Prefix")!,
-    Delimiter: val(doc, "Delimiter")!,
-    MaxKeys: parseInt(val(doc, "MaxKeys")!),
+    //Name: val(doc, "Name")!,
+    // Prefix: val(doc, "Prefix")!,
+    //Delimiter: val(doc, "Delimiter")!,
+    //MaxKeys: parseInt(val(doc, "MaxKeys")!),
+    /*
     CommonPrefixes: Array.from(
       doc
         .getElementsByTagName("CommonPrefixes")[0]
-        ?.getElementsByTagName("Prefix") || [],
+        ?.getElementsByTagName("Prefix") || []
     ).map((prefix) => ({ Prefix: prefix.textContent! })),
-    EncodingType: val(doc, "EncodingType")!,
+    */
+    //EncodingType: val(doc, "EncodingType")!,
     KeyCount: parseInt(val(doc, "KeyCount")!),
     ContinuationToken: val(doc, "ContinuationToken")!,
     NextContinuationToken: val(doc, "NextContinuationToken")!,
