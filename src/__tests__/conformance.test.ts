@@ -47,7 +47,7 @@ describe("mps3", () => {
       label: "localfirst",
       createBucket: false,
       config: {
-        pollFrequency: 100,
+        pollFrequency: 1,
         parser: new DOMParser(),
         defaultBucket: "l1",
         offlineStorage: false,
