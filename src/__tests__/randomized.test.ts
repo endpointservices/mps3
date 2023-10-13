@@ -44,6 +44,7 @@ describe("mps3", () => {
   };
 
   const configs: {
+    createBucket?: boolean;
     label: string;
     config: MPS3Config;
   }[] = [
@@ -62,10 +63,22 @@ describe("mps3", () => {
       config: {
         pollFrequency: 100,
         useChecksum: false,
-        // useVersioning: false, // is the default
         defaultBucket: `nov${session}`,
         s3Config: unstableConfig,
         parser: new DOMParser(),
+      },
+    },
+    {
+      label: "localfirst",
+      createBucket: false,
+      config: {
+        pollFrequency: 1,
+        parser: new DOMParser(),
+        defaultBucket: "l1",
+        offlineStorage: false,
+        s3Config: {
+          endpoint: MPS3.LOCAL_ENDPOINT,
+        },
       },
     },
   ];
@@ -76,17 +89,19 @@ describe("mps3", () => {
       beforeAll(async () => {
         s3 = new S3(stableConfig);
 
-        await s3.createBucket({
-          Bucket: variant.config.defaultBucket,
-        });
-
-        if (variant.config.useVersioning) {
-          await s3.putBucketVersioning({
+        if (variant.createBucket !== false) {
+          await s3.createBucket({
             Bucket: variant.config.defaultBucket,
-            VersioningConfiguration: {
-              Status: "Enabled",
-            },
           });
+
+          if (variant.config.useVersioning) {
+            await s3.putBucketVersioning({
+              Bucket: variant.config.defaultBucket,
+              VersioningConfiguration: {
+                Status: "Enabled",
+              },
+            });
+          }
         }
       });
 
@@ -133,7 +148,7 @@ describe("mps3", () => {
                     system.client_clocks[client_id]
                   } rcvd ${system.client_labels[message.sender]}@${
                     message.send_time
-                  }`,
+                  }`
                 );
                 system.observe({
                   ...message,
@@ -162,7 +177,7 @@ describe("mps3", () => {
                 console.log(
                   `${system.global_time}: ${label}@${
                     system.client_clocks[client_id] - 1
-                  } broadcast`,
+                  } broadcast`
                 );
                 client.put(key, {
                   sender: client_id,
@@ -170,7 +185,7 @@ describe("mps3", () => {
                 });
               } else if (system.global_time === max_steps) {
                 clients.forEach((c) =>
-                  c.manifests.forEach((m) => m.subscribers.clear()),
+                  c.manifests.forEach((m) => m.subscribers.clear())
                 );
                 done();
               }
@@ -180,8 +195,8 @@ describe("mps3", () => {
         },
         {
           timeout: 60 * 1000,
-        },
+        }
       );
-    }),
+    })
   );
 });
