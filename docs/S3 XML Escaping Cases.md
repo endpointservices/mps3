@@ -44,17 +44,17 @@ The most salient thing for listing is the `<Contents>` block's which enumerate t
 
 One of the most notorious difficulties with [XML is escaping](https://stackoverflow.com/questions/1091945/what-characters-do-i-need-to-escape-in-xml-documents). Control characters like `<` are special which should be replaces with `&lt`. Slashes  `/` are super special and directory deliminators.  Furthermore XML supports a special block syntax `<![CDATA[...]]>` for character data that should *not* be escaped.
 
-So this begs the question, what does the S3 API return when the keys contain special data? I tried uploading files with the following keys, thought the S3 console interface
+So this begs the question, what does the S3 API return when the keys contain special data? I tried uploading files with the following keys, throught the S3 console interface
 - `&lt`
 - `<![CDATA[...]]>`
 - `foo<Contents>`
 
-Interesting already the CDATA block hit something strange which manifested as noise in UI of the type
+Interestingly the CDATA block hit something strange which manifested as noise in UI of the type
 
 ![[Pasted image 20231014095604.png]]
 
 
-However, the underlying response in the XML response is escaped correctly. These are good test cases to test for vendor conformance.
+However, the underlying response in the XML response is escaped correctly. These are good test cases to test for vendor conformance or alternative XML parsing methodologies.
 ```
 <Key>%26lt</Key>
 <Key>%3C%21%5BCDATA%5B...%5D%5D%3E</Key>
