@@ -4,7 +4,7 @@ Message infrastructure has fairly clear semantics: "send the messages to the rec
 And yet, things start to get complicated as advanced features are added.
 
 - Multiplayer? well now you have to consider merging queues and multiple timelines
-- Optimistic updates? Well now local writes have a different pathway.
+- Optimistic updates? Well now, local writes have a different pathway.
 - Mobile-first? Well clients connectivity is unreliable, so you need transparent resumption
 - Local-first? Well now some participants messages are buffered and delayed for days
 
