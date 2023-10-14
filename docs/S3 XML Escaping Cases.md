@@ -73,9 +73,11 @@ Amazon says to avoid
 Trying to upload files with names
 - `&$@=;  :+,?`
 - `\{^}%\]">[~#|`
-yielded
+
+yields
+
 ```
 <Key>%26%24%40%3D%3B++%3A%2B%2C%3F</Key>
 <Key>%5C%7B%5E%7D%25%5C%5D%22%3E%5B%7E%23%7C</Key>
 ```
-Notice spaces are converted to `+` while `+` is URL encoded to `%2B`, this is`x-www-form-urlencoded` *not* the similar URI encoding(!).
+Notice spaces are converted to `+` while `+` is URL encoded to `%2B`, this is `x-www-form-urlencoded` *not* the similar URI encoding(!).
