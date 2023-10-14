@@ -54,7 +54,7 @@ Interestingly the CDATA block hit something strange which manifested as noise in
 ![](attachments/Pasted%20image%2020231014104750.png)
 
 
-However, the underlying response in the XML response is escaped correctly. These are good test cases to test for vendor conformance or alternative XML parsing methodologies.
+However, the underlying response in the XML response is escaped with URL encoding (`%26` not `&amp`, `%3C` not `&lt`).
 ```
 <Key>%26lt</Key>
 <Key>%3C%21%5BCDATA%5B...%5D%5D%3E</Key>

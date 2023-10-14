@@ -12,8 +12,10 @@ export const parseListObjectsV2CommandOutput = (
   const contents = doc.getElementsByTagName("Contents");
   //if (!contents) throw new Error(`Invalid XML: ${xml}`);
 
-  const val = (el: Element | Document, name: string) =>
-    el.getElementsByTagName(name)[0]?.textContent;
+  const val = (el: Element | Document, name: string) => {
+    const c = el.getElementsByTagName(name)[0]?.textContent;
+    return c ? decodeURIComponent(c) : undefined;
+  };
 
   return {
     $metadata: {},

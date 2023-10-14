@@ -120,4 +120,35 @@ describe("XML parser", () => {
       NextContinuationToken: undefined,
     });
   });
+
+  test("parseListObjectsV2CommandOutput escaping test", () => {
+    const xml: string = `<?xml version="1.0" encoding="UTF-8"?>
+    <ListBucketResult>
+    <Contents>
+    <Key>%26lt</Key>
+    </Contents>
+    <Contents>
+    <Key>%3C%21%5BCDATA%5B...%5D%5D%3E</Key>
+    </Contents>
+    <Contents>
+    <Key>foo%3CContents%3E</Key>
+    </Contents>
+    </ListBucketResult>
+    `;
+    const parsed = parseListObjectsV2CommandOutput(xml, parser);
+    expect(parsed.Contents).toEqual([
+      {
+        Key: "&lt",
+        ETag: undefined,
+      },
+      {
+        Key: "<![CDATA[...]]>",
+        ETag: undefined,
+      },
+      {
+        Key: "foo<Contents>",
+        ETag: undefined,
+      },
+    ]);
+  });
 });
