@@ -133,6 +133,12 @@ describe("XML parser", () => {
     <Contents>
     <Key>foo%3CContents%3E</Key>
     </Contents>
+    <Contents>
+    <Key>%26%24%40%3D%3B++%3A%2B%2C%3F</Key>
+    </Contents>
+    <Contents>
+    <Key>%5C%7B%5E%7D%25%5C%5D%22%3E%5B%7E%23%7C</Key>
+    </Contents>
     </ListBucketResult>
     `;
     const parsed = parseListObjectsV2CommandOutput(xml, parser);
@@ -147,6 +153,14 @@ describe("XML parser", () => {
       },
       {
         Key: "foo<Contents>",
+        ETag: undefined,
+      },
+      {
+        Key: "&$@=;  :+,?",
+        ETag: undefined,
+      },
+      {
+        Key: '\\{^}%\\]">[~#|',
         ETag: undefined,
       },
     ]);

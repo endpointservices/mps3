@@ -14,7 +14,7 @@ export const parseListObjectsV2CommandOutput = (
 
   const val = (el: Element | Document, name: string) => {
     const c = el.getElementsByTagName(name)[0]?.textContent;
-    return c ? decodeURIComponent(c) : undefined;
+    return c ? decodeURIComponent(c.replace(/\+/g, " ")) : undefined;
   };
 
   return {
