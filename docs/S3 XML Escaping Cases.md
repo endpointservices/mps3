@@ -1,4 +1,4 @@
-S3 is an XML based API. When you do a list operation i.e. [GET /\<bucket>?list-type=2](https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html) you get a response of the following
+S3 is an XML-based API. When you do a list operation i.e. [GET /\<bucket>?list-type=2](https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html) you get a response of the following
 ```
 HTTP/1.1 200
 x-amz-request-charged: RequestCharged
@@ -38,13 +38,13 @@ x-amz-request-charged: RequestCharged
    <StartAfter>string</StartAfter>
 </ListBucketResult>
 ```
-The most salient thing for listing is the `<Contents>` block's which enumerate the contents of the bucket. Of particular interest is the `<Key>` element, which specifies keys you can lookup with a `GetObject` API request.
+The most salient thing for listing is the `<Contents>` blocks which enumerate the contents of the bucket. Of particular interest is the `<Key>` element, which specifies keys you can look up with a `GetObject` API request.
 
 ### Escaping
 
-One of the most notorious difficulties with [XML is escaping](https://stackoverflow.com/questions/1091945/what-characters-do-i-need-to-escape-in-xml-documents). Control characters like `<` are special which should be replaces with `&lt`. Slashes  `/` are super special and directory deliminators.  Furthermore XML supports a special block syntax `<![CDATA[...]]>` for character data that should *not* be escaped.
+One of the most notorious difficulties with [XML is escaping](https://stackoverflow.com/questions/1091945/what-characters-do-i-need-to-escape-in-xml-documents). Control characters like `<` are special and should be replaced with `&lt`. Slashes  `/` are super special and directory deliminators.  Furthermore, XML supports a special block syntax `<![CDATA[...]]>` for character data that should *not* be escaped.
 
-So this begs the question, what does the S3 API return when the keys contain special data? I tried uploading files with the following keys, throught the S3 console interface
+So this begs the question, what does the S3 API return when the keys contain special data? I tried uploading files with the following keys, through the S3 console interface
 - `&lt`
 - `<![CDATA[...]]>`
 - `foo<Contents>`
