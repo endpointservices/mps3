@@ -51,7 +51,7 @@ So this begs the question, what does the S3 API return when the keys contain spe
 
 Interestingly the CDATA block hit something strange which manifested as noise in UI of the type
 
-![[./attachments/Pasted image 20231014103732.png]]
+![[./attachments/Pastedimage20231014103732.png]]
 
 However, the underlying response in the XML response is escaped correctly. These are good test cases to test for vendor conformance or alternative XML parsing methodologies.
 ```
