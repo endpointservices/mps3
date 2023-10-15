@@ -11,7 +11,7 @@
   "scripts": {
     "test": "bun test",
     "doc": " npx typedoc --plugin typedoc-plugin-markdown",
-    "build": "bun build src/mps3.ts --minify --outdir ./dist",
+    "build": "npm run doc; bun build src/mps3.ts --minify --outdir ./dist",
     "prepare": "npm run build",
     "format": "rome format src --write --indent-style space",
     "test:randomize": "while bun test; [ $? -ne 1 ] ; do :; done"

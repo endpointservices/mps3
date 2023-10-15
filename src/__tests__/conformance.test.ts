@@ -8,7 +8,7 @@ import gcsCredentials from "../../credentials/gcs.json";
 import "fake-indexeddb/auto";
 
 describe("mps3", () => {
-  let session = uuid().toString(16).substring(2, 7);
+  let session = uuid().substring(0, 8);
   const minioConfig = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",

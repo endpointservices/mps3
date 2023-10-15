@@ -91,6 +91,7 @@ interface GetResponse<T> {
     httpStatusCode?: number;
   };
   ETag?: string;
+  VersionId?: string;
   data: T | undefined;
 }
 

@@ -8,6 +8,9 @@
 
 - [defaultBucket](MPS3Config.md#defaultbucket)
 - [defaultManifest](MPS3Config.md#defaultmanifest)
+- [log](MPS3Config.md#log)
+- [offlineStorage](MPS3Config.md#offlinestorage)
+- [online](MPS3Config.md#online)
 - [parser](MPS3Config.md#parser)
 - [pollFrequency](MPS3Config.md#pollfrequency)
 - [s3Config](MPS3Config.md#s3config)
@@ -23,13 +26,13 @@ Bucket to use by default
 
 #### Defined in
 
-[mps3.ts:22](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L22)
+[mps3.ts:24](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L24)
 
 ___
 
 ### defaultManifest
 
-• `Optional` **defaultManifest**: `Ref`
+• `Optional` **defaultManifest**: `string` \| `Ref`
 
 Default manifest to use if one is not specified in an
 operation's options
@@ -42,7 +45,57 @@ operation's options
 
 #### Defined in
 
-[mps3.ts:28](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L28)
+[mps3.ts:30](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L30)
+
+___
+
+### log
+
+• `Optional` **log**: (...`args`: `any`) => `void`
+
+#### Type declaration
+
+▸ (`...args`): `void`
+
+Bring your own logger
+
+##### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `...args` | `any` |
+
+##### Returns
+
+`void`
+
+#### Defined in
+
+[mps3.ts:75](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L75)
+
+___
+
+### offlineStorage
+
+• `Optional` **offlineStorage**: `boolean`
+
+Should the client store writes locally?
+
+#### Defined in
+
+[mps3.ts:70](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L70)
+
+___
+
+### online
+
+• `Optional` **online**: `boolean`
+
+Should the client write to upstreams?
+
+#### Defined in
+
+[mps3.ts:65](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L65)
 
 ___
 
@@ -61,7 +114,7 @@ new window.DOMParser()
 
 #### Defined in
 
-[mps3.ts:58](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L58)
+[mps3.ts:60](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L60)
 
 ___
 
@@ -81,7 +134,7 @@ due to If-None-Match request optimizations.
 
 #### Defined in
 
-[mps3.ts:45](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L45)
+[mps3.ts:47](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L47)
 
 ___
 
@@ -103,7 +156,7 @@ https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfa
 
 #### Defined in
 
-[mps3.ts:51](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L51)
+[mps3.ts:53](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L53)
 
 ___
 
@@ -123,4 +176,4 @@ false
 
 #### Defined in
 
-[mps3.ts:35](https://github.com/endpointservices/mps3/blob/4261d21/src/mps3.ts#L35)
+[mps3.ts:37](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L37)

@@ -10,7 +10,7 @@ interface FileState {
 
 type Merge = any;
 
-export interface ManifestState {
+export interface ManifestFile {
   previous: string; // key of previous snapshot this change was based on
   files: {
     [url: string]: FileState;
@@ -19,7 +19,7 @@ export interface ManifestState {
   update: Merge;
 }
 const MANIFEST_KEY = "manifest";
-const INITIAL_STATE: ManifestState & JSONValue = {
+const INITIAL_STATE: ManifestFile & JSONValue = {
   previous: ".",
   files: {},
   update: {},
@@ -32,11 +32,11 @@ interface HttpCacheEntry<T> {
 
 export class ManifestState {
   authoritative_key: string = "";
-  authoritative_state: ManifestState = clone(INITIAL_STATE);
-  optimistic_state: ManifestState = clone(INITIAL_STATE);
+  authoritative_state: ManifestFile = clone(INITIAL_STATE);
+  optimistic_state: ManifestFile = clone(INITIAL_STATE);
 
   loading?: Promise<unknown>;
-  cache?: HttpCacheEntry<ManifestState>;
+  cache?: HttpCacheEntry<ManifestFile>;
   db?: UseStore;
 
   constructor(private manifest: Manifest) {}
@@ -52,7 +52,7 @@ export class ManifestState {
     });
   }
 
-  async getLatest(): Promise<ManifestState> {
+  async getLatest(): Promise<ManifestFile> {
     if (this.loading) await this.loading;
     this.loading = undefined;
 
@@ -105,7 +105,7 @@ export class ManifestState {
           bucket: this.manifest.ref.bucket,
           key,
         };
-        const step = await this.manifest.service._getObject<ManifestState>({
+        const step = await this.manifest.service._getObject<ManifestFile>({
           operation: "LOOK_BACK",
           ref,
         });
@@ -133,7 +133,7 @@ export class ManifestState {
         }
 
         // this.manifest.service.config(`step ${key} from ${this.authoritative_key}`);
-        const step = await this.manifest.service._getObject<ManifestState>({
+        const step = await this.manifest.service._getObject<ManifestFile>({
           operation: "SWEEP",
           ref: {
             bucket: this.manifest.ref.bucket,
