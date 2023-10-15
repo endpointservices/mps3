@@ -1,5 +1,9 @@
 import { JSONValue } from "types";
 
+/**
+ * JSON Merge Patch (RFC 7386)
+ * Update target JSON with a merge patch
+ */
 export function merge<T>(target: T, patch: JSONValue): T {
   // If patch is an array or a primitive, just return it
   if (Array.isArray(patch) || typeof patch !== "object" || patch === null) {
