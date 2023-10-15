@@ -1,6 +1,7 @@
 import { merge } from "json";
 import { Manifest } from "manifest";
-import { JSONValue, clone } from "types";
+import { clone } from "json";
+import { JSONValue } from "json";
 import * as time from "time";
 import { UseStore, get, set } from "idb-keyval";
 
