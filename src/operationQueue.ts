@@ -1,5 +1,6 @@
 import { OMap } from "OMap";
-import { JSONValue, DeleteValue, uuid, ResolvedRef, url } from "./types";
+import { DeleteValue, uuid, ResolvedRef, url } from "./types";
+import { JSONValue } from "json";
 import { UseStore, getMany, get, set, delMany, keys } from "idb-keyval";
 
 export type Operation = Promise<unknown>;

@@ -1,11 +1,3 @@
-export type JSONValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { [x: string]: JSONValue }
-  | Array<JSONValue>;
-
 export type DeleteValue = undefined;
 
 export interface Ref {
@@ -31,5 +23,3 @@ export const parseUrl = (url: string): ResolvedRef => {
     key: key.join("/"),
   };
 };
-
-export const clone = (state: JSONValue) => JSON.parse(JSON.stringify(state));

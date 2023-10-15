@@ -1,6 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { OperationQueue } from "../operationQueue";
-import { DeleteValue, JSONValue, ResolvedRef, uuid } from "types";
+import { DeleteValue, ResolvedRef, uuid } from "types";
+import { JSONValue } from "json";
 import { createStore } from "idb-keyval";
 import "fake-indexeddb/auto";
 
