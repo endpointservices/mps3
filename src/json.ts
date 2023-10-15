@@ -1,6 +1,6 @@
 import { JSONValue } from "types";
 
-export function apply<T>(target: T, patch: JSONValue): T {
+export function merge<T>(target: T, patch: JSONValue): T {
   // If patch is an array or a primitive, just return it
   if (Array.isArray(patch) || typeof patch !== "object" || patch === null) {
     return <T>patch;
@@ -14,7 +14,7 @@ export function apply<T>(target: T, patch: JSONValue): T {
     if (patch[key] === null) {
       delete target_json[key];
     } else {
-      target_json[key] = apply(target_json[key], patch[key]);
+      target_json[key] = merge(target_json[key], patch[key]);
     }
   }
 

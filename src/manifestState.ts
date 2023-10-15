@@ -1,4 +1,4 @@
-import { apply } from "json";
+import { merge } from "json";
 import { Manifest } from "manifest";
 import { JSONValue, clone } from "types";
 import * as time from "time";
@@ -144,18 +144,18 @@ export class ManifestState {
 
         if (stepVersionid >= settledPoint) {
           this.manifest.service.config.log("Optimistic update");
-          this.optimistic_state = apply(
+          this.optimistic_state = merge(
             this.optimistic_state,
             step.data?.update
           );
           // we cannot replay state into the inflight zone, its not authorative yet
         } else {
           // console.log("settled update");
-          this.authoritative_state = apply(
+          this.authoritative_state = merge(
             this.authoritative_state,
             step.data?.update
           );
-          this.optimistic_state = apply(
+          this.optimistic_state = merge(
             this.optimistic_state,
             step.data?.update
           );
