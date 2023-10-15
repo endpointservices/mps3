@@ -281,10 +281,9 @@ describe("mps3", () => {
         expect(read).toEqual(rnd);
       });
 
-
       test("Key encoding", async () => {
         const rnd = uuid();
-        const key = `&$@=;[~|^  :+,"?\\\{^}%\]>#`;
+        const key = `&$@=;[~|^  :+,"?\\\{^}%\]>#\x01\x1F\x80\xFF`;
         await getClient().put(key, rnd);
         const read = await getClient().get(key);
         expect(read).toEqual(rnd);
