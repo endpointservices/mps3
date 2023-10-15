@@ -282,25 +282,9 @@ describe("mps3", () => {
       });
 
 
-      test("Key encoding easy", async () => {
+      test("Key encoding", async () => {
         const rnd = uuid();
-        const key = `&$@=;[~|^`;
-        await getClient().put(key, rnd);
-        const read = await getClient().get(key);
-        expect(read).toEqual(rnd);
-      });
-
-      test("Key encoding medium", async () => {
-        const rnd = uuid();
-        const key = `^  :+,"`;
-        await getClient().put(key, rnd);
-        const read = await getClient().get(key);
-        expect(read).toEqual(rnd);
-      });
-
-      test("Key encoding hard", async () => {
-        const rnd = uuid();
-        const key = `?\\\{^}%\]>#`;
+        const key = `&$@=;[~|^  :+,"?\\\{^}%\]>#`;
         await getClient().put(key, rnd);
         const read = await getClient().get(key);
         expect(read).toEqual(rnd);
