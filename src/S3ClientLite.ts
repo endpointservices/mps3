@@ -39,9 +39,9 @@ export class S3ClientLite {
   ) {}
 
   private getUrl(bucket: string, key?: string, additional?: string) {
-    return `${this.endpoint}/${bucket}${key ? `/${key}` : ""}${
-      additional || ""
-    }`;
+    return `${this.endpoint}/${bucket}${
+      key ? `/${encodeURIComponent(key)}` : ""
+    }${additional || ""}`;
   }
 
   async listObjectV2(

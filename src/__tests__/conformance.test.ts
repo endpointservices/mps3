@@ -281,6 +281,31 @@ describe("mps3", () => {
         expect(read).toEqual(rnd);
       });
 
+
+      test("Key encoding easy", async () => {
+        const rnd = uuid();
+        const key = `&$@=;[~|^`;
+        await getClient().put(key, rnd);
+        const read = await getClient().get(key);
+        expect(read).toEqual(rnd);
+      });
+
+      test("Key encoding medium", async () => {
+        const rnd = uuid();
+        const key = `^  :+,"`;
+        await getClient().put(key, rnd);
+        const read = await getClient().get(key);
+        expect(read).toEqual(rnd);
+      });
+
+      test("Key encoding hard", async () => {
+        const rnd = uuid();
+        const key = `?\\\{^}%\]>#`;
+        await getClient().put(key, rnd);
+        const read = await getClient().get(key);
+        expect(read).toEqual(rnd);
+      });
+
       test("Unsubscribe releases client", async () => {
         const mps3 = getClient({
           label: "unsubscribe",
