@@ -81,3 +81,8 @@ yields
 <Key>%5C%7B%5E%7D%25%5C%5D%22%3E%5B%7E%23%7C</Key>
 ```
 Notice spaces are converted to `+` while `+` is URL encoded to `%2B`, this is `x-www-form-urlencoded` *not* the similar URI encoding(!).
+
+### Unit Test
+
+Tested in conformance testing [here](https://github.com/endpointservices/mps3/blob/640648c2bb6f4f0b5cf45cb659b97a21ede862dc/src/__tests__/conformance.test.ts#L284). Note `\x00` should work but doesn't (might be a runtime issue).
+
