@@ -1,8 +1,7 @@
 import { S3 } from "@aws-sdk/client-s3";
 import { expect, test, describe, beforeAll, beforeEach } from "bun:test";
 import { MPS3, MPS3Config } from "mps3";
-import { ResolvedRef, uuid } from "types";
-import { clone } from "json";
+import { ResolvedRef, uuid, clone } from "types";
 import { DOMParser } from "@xmldom/xmldom";
 import cloudflareCredentials from "../../credentials/cloudflare.json";
 import gcsCredentials from "../../credentials/gcs.json";

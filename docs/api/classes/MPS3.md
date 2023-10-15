@@ -34,7 +34,7 @@
 
 #### Defined in
 
-[mps3.ts:123](https://github.com/endpointservices/mps3/blob/69a479f/src/mps3.ts#L123)
+[mps3.ts:122](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L122)
 
 ## Properties
 
@@ -44,7 +44,7 @@
 
 #### Defined in
 
-[mps3.ts:100](https://github.com/endpointservices/mps3/blob/69a479f/src/mps3.ts#L100)
+[mps3.ts:99](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L99)
 
 ## Methods
 
@@ -66,7 +66,7 @@
 
 #### Defined in
 
-[mps3.ts:322](https://github.com/endpointservices/mps3/blob/69a479f/src/mps3.ts#L322)
+[mps3.ts:321](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L321)
 
 ___
 
@@ -88,7 +88,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:193](https://github.com/endpointservices/mps3/blob/69a479f/src/mps3.ts#L193)
+[mps3.ts:192](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L192)
 
 ___
 
@@ -112,7 +112,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:331](https://github.com/endpointservices/mps3/blob/69a479f/src/mps3.ts#L331)
+[mps3.ts:330](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L330)
 
 ___
 
@@ -136,7 +136,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:342](https://github.com/endpointservices/mps3/blob/69a479f/src/mps3.ts#L342)
+[mps3.ts:341](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L341)
 
 ___
 
@@ -173,4 +173,4 @@ unsubscribe function
 
 #### Defined in
 
-[mps3.ts:521](https://github.com/endpointservices/mps3/blob/69a479f/src/mps3.ts#L521)
+[mps3.ts:520](https://github.com/endpointservices/mps3/blob/ff04322/src/mps3.ts#L520)

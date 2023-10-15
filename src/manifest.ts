@@ -2,8 +2,14 @@ import { OMap } from "OMap";
 import { MPS3 } from "mps3";
 import * as time from "time";
 import { OperationQueue } from "operationQueue";
-import { DeleteValue, ResolvedRef, VersionId, url, uuid } from "types";
-import { JSONValue } from "json";
+import {
+  DeleteValue,
+  JSONValue,
+  ResolvedRef,
+  VersionId,
+  url,
+  uuid,
+} from "types";
 import { UseStore } from "idb-keyval";
 import { ManifestState } from "manifestState";
 
