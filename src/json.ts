@@ -20,7 +20,7 @@ export const clone = <T>(state: T): T => JSON.parse(JSON.stringify(state));
  * JSON Merge Patch (RFC 7386)
  * Update target JSON with a merge patch
  */
-export function merge<T>(target: T, patch: Partial<T>): T {
+export function merge<T>(target: T, patch: Partial<T>): Partial<T> {
   // If patch is an array or a primitive, just return it
 
   if (patch === undefined) return target;
