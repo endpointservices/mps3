@@ -77,7 +77,7 @@ The is more expressive, it can represent null values and can also express insert
 `JSON-merge-patch` is functional and elegant, but restricts you to non-null values and dictionaries. `JSON patch` is applicable in more situations but clunky. I suspect that `JSON-merge-patch`'s constraints force better schema design, smaller code and fewer edge cases and therefore better suited to high performance code.
 
 ## Properties
-### Merges are associative
+### Merges are associative for structured documents
 
 You can apply a merge to a patch, to get a new patch that is the equivalent, meaning you have freedom to batch them
 
@@ -121,23 +121,18 @@ merge(a, a) = a
 This is extremely useful for making network communication fault tolerant to network disconnects. It is safe for a player to retransmit if they are unsure that the server received the update, as applying the same update twice is safe.
 
 
-### The identity patch is `{}`
+### The identity patch is `undefined`
 
-Patching anything with `{}` results in the same value
-
-```
-merge(x, {}) = x
-```
-
-#### Tricky  `merge(<scalar>, {})` edge case
-
-Merging the empty object into a scalar is an edge case. Most implementation replace the scalar with an empty object.
+Patching anything with `undefined` results in the same value
 
 ```
-merge(0, {})
+merge(x, undefined) = x
 ```
 
-As we want `{}` to represent the identity patch, the result should be `0` (this is not what the [RFC 7386 sample code](https://datatracker.ietf.org/doc/html/rfc7386#section-2) in the RFC does, but this situation is not an example test case either). Note if the target is an object the distinction does not matter.
+### The identity patch is not  `{}` 
+
+Patching with the empty object does not modify objects, but if the target it a scalar it overwrites it with `{}` . Thus, `{}` is not an identity patch.
+
 ## Applications
 ### A list of patches forms an ordered log.
 
@@ -149,9 +144,9 @@ state = sum_merge_over_patches p
 state = fold({}, patches)
 ```
 
-### Log can be coalesced
+### Log can be coalesced if the patches are structured
 
-Because patches are associative, you can apply them all to form a compact summary.
+If you patches are structured documents, you can apply them all to form a compact summary.
 
 ```
 log_patch = sum_merge p
@@ -161,7 +156,7 @@ This is useful for write **coalescing**. For example, if you allow one part of t
 
 ### Ordered Logs can be replayed multiple times
 
-Because patches are idempotent (in contrast to addition), you can apply the same set of patches multiple times.
+Because patches are idempotent, you can apply the same set of patches multiple times.
 
 ```
 fold({}, patches) = fold(fold({}, patches), patches)
@@ -180,6 +175,7 @@ This is useful for optimistic updates. You can apply all ordered entries as soon
 ## JSON difference
 
 If we think of merge as like addition, `s_1 = s_0 + p` there exists a subtraction `s_1 - s_0` for the difference.
+
 
 
 

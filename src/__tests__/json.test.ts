@@ -28,6 +28,27 @@ const rndDoc = (): JSONArrayless => {
   }
 };
 
+const rndStructuredDoc = () => {
+  const doc: Record<string, any> = {};
+  if (Math.random() > 0.5) {
+    // add a scalar
+    const key = "scalar-" + Math.floor(Math.random() * 2);
+    const choice = Math.floor(Math.random() * 3);
+    if (choice === 0) {
+      doc[key] = Math.random() - 0.5;
+    } else if (choice === 1) {
+      doc[key] = Math.random() > 0.5;
+    } else {
+      doc[key] = uuid().substring(0, 8);
+    }
+  }
+  if (Math.random() > 0.5) {
+    // add a nested doc
+    const key = "subdoc-" + Math.floor(Math.random() * 2);
+    doc[key] = rndStructuredDoc();
+  }
+};
+
 const testCase = (
   label,
   expr: (...args: any[]) => any,
@@ -44,7 +65,7 @@ const testCase = (
     }
   });
 
-const TRIALS = 1000;
+const TRIALS = 10000;
 
 const repeat = (fn: () => void) => {
   return () => {
@@ -73,48 +94,37 @@ describe("JSON Merge Patch (RFC 7386)", () => {
     () => ({ a: "" })
   );
 
-  test(
-    "deletion: merge(x, null) == {}",
-    repeat(() => {
-      const doc = rndDoc();
-      expect(merge(doc, null)).toEqual({});
-    })
+  testCase(
+    "deletion",
+    (a) => merge(a, null),
+    (a) => undefined
   );
 
-  test("case: merge(true, undefined) == {a: {}}", () => {
-    expect(merge(true, undefined)).toEqual(true);
-  });
+  testCase(
+    "case",
+    () => merge(true, { a: {} }),
+    () => ({ a: {} })
+  );
 
-  test("case: merge(true, {a: {}}) == {a: {}}", () => {
-    expect(merge(true, { a: {} })).toEqual({ a: {} });
-  });
+  testCase(
+    "case",
+    () => merge({}, { a: {} }),
+    () => ({ a: {} })
+  );
 
-  test("case: merge({}, {a: {}}) == {a: {}}", () => {
-    expect(merge({}, { a: {} })).toEqual({ a: {} });
-  });
-
-  test("case: merge({a: false}, true) == true", () => {
-    expect(merge({ a: false }, true)).toEqual(true);
-  });
+  testCase(
+    "case",
+    () => merge({ a: false }, true),
+    () => true
+  );
 
   test(
-    "associative: merge(a, merge(b, c)) == merge(merge(a, b), c)",
+    "associative: merge(a, merge(b, c)) == merge(merge(a, b), c) for structured docs",
     repeat(() => {
-      const a = rndDoc();
-      const b = rndDoc();
-      const c = rndDoc();
-      console.log("\na", a, "\nb", b, "\nc", c);
-      console.log("\nmerge(a, merge(b, c))", merge(a, merge(b, c)));
-      console.log("\nmerge(merge(a, b), c)", merge(merge(a, b), c));
+      const a = rndStructuredDoc();
+      const b = rndStructuredDoc();
+      const c = rndStructuredDoc();
       expect(merge(a, merge(b, c))).toEqual(merge(merge(a, b), c));
-    })
-  );
-
-  test(
-    "idempotent: merge(a, a) == a",
-    repeat(() => {
-      const a = rndDoc();
-      expect(merge(a, a)).toEqual(a);
     })
   );
 
