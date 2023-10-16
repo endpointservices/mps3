@@ -20,13 +20,29 @@ const rndDoc = (): JSONArrayless => {
   } else if (choice === 2) {
     return uuid().substring(0, 8);
   } else {
-    const fields = Math.floor(Math.random() * 2);
+    const fields = Math.floor(Math.random() * 3);
     return {
       ...(fields > 0 && { a: rndDoc() }),
       ...(fields > 1 && { b: rndDoc() }),
     };
   }
 };
+
+const testCase = (
+  label,
+  expr: (...args: any[]) => any,
+  expected: (...args: any[]) => any
+) =>
+  test(`${label}: ${expr.toString()} == ${expected}`, () => {
+    if (expr.length > 0) {
+      repeat(() => {
+        const args = Array.from({ length: expr.length }).map(rndDoc);
+        expect(expr(...args)).toEqual(expected(...args));
+      })();
+    } else {
+      expect(expr()).toEqual(expected());
+    }
+  });
 
 const TRIALS = 1000;
 
@@ -39,12 +55,22 @@ const repeat = (fn: () => void) => {
 };
 
 describe("JSON Merge Patch (RFC 7386)", () => {
-  test(
-    "identity: merge(x, {}) == x",
-    repeat(() => {
-      const doc = rndDoc();
-      expect(merge(doc, {})).toEqual(doc);
-    })
+  testCase(
+    "identity",
+    (a) => merge(a, undefined),
+    (a) => a
+  );
+
+  testCase(
+    "case",
+    () => merge(0, {}),
+    () => ({})
+  );
+
+  testCase(
+    "case",
+    () => merge({ a: "" }, {}),
+    () => ({ a: "" })
   );
 
   test(
@@ -54,6 +80,10 @@ describe("JSON Merge Patch (RFC 7386)", () => {
       expect(merge(doc, null)).toEqual({});
     })
   );
+
+  test("case: merge(true, undefined) == {a: {}}", () => {
+    expect(merge(true, undefined)).toEqual(true);
+  });
 
   test("case: merge(true, {a: {}}) == {a: {}}", () => {
     expect(merge(true, { a: {} })).toEqual({ a: {} });
@@ -67,17 +97,15 @@ describe("JSON Merge Patch (RFC 7386)", () => {
     expect(merge({ a: false }, true)).toEqual(true);
   });
 
-  test("case: merge({a: false}, true) == true", () => {
-    expect(merge({ a: false }, true)).toEqual(true);
-  });
-
   test(
     "associative: merge(a, merge(b, c)) == merge(merge(a, b), c)",
     repeat(() => {
       const a = rndDoc();
       const b = rndDoc();
       const c = rndDoc();
-      console.log("a", a, "b", b, "c", c);
+      console.log("\na", a, "\nb", b, "\nc", c);
+      console.log("\nmerge(a, merge(b, c))", merge(a, merge(b, c)));
+      console.log("\nmerge(merge(a, b), c)", merge(merge(a, b), c));
       expect(merge(a, merge(b, c))).toEqual(merge(merge(a, b), c));
     })
   );
@@ -101,44 +129,64 @@ describe("JSON Merge Patch (RFC 7386)", () => {
 
 // describe diff
 describe("JSON-merge-diff", () => {
-  test(
-    "identity: diff(a, {}) == a",
-    repeat(() => {
-      const a = rndDoc();
-      expect(diff(a, {})).toEqual(a);
-    })
+  testCase(
+    "identity",
+    (a) => diff(a, undefined),
+    (a) => a
   );
 
   test(
-    "identity: diff(a, a) == {}",
+    "identity: diff(a, a) == undefined",
     repeat(() => {
       const a = rndDoc();
-      expect(diff(a, a)).toEqual({});
+      expect(diff(a, a)).toEqual(undefined);
     })
   );
 
-  test("case: diff({}, 0) == null", () => {
-    expect(diff({}, 0)).toEqual(null);
-  });
+  testCase(
+    "case",
+    () => diff({}, 0),
+    () => ({})
+  );
 
-  test("case: diff({a: {}}, {}) == {a: {}}", () => {
-    expect(diff({ a: {} }, {})).toEqual({ a: {} });
-  });
+  testCase(
+    "case",
+    () => diff({ a: {} }, {}),
+    () => ({ a: {} })
+  );
+
+  testCase(
+    "case",
+    () => diff({}, { a: {} }),
+    () => ({ a: null })
+  );
 
   test("case: diff({a: false}, {a: 0}) == {a: false}", () => {
     expect(diff({ a: false }, { a: 0 })).toEqual({ a: false });
   });
 
-  test("case: diff({a: {}}, {a: true}) == {a: null", () => {
-    expect(diff({ a: {} }, { a: true })).toEqual({ a: null });
-  });
+  testCase(
+    "case",
+    () => diff({ a: {} }, { a: true }),
+    () => ({ a: {} })
+  );
 
   test(
     "inverse: merge(a, diff(b, a)) == b",
     repeat(() => {
       const a = rndDoc();
       const b = rndDoc();
-      console.log("a", a, "b", b, "diff(b, a)", diff(b, a));
+      /*
+      console.log(
+        "a",
+        a,
+        "b",
+        b,
+        "diff(b, a)",
+        diff(b, a),
+        "merge(a, diff(b, a))",
+        merge(a, diff(b, a))
+      );*/
       expect(merge(a, diff(b, a))).toEqual(b);
     })
   );
