@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { JSONArrayless, diff, merge } from "json";
+import { JSONArrayless, diff, fold, merge } from "json";
 import { uuid } from "types";
 
 const doc = {
@@ -128,13 +128,25 @@ describe("JSON Merge Patch (RFC 7386)", () => {
     })
   );
 
-  test(
-    "idempotent: merge(a, a) == a",
-    repeat(() => {
-      const a = rndDoc();
-      expect(merge(a, a)).toEqual(a);
-    })
+  testCase(
+    "idempotent",
+    (a) => merge(a, a),
+    (a) => a
   );
+
+  describe("fold", () => {
+    testCase(
+      "idempotent",
+      (a, b, c) => fold(a, b, c),
+      (a, b, c) => fold(fold(a, b, c), a, b, c)
+    );
+
+    testCase(
+      "log repair",
+      (a, b, c) => fold(fold(a, c), b, c),
+      (a, b, c) => fold(a, b, c)
+    );
+  });
 });
 
 // describe diff
@@ -145,12 +157,10 @@ describe("JSON-merge-diff", () => {
     (a) => a
   );
 
-  test(
-    "identity: diff(a, a) == undefined",
-    repeat(() => {
-      const a = rndDoc();
-      expect(diff(a, a)).toEqual(undefined);
-    })
+  testCase(
+    "identity",
+    (a) => diff(a, a),
+    (a) => undefined
   );
 
   testCase(
@@ -171,9 +181,11 @@ describe("JSON-merge-diff", () => {
     () => ({ a: null })
   );
 
-  test("case: diff({a: false}, {a: 0}) == {a: false}", () => {
-    expect(diff({ a: false }, { a: 0 })).toEqual({ a: false });
-  });
+  testCase(
+    "case",
+    () => diff({ a: false }, { a: 0 }),
+    () => ({ a: false })
+  );
 
   testCase(
     "case",
@@ -181,23 +193,29 @@ describe("JSON-merge-diff", () => {
     () => ({ a: {} })
   );
 
+  testCase(
+    "inverse",
+    (a, b) => merge(a, diff(b, a)),
+    (a, b) => b
+  );
+
   test(
-    "inverse: merge(a, diff(b, a)) == b",
+    "inverse: diff(a, diff(b, c)) == diff(diff(a, b), c) for structured docs",
+    repeat(() => {
+      const a = rndStructuredDoc();
+      const b = rndStructuredDoc();
+      const c = rndStructuredDoc();
+      expect(diff(a, diff(b, c))).toEqual(diff(diff(a, b), c));
+    })
+  );
+
+  test(
+    "associative: diff(a, b) = c <=> merge(b, c) = a",
     repeat(() => {
       const a = rndDoc();
       const b = rndDoc();
-      /*
-      console.log(
-        "a",
-        a,
-        "b",
-        b,
-        "diff(b, a)",
-        diff(b, a),
-        "merge(a, diff(b, a))",
-        merge(a, diff(b, a))
-      );*/
-      expect(merge(a, diff(b, a))).toEqual(b);
+      const c = diff(a, b);
+      expect(merge(b, c)).toEqual(a);
     })
   );
 });

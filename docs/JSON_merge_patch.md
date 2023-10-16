@@ -1,8 +1,7 @@
-## JSON Merge Patch: Algebra, Applications and Errata
+# JSON Merge Patch: Algebra and Applications
 
-JSON Merge patch is a [standardised](https://datatracker.ietf.org/doc/html/rfc7386) way to encode *sparse* updates to a JSON document. It has some nice properties that make it useful in collaborative applications.
-In this article we cover the basics and then dive into the algebraic properties JSON-merge-PATCH has over its ugly cousin the `JSON Patch`. And by treating it formally, we notice an omission in the original RFC which when fixed 
-
+JSON Merge patch is a [standardized](https://datatracker.ietf.org/doc/html/rfc7386) way to encode *sparse* updates to a JSON document. It has some nice properties that make it useful in collaborative applications.
+In this article, we cover the basics and then dive into the algebraic properties JSON-merge-PATCH has over its ugly cousin the `JSON Patch`. 
 ### Intro
 
 Given a document
@@ -38,7 +37,7 @@ And we can add fields using values
 }
 ```
 
-We can do multiple add, remove and delete operations all at once, at all levels of the hierarchy with RFC 7386 JSON merge patches:
+We can do multiple add, remove, and delete operations all at once, at all levels of the hierarchy with RFC 7386 JSON merge patches:
 
 ```
 {
@@ -51,7 +50,7 @@ We can do multiple add, remove and delete operations all at once, at all levels 
 ```
 
 
-### Patches move state forward
+### Patches move the state forward
 
 If you view a JSON document as the state of a system, then patching can be seen as updating the state. As patches are small, the state can be large, and only the small *delta update* merge patch needs to be transmitted.
 
@@ -59,33 +58,54 @@ If you view a JSON document as the state of a system, then patching can be seen 
 state_t+1 = merge(state_t, patch_t)
 ```
 
-### Arrays and nulls values don't work
+### Arrays and null values don't work
 
-Merge patches have a huge disadvantage that they only really work well with dictionaries. Furthermore, because `null` is used to represent delete, it is impossible to use `null` as a value. You *can* use arrays, but they are not merged efficiently, and thus array mutations tend to conflict more frequently.
+Merge patches have a huge disadvantage in that they only really work well with dictionaries. Furthermore, because `null` is used to represent delete, it is impossible to use `null` as a value. You *can* use arrays, but they are not merged efficiently, and thus array mutations tend to conflict more frequently.
 
 ### Comparison to JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902))
 
 There is a cousin standard called `JSON Patch` that attempts to update a state by applying a sequence of operations.
 ```
 [
- { "op": "add", "path": "/baz", "value": "qux" }
+ { "op": "add", "path": "/baz", "value": "qux" },
+ { "op": ...}
 ]
 ```
 
-The is more expressive, it can represent null values and can also express insertion into an array. However it is more complex, and imperative. It does not have as many nice algebraic properties like `JSON-merge-patch` discussed below and thus in my subjective opinion it is ugly and should be avoided. 
+The is more expressive, it can represent null values and can also express insertion into an array. However, it is more complex and imperative. It does not have as many nice algebraic properties as `JSON-merge-patch` discussed below and thus in my subjective opinion, it is ugly and should be avoided. 
 
-`JSON-merge-patch` is functional and elegant, but restricts you to non-null values and dictionaries. `JSON patch` is applicable in more situations but clunky. I suspect that `JSON-merge-patch`'s constraints force better schema design, smaller code and fewer edge cases and therefore better suited to high performance code.
+`JSON-merge-patch` is functional and elegant, but restricts you to non-null values and dictionaries. `JSON patch` is applicable in more situations but clunky. I suspect that `JSON-merge-patch`'s constraints force better schema design, smaller code, and fewer edge cases and therefore better suited to high-performance code.
 
-## Properties
+## Properties of JSON-merge-patch
+
+### Merges are not associative in general
+
+An associative binary function can be grouped in any way on a sequence and yield the same result. This is a useful property as it allows you to compact expressions whenever adjacent elements are known.
+
+```
+merge(merge(a, b), c) == merge(a, merge(b, c)) // NOT TRUE IN GENERAL
+```
+
+It does not work for merges when objects and scalars are mixed
+```
+merge(merge(0, {}), 0) = 0
+!==
+merge(0, merge({}, 0)) = {}
+```
+
 ### Merges are associative for structured documents
 
-You can apply a merge to a patch, to get a new patch that is the equivalent, meaning you have freedom to batch them
+If we add the constraint that you are not allowed to change the type of elements then `merge` *is* associative. 
 
 ```
-merge(merge(a, b), c) == merge(a, merge(b, c))
+merge(merge(a, b), c) == merge(a, merge(b, c)) for structured docs
 ```
 
-### Non-overlapping patches are commutative. Overlapping writes are last-write-wins
+JSON generated from a typed model doesn't normally change types. This constraint is not a big deal, but it is something to watch out for.
+
+Associativity is a useful property in networked for write coalescing. We can exploit associativity by merging a list of patches into a single large patch before transmission, potentially reducing bandwidth and increasing efficiency.
+
+### Non-overlapping patches are commutative. 
 
 If two patches manipulate different parts of the document, they can be applied in either order and get the same result.
 
@@ -93,7 +113,11 @@ If two patches manipulate different parts of the document, they can be applied i
 merge(merge(s, a), b) == merge(merge(s, b), a) if b intersect a == empty
 ```
 
-This is useful for collaboration, sparse updates from different players can be merged nicely, and in most cases if the players are doing different things the outcome will not be affected by network delays. There is, however, a problem when players mutate the same resource, for example, if player one deletes a resource
+This is useful for collaboration, sparse updates from different players can be merged nicely, and in most cases, if the players are doing different things the outcome will not be affected by network delays. 
+
+### Overlapping writes are last-write-wins
+
+There is, however, a problem when players mutate the same resource, for example, if player one deletes a resource
 ```
 {
 	resource1: null
@@ -106,7 +130,7 @@ and another updates the same resource
 }
 ```
 
-Then if the patches are applied DELETE, UPDATE, the final state of resource1 is `new value`. If the patches are applied UPDATE, DELETE, the final state of resource1 is `null` i.e. DELETED. In this case the the operations to not commute. Thus the conflict resolution for overlapping or conflicting merges is last-write-wins.
+Then if the patches are applied DELETE, UPDATE, the final state of resource1 is `new value`. If the patches are applied UPDATE, DELETE, the final state of resource1 is `null` i.e. DELETED. In this case, the operations do not commute. Thus the conflict resolution for overlapping or conflicting merges is last-write-wins.
 
 ### Merges are idempotent
 
@@ -118,8 +142,7 @@ merge(merge(s, a), a) = merge(s, a)
 merge(a, a) = a
 ```
 
-This is extremely useful for making network communication fault tolerant to network disconnects. It is safe for a player to retransmit if they are unsure that the server received the update, as applying the same update twice is safe.
-
+This is useful for making network communication fault-tolerant to network disconnects. It is safe to retry if they are unsure that the server received the update, as applying the same update twice is safe.
 
 ### The identity patch is `undefined`
 
@@ -129,14 +152,28 @@ Patching anything with `undefined` results in the same value
 merge(x, undefined) = x
 ```
 
+It's an annoying detail that you need an extra symbol to represent "not set" for the root element of a JSON document. JSON docs on the wire don't have a literal for this, but for nested fields, you have a similar degree of freedom by omitting the definition of the field. So in practice, we do not need additional symbols in the wire representation. The extra symbol is useful as a transient value for implementation as it simplifies some of the recursion.
+
 ### The identity patch is not  `{}` 
 
-Patching with the empty object does not modify objects, but if the target it a scalar it overwrites it with `{}` . Thus, `{}` is not an identity patch.
+Patching with the empty object does not modify objects
+
+```
+merge({a:""}, {}) = {a:""}
+```
+
+so it seems like a better candidate for the identity patch. However, if the target is a scalar it overwrites it with `{}`. 
+
+```
+merge(0, {}) = {} // not 0 unfortunately
+```
+
+Thus, `{}` is not the identity patch. If we forbid scalars at the root it would be, and we would not need the extra symbol `undefined` for the identity.
 
 ## Applications
 ### A list of patches forms an ordered log.
 
-You can think of a merge operation as addition. You can concatenate merges from the identity to array as a fold/reduce over the set of 
+You can think of a merge operation as an addition. You can concatenate merges from the identity to array as a fold/reduce over the set of 
 
 ```
 state = sum_merge_over_patches p
@@ -146,7 +183,7 @@ state = fold({}, patches)
 
 ### Log can be coalesced if the patches are structured
 
-If you patches are structured documents, you can apply them all to form a compact summary.
+If your patches are structured documents, you can apply them all to form a compact summary.
 
 ```
 log_patch = sum_merge p
@@ -159,23 +196,64 @@ This is useful for write **coalescing**. For example, if you allow one part of t
 Because patches are idempotent, you can apply the same set of patches multiple times.
 
 ```
-fold({}, patches) = fold(fold({}, patches), patches)
+fold(patches) = fold(fold(patches)), patches)
 ```
 
 ### Ordered Logs with missing entries can be repaired with replay
 
-If you use a logs with a missing entry to generate a final state, that final state can be repaired by replaying the log. You cannot just apply the missing update to the final state because patches do not, in general, commute. But if you know the ordering you can fix the state by playing all updates that came after.
+If you use a log with a missing entry to generate a final state, that final state can be repaired by replaying the full log.
 
 ```
-fold({}, patches) = fold(fold({}, patches - entry), patches)
+fold(a, b, c) = fold(fold(a, c), b, c) // we skipped b in first fold
 ```
 
-This is useful for optimistic updates. You can apply all ordered entries as soon as you receive them, but if some are received out of some global order, you can fix the state without much book-keeping.
+This is useful for optimistic updates. You can apply all ordered entries as soon as you receive them, but if some are received out of some global order, you can fix the state without much bookkeeping.
 
-## JSON difference
+## JSON merge difference
 
-If we think of merge as like addition, `s_1 = s_0 + p` there exists a subtraction `s_1 - s_0` for the difference.
+If we think of merge as like addition, `s_1 = s_0 + p` there exists a subtraction `s_1 - s_0` to calculate the patch between two states. Thus, merging the difference between `b` and `a` generates a patch that can move `a` to `b`:-
+
+```
+merge(a, diff(b, a)) == b
+```
+
+## Properties of JSON-merge-diff
+
+### Identity is `undefined`
+
+```
+diff(a, undefined) = a
+```
 
 
 
+### `Diff(a, a) = undefined`
 
+Diffing a doc with itself yields the identity patch.
+
+### Diffs are associative for structured documents
+
+Similar to *merge*, diffs are not associative in the general case, but if key-values do not switch between scalars and objects, i.e. the document has a stable schema, then `diff` is associative
+
+```
+diff(a, diff(b, c)) == diff(diff(a, b), c) for structured docs
+```
+
+### Diff is the inverse of merge
+
+This applies to any JSON document
+
+```
+diff(a, b) = c <=> merge(b, c) = a
+```
+
+Now there is a precise and unique inverse of merge, we can understand merge better.
+
+## Structured JSON's Algebraic Group
+
+Structured JSON documents form an algebraic group over merges. They adhere to properties of associativity, identity, closure, and inverseness. However, this only holds when documents maintain a stable schema, ensuring that scalar values and objects remain consistent.
+
+By keeping structured documents, you can safely do write coalescing by merging pending operations in a queue. When you do this you exploit the associativity property. 
+Even if you do not use structured operation, JSON-merge-patch always has a well-defined inverse.
+
+JSON-merge-patch rocks!
