@@ -1,5 +1,7 @@
+## JSON Merge Patch: Algebra, Applications and Errata
 
-JSON Merge patch is a [standardised](https://datatracker.ietf.org/doc/html/rfc7386) way to encode *sparse* updates to a JSON document. It has some amazing properties that make it useful in collaberative systems like multiple databases.
+JSON Merge patch is a [standardised](https://datatracker.ietf.org/doc/html/rfc7386) way to encode *sparse* updates to a JSON document. It has some nice properties that make it useful in collaborative applications.
+In this article we cover the basics and then dive into the algebraic properties JSON-merge-PATCH has over its ugly cousin the `JSON Patch`. And by treating it formally, we notice an omission in the original RFC which when fixed 
 
 ### Intro
 
@@ -49,13 +51,30 @@ We can do multiple add, remove and delete operations all at once, at all levels 
 ```
 
 
-### Patches as to move state forward
+### Patches move state forward
 
 If you view a JSON document as the state of a system, then patching can be seen as updating the state. As patches are small, the state can be large, and only the small *delta update* merge patch needs to be transmitted.
 
 ```
 state_t+1 = merge(state_t, patch_t)
 ```
+
+### Arrays and nulls values don't work
+
+Merge patches have a huge disadvantage that they only really work well with dictionaries. Furthermore, because `null` is used to represent delete, it is impossible to use `null` as a value. You *can* use arrays, but they are not merged efficiently, and thus array mutations tend to conflict more frequently.
+
+### Comparison to JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902))
+
+There is a cousin standard called `JSON Patch` that attempts to update a state by applying a sequence of operations.
+```
+[
+ { "op": "add", "path": "/baz", "value": "qux" }
+]
+```
+
+The is more expressive, it can represent null values and can also express insertion into an array. However it is more complex, and imperative. It does not have as many nice algebraic properties like `JSON-merge-patch` discussed below and thus in my subjective opinion it is ugly and should be avoided. 
+
+`JSON-merge-patch` is functional and elegant, but restricts you to non-null values and dictionaries. `JSON patch` is applicable in more situations but clunky. I suspect that `JSON-merge-patch`'s constraints force better schema design, smaller code and fewer edge cases and therefore better suited to high performance code.
 
 ## Properties
 ### Merges are associative
@@ -101,9 +120,6 @@ merge(a, a) = a
 
 This is extremely useful for making network communication fault tolerant to network disconnects. It is safe for a player to retransmit if they are unsure that the server received the update, as applying the same update twice is safe.
 
-### Arrays and nulls values don't work
-
-Merge patches have a huge disadvantage that they only really work well with dictionaries. Furthermore, because `null` is used to represent delete, it is impossible to use `null` as a value. You *can* use arrays, but they are not merged efficiently, and thus array mutations tend to conflict with last-write-wins more frequently.
 
 ### The identity patch is `{}`
 
@@ -113,6 +129,15 @@ Patching anything with `{}` results in the same value
 merge(x, {}) = x
 ```
 
+#### Tricky  `merge(<scalar>, {})` edge case
+
+Merging the empty object into a scalar is an edge case. Most implementation replace the scalar with an empty object.
+
+```
+merge(0, {})
+```
+
+As we want `{}` to represent the identity patch, the result should be `0` (this is not what the [RFC 7386 sample code](https://datatracker.ietf.org/doc/html/rfc7386#section-2) in the RFC does, but this situation is not an example test case either). Note if the target is an object the distinction does not matter.
 ## Applications
 ### A list of patches forms an ordered log.
 
