@@ -3,7 +3,7 @@
 JSON Merge patch is a [standardized](https://datatracker.ietf.org/doc/html/rfc7386) way to encode *sparse* updates to a JSON document. It has some nice properties that make it useful in collaborative applications.
 In this article, we cover the basics, its algebraic properties, it's inverse and some tricks, cross references with source code links.
 
-We will discover that to unlock the full potential of JSON-merge-Patch, you should avoid mixing types, when this is true the set of structured JSONs form a group over merge. With structured JSON it is safe to use JSON-merge-PATCH to coalesce writes.
+We will discover that to unlock the full potential of JSON-merge-Patch, you should avoid mixing types. The set of `structured JSONs`` form an algebraic group over merge. With structured JSON it is safe to use JSON-merge-PATCH to coalesce writes, a useful optimization for network optimization.
 
 - [Intro](#intro)
 	- [Patches move the state forward](#patches-move-the-state-forward)
@@ -86,6 +86,8 @@ If you view a JSON document as the state of a system, then patching can be seen 
 state_t+1 = merge(state_t, patch_t)
 ```
 
+[*Typescript implementation*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/json.ts#L21)
+
 ---
 
 ### Arrays and null values don't work
@@ -141,6 +143,8 @@ JSON generated from a typed model doesn't normally change types. This constraint
 
 Associativity is a useful property in networked for write coalescing. We can exploit associativity by merging a list of patches into a single large patch before transmission, potentially reducing bandwidth and increasing efficiency.
 
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L123)
+
 ---
 
 ### Non-overlapping patches are commutative. 
@@ -186,6 +190,8 @@ merge(a, a) = a
 
 This is useful for making network communication fault-tolerant to network disconnects. It is safe to retry if they are unsure that the server received the update, as applying the same update twice is safe.
 
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L133)
+
 ---
 
 ### The identity patch is `undefined`
@@ -197,6 +203,8 @@ merge(x, undefined) = x
 ```
 
 It's an annoying detail that you need an extra symbol to represent "not set" for the root element of a JSON document. JSON docs on the wire don't have a literal for this, but for nested fields, you have a similar degree of freedom by omitting the definition of the field. So in practice, we do not need additional symbols in the wire representation. The extra symbol is useful as a transient value for implementation as it simplifies some of the recursion.
+
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L81)
 
 ---
 
@@ -251,6 +259,8 @@ Because patches are idempotent, you can apply the same set of patches multiple t
 fold(patches) = fold(fold(patches)), patches)
 ```
 
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L40)
+
 ---
 
 ### Ordered Logs with missing entries can be repaired with replay
@@ -263,6 +273,8 @@ fold(a, b, c) = fold(fold(a, c), b, c) // we skipped b in first fold
 
 This is useful for optimistic updates. You can apply all ordered entries as soon as you receive them, but if some are received out of some global order, you can fix the state without much bookkeeping.
 
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L146)
+
 ---
 
 ## JSON merge difference: `diff`
@@ -273,6 +285,8 @@ If we think of merge as like addition, `s_1 = s_0 + p` there exists a subtractio
 merge(a, diff(b, a)) == b
 ```
 
+[*Typescript implementation*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/json.ts#L57)
+
 ---
 
 ### Identity is `undefined`
@@ -281,12 +295,15 @@ merge(a, diff(b, a)) == b
 diff(a, undefined) = a
 ```
 
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L146)
+
 ---
 
 ### `Diff(a, a) = undefined`
 
 Diffing a doc with itself yields the identity patch.
 
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L156)
 
 ---
 
@@ -299,6 +316,8 @@ diff(a, b) = c <=> merge(b, c) = a
 ```
 
 Now there is a precise and unique inverse of merge, we can understand merge better.
+
+[*Verification source code*](https://github.com/endpointservices/mps3/blob/ce5a622c730466d336d761f39b5572224f2dd259/src/__tests__/json.test.ts#L204)
 
 ---
 
