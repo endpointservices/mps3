@@ -214,7 +214,7 @@ export class MPS3 {
       this.config.log(`GET (cached) ${contentRef} ${inflight.get(contentRef)}`);
       return inflight.get(contentRef);
     }
-    const version = await manifest.getOptimisticVersion(contentRef);
+    const version = await manifest.getVersion(contentRef);
     if (version === undefined) return undefined;
 
     return (

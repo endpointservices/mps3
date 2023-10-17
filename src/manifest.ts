@@ -214,9 +214,8 @@ export class Manifest {
     }
   }
 
-  async getOptimisticVersion(ref: ResolvedRef): Promise<string | undefined> {
-    await this.manifestState.getLatest();
-    return this.manifestState.optimistic_state.files[url(ref)]?.version;
+  async getVersion(ref: ResolvedRef): Promise<string | undefined> {
+    return (await this.manifestState.getLatest()).files[url(ref)]?.version;
   }
 
   subscribe(

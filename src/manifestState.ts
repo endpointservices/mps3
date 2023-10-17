@@ -34,7 +34,6 @@ interface HttpCacheEntry<T> {
 export class ManifestState {
   authoritative_key: string = "";
   authoritative_state: ManifestFile = clone(INITIAL_STATE);
-  optimistic_state: ManifestFile = clone(INITIAL_STATE);
 
   loading?: Promise<unknown>;
   cache?: HttpCacheEntry<ManifestFile>;
@@ -47,7 +46,6 @@ export class ManifestState {
     this.loading = get(MANIFEST_KEY, db).then((loaded) => {
       if (loaded) {
         this.authoritative_state = loaded;
-        this.optimistic_state = loaded;
         this.manifest.service.config.log(`RESTORE ${MANIFEST_KEY}`);
       }
     });
@@ -81,7 +79,7 @@ export class ManifestState {
         this.manifest.service.s3ClientLite.listObjectV2({
           Bucket: this.manifest.ref.bucket,
           Prefix: this.manifest.ref.key,
-          StartAfter: this.authoritative_key,
+          StartAfter: this.authoritative_key, // could be null
         })
       );
 
@@ -92,7 +90,6 @@ export class ManifestState {
       // Play the missing patches over the base state, oldest first
       if (objects.Contents === undefined) {
         this.authoritative_state = clone(INITIAL_STATE);
-        this.optimistic_state = clone(INITIAL_STATE);
         return this.authoritative_state;
       }
 
@@ -125,6 +122,7 @@ export class ManifestState {
         }
       }
 
+      // Play operations forward on oldest state
       for (let index = 0; index < objects.Contents.length; index++) {
         const key = objects.Contents[index].Key!;
         if (key == this.manifest.ref.key) continue; // skip manifest read
@@ -142,29 +140,15 @@ export class ManifestState {
           },
         });
         const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
-
-        if (stepVersionid >= settledPoint) {
-          this.manifest.service.config.log("Optimistic update");
-          this.optimistic_state = merge(
-            this.optimistic_state,
-            step.data?.update
-          )!;
-          // we cannot replay state into the inflight zone, its not authorative yet
-        } else {
-          // console.log("settled update");
-          this.authoritative_state = merge<ManifestFile>(
-            this.authoritative_state,
-            step.data?.update
-          )!;
-          this.optimistic_state = merge(
-            this.optimistic_state,
-            step.data?.update
-          )!;
-          this.authoritative_key = key;
-        }
+        this.authoritative_state = merge<ManifestFile>(
+          this.authoritative_state,
+          step.data?.update
+        )!;
+        this.authoritative_key = key;
         this.manifest.observeVersionId(stepVersionid);
       }
       if (this.db) set(MANIFEST_KEY, this.authoritative_state, this.db);
+
       return this.authoritative_state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {
