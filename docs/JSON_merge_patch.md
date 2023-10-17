@@ -28,6 +28,8 @@ We will discover that to unlock the full potential of JSON-merge-Patch, you shou
 	- [Diff is the inverse of merge](#diff-is-the-inverse-of-merge)
 - [Structured JSON's Algebraic Group](#structured-jsons-algebraic-group)
 
+---
+
 ## Intro
 
 Given a document
@@ -75,7 +77,7 @@ We can do multiple add, remove, and delete operations all at once, at all levels
 }
 ```
 
-
+---
 ### Patches move the state forward
 
 If you view a JSON document as the state of a system, then patching can be seen as updating the state. As patches are small, the state can be large, and only the small *delta update* merge patch needs to be transmitted.
@@ -84,11 +86,13 @@ If you view a JSON document as the state of a system, then patching can be seen 
 state_t+1 = merge(state_t, patch_t)
 ```
 
-
+---
 
 ### Arrays and null values don't work
 
 Merge patches have a huge disadvantage in that they only really work well with dictionaries. Furthermore, because `null` is used to represent delete, it is impossible to use `null` as a value. You *can* use arrays, but they are not merged efficiently, and thus array mutations tend to conflict more frequently.
+
+---
 
 ### Comparison to JSON Patch (RFC 6902)
 
@@ -103,6 +107,8 @@ There is a cousin standard called `JSON Patch` ([RFC 6902](https://datatracker.i
 The is more expressive, it can represent null values and can also express insertion into an array. However, it is more complex and imperative. It does not have as many nice algebraic properties as `JSON-merge-patch` discussed below and thus in my subjective opinion, it is ugly and should be avoided. 
 
 `JSON-merge-patch` is functional and elegant, but restricts you to non-null values and dictionaries. `JSON patch` is applicable in more situations but clunky. I suspect that `JSON-merge-patch`'s constraints force better schema design, smaller code, and fewer edge cases and therefore better suited to high-performance code.
+
+---
 
 ## Properties of JSON-merge-patch
 
@@ -121,6 +127,8 @@ merge(merge(0, {}), 0) = 0
 merge(0, merge({}, 0)) = {}
 ```
 
+---
+
 ### Merges are associative for structured documents
 
 If we add the constraint that you are not allowed to change the type of elements then `merge` *is* associative. 
@@ -133,6 +141,8 @@ JSON generated from a typed model doesn't normally change types. This constraint
 
 Associativity is a useful property in networked for write coalescing. We can exploit associativity by merging a list of patches into a single large patch before transmission, potentially reducing bandwidth and increasing efficiency.
 
+---
+
 ### Non-overlapping patches are commutative. 
 
 If two patches manipulate different parts of the document, they can be applied in either order and get the same result.
@@ -142,6 +152,8 @@ merge(merge(s, a), b) == merge(merge(s, b), a) if b intersect a == empty
 ```
 
 This is useful for collaboration, sparse updates from different players can be merged nicely, and in most cases, if the players are doing different things the outcome will not be affected by network delays. 
+
+---
 
 ### Overlapping writes are last-write-wins
 
@@ -160,6 +172,8 @@ and another updates the same resource
 
 Then if the patches are applied DELETE, UPDATE, the final state of resource1 is `new value`. If the patches are applied UPDATE, DELETE, the final state of resource1 is `null` i.e. DELETED. In this case, the operations do not commute. Thus the conflict resolution for overlapping or conflicting merges is last-write-wins.
 
+---
+
 ### Merges are idempotent
 
 If you apply the same patch twice, the result is the same
@@ -172,6 +186,8 @@ merge(a, a) = a
 
 This is useful for making network communication fault-tolerant to network disconnects. It is safe to retry if they are unsure that the server received the update, as applying the same update twice is safe.
 
+---
+
 ### The identity patch is `undefined`
 
 Patching anything with `undefined` results in the same value
@@ -181,6 +197,8 @@ merge(x, undefined) = x
 ```
 
 It's an annoying detail that you need an extra symbol to represent "not set" for the root element of a JSON document. JSON docs on the wire don't have a literal for this, but for nested fields, you have a similar degree of freedom by omitting the definition of the field. So in practice, we do not need additional symbols in the wire representation. The extra symbol is useful as a transient value for implementation as it simplifies some of the recursion.
+
+---
 
 ### The identity patch is not  `{}` 
 
@@ -198,6 +216,8 @@ merge(0, {}) = {} // not 0 unfortunately
 
 Thus, `{}` is not the identity patch. If we forbid scalars at the root it would be, and we would not need the extra symbol `undefined` for the identity.
 
+---
+
 ## Tricks
 ### A list of patches forms an ordered log.
 
@@ -209,6 +229,8 @@ state = sum_merge_over_patches p
 state = fold({}, patches)
 ```
 
+---
+
 ### Log can be coalesced if the patches are structured
 
 If your patches are structured documents, you can apply them all to form a compact summary.
@@ -219,6 +241,8 @@ log_patch = sum_merge p
 
 This is useful for write **coalescing**. For example, if you allow one part of the system to continue to work while being disconnected, when it regains connectivity you can coalesce the log and transmit just a single big patch.
 
+---
+
 ### Ordered Logs can be replayed multiple times
 
 Because patches are idempotent, you can apply the same set of patches multiple times.
@@ -226,6 +250,8 @@ Because patches are idempotent, you can apply the same set of patches multiple t
 ```
 fold(patches) = fold(fold(patches)), patches)
 ```
+
+---
 
 ### Ordered Logs with missing entries can be repaired with replay
 
@@ -237,6 +263,8 @@ fold(a, b, c) = fold(fold(a, c), b, c) // we skipped b in first fold
 
 This is useful for optimistic updates. You can apply all ordered entries as soon as you receive them, but if some are received out of some global order, you can fix the state without much bookkeeping.
 
+---
+
 ## JSON merge difference: `diff`
 
 If we think of merge as like addition, `s_1 = s_0 + p` there exists a subtraction `s_1 - s_0` to calculate the patch between two states. Thus, merging the difference between `b` and `a` generates a patch that can move `a` to `b`:-
@@ -245,6 +273,7 @@ If we think of merge as like addition, `s_1 = s_0 + p` there exists a subtractio
 merge(a, diff(b, a)) == b
 ```
 
+---
 
 ### Identity is `undefined`
 
@@ -252,10 +281,14 @@ merge(a, diff(b, a)) == b
 diff(a, undefined) = a
 ```
 
+---
+
 ### `Diff(a, a) = undefined`
 
 Diffing a doc with itself yields the identity patch.
 
+
+---
 
 ### Diff is the inverse of merge
 
@@ -266,6 +299,8 @@ diff(a, b) = c <=> merge(b, c) = a
 ```
 
 Now there is a precise and unique inverse of merge, we can understand merge better.
+
+---
 
 ## Structured JSON's Algebraic Group
 
