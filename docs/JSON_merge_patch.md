@@ -5,29 +5,29 @@ In this article, we cover the basics, its algebraic properties, it's inverse and
 
 We will discover that to unlock the full potential of JSON-merge-Patch, you should avoid mixing types, when this is true the set of structured JSONs form a group over merge. With structured JSON it is safe to use JSON-merge-PATCH to coalesce writes.
 
-- [[#Intro|Intro]]
-	- [[#Intro#Patches move the state forward|Patches move the state forward]]
-	- [[#Intro#Arrays and null values don't work|Arrays and null values don't work]]
-	- [[#Intro#Comparison to JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902))|Comparison to JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902))]]
-- [[#Properties of JSON-merge-patch|Properties of JSON-merge-patch]]
-	- [[#Properties of JSON-merge-patch#Merges are not associative in general|Merges are not associative in general]]
-	- [[#Properties of JSON-merge-patch#Merges are associative for structured documents|Merges are associative for structured documents]]
-	- [[#Properties of JSON-merge-patch#Non-overlapping patches are commutative.|Non-overlapping patches are commutative.]]
-	- [[#Properties of JSON-merge-patch#Overlapping writes are last-write-wins|Overlapping writes are last-write-wins]]
-	- [[#Properties of JSON-merge-patch#Merges are idempotent|Merges are idempotent]]
-	- [[#Properties of JSON-merge-patch#The identity patch is `undefined`|The identity patch is `undefined`]]
-	- [[#Properties of JSON-merge-patch#The identity patch is not  `{}`|The identity patch is not  `{}`]]
-- [[#Tricks|Tricks]]
-	- [[#Tricks#A list of patches forms an ordered log.|A list of patches forms an ordered log.]]
-	- [[#Tricks#Log can be coalesced if the patches are structured|Log can be coalesced if the patches are structured]]
-	- [[#Tricks#Ordered Logs can be replayed multiple times|Ordered Logs can be replayed multiple times]]
-	- [[#Tricks#Ordered Logs with missing entries can be repaired with replay|Ordered Logs with missing entries can be repaired with replay]]
-- [[#JSON merge difference: `diff`|JSON merge difference: `diff`]]
-	- [[#JSON merge difference: `diff`#Identity is `undefined`|Identity is `undefined`]]
-	- [[#JSON merge difference: `diff`#`Diff(a, a) = undefined`|`Diff(a, a) = undefined`]]
-	- [[#JSON merge difference: `diff`#Diffs are associative for structured documents|Diffs are associative for structured documents]]
-	- [[#JSON merge difference: `diff`#Diff is the inverse of merge|Diff is the inverse of merge]]
-- [[#Structured JSON's Algebraic Group|Structured JSON's Algebraic Group]]
+- [Intro](#intro)
+	- [Patches move the state forward](#patches-move-the-state-forward)
+	- [Arrays and null values don't work](#arrays-and-null-values-dont-work)
+	- [Comparison to JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902))](#comparison-to-json-patch-rfc-6902httpsdatatrackerietforgdochtmlrfc6902)
+- [Properties of JSON-merge-patch](#properties-of-json-merge-patch)
+	- [Merges are not associative in general](#merges-are-not-associative-in-general)
+	- [Merges are associative for structured documents](#merges-are-associative-for-structured-documents)
+	- [Non-overlapping patches are commutative.](#non-overlapping-patches-are-commutative)
+	- [Overlapping writes are last-write-wins](#overlapping-writes-are-last-write-wins)
+	- [Merges are idempotent](#merges-are-idempotent)
+	- [The identity patch is `undefined`](#the-identity-patch-is-undefined)
+	- [The identity patch is not  `{}`](#the-identity-patch-is-not--)
+- [Tricks](#tricks)
+	- [A list of patches forms an ordered log.](#a-list-of-patches-forms-an-ordered-log)
+	- [Log can be coalesced if the patches are structured](#log-can-be-coalesced-if-the-patches-are-structured)
+	- [Ordered Logs can be replayed multiple times](#ordered-logs-can-be-replayed-multiple-times)
+	- [Ordered Logs with missing entries can be repaired with replay](#ordered-logs-with-missing-entries-can-be-repaired-with-replay)
+- [JSON merge difference: `diff`](#json-merge-difference-diff)
+	- [Identity is `undefined`](#identity-is-undefined)
+	- [`Diff(a, a) = undefined`](#diffa-a--undefined)
+	- [Diff is the inverse of merge](#diff-is-the-inverse-of-merge)
+- [Structured JSON's Algebraic Group](#structured-jsons-algebraic-group)
+
 
 ## Intro
 
