@@ -8,7 +8,7 @@ We will discover that to unlock the full potential of JSON-merge-Patch, you shou
 - [Intro](#intro)
 	- [Patches move the state forward](#patches-move-the-state-forward)
 	- [Arrays and null values don't work](#arrays-and-null-values-dont-work)
-	- [Comparison to JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902))](#comparison-to-json-patch-rfc-6902httpsdatatrackerietforgdochtmlrfc6902)
+	- [Comparison to JSON Patch (RFC 6902)](#comparison-to-json-patch-rfc-6902)
 - [Properties of JSON-merge-patch](#properties-of-json-merge-patch)
 	- [Merges are not associative in general](#merges-are-not-associative-in-general)
 	- [Merges are associative for structured documents](#merges-are-associative-for-structured-documents)
@@ -27,7 +27,6 @@ We will discover that to unlock the full potential of JSON-merge-Patch, you shou
 	- [`Diff(a, a) = undefined`](#diffa-a--undefined)
 	- [Diff is the inverse of merge](#diff-is-the-inverse-of-merge)
 - [Structured JSON's Algebraic Group](#structured-jsons-algebraic-group)
-
 
 ## Intro
 
@@ -91,9 +90,9 @@ state_t+1 = merge(state_t, patch_t)
 
 Merge patches have a huge disadvantage in that they only really work well with dictionaries. Furthermore, because `null` is used to represent delete, it is impossible to use `null` as a value. You *can* use arrays, but they are not merged efficiently, and thus array mutations tend to conflict more frequently.
 
-### Comparison to JSON Patch ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902))
+### Comparison to JSON Patch (RFC 6902)
 
-There is a cousin standard called `JSON Patch` that attempts to update a state by applying a sequence of operations.
+There is a cousin standard called `JSON Patch` ([RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902)) that attempts to update a state by applying a sequence of operations.
 ```
 [
  { "op": "add", "path": "/baz", "value": "qux" },
