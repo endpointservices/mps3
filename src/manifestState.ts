@@ -1,17 +1,17 @@
-import { merge } from "json";
+import { JSONArrayless, JSONArraylessObject, merge } from "json";
 import { Manifest } from "manifest";
 import { clone } from "json";
 import { JSONValue } from "json";
 import * as time from "time";
 import { UseStore, get, set } from "idb-keyval";
 
-interface FileState {
+interface FileState extends JSONArraylessObject {
   version: string;
 }
 
 type Merge = any;
 
-export interface ManifestFile {
+export interface ManifestFile extends JSONArraylessObject {
   previous: string; // key of previous snapshot this change was based on
   files: {
     [url: string]: FileState;
@@ -148,18 +148,18 @@ export class ManifestState {
           this.optimistic_state = merge(
             this.optimistic_state,
             step.data?.update
-          );
+          )!;
           // we cannot replay state into the inflight zone, its not authorative yet
         } else {
           // console.log("settled update");
-          this.authoritative_state = merge(
+          this.authoritative_state = merge<ManifestFile>(
             this.authoritative_state,
             step.data?.update
-          );
+          )!;
           this.optimistic_state = merge(
             this.optimistic_state,
             step.data?.update
-          );
+          )!;
           this.authoritative_key = key;
         }
         this.manifest.observeVersionId(stepVersionid);

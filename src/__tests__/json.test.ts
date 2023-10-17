@@ -28,8 +28,8 @@ const rndDoc = (): JSONArrayless => {
   }
 };
 
-const rndStructuredDoc = () => {
-  const doc: Record<string, any> = {};
+const rndStructuredDoc = (): JSONArrayless => {
+  const doc: JSONArrayless = {};
   if (Math.random() > 0.5) {
     // add a scalar
     const key = "scalar-" + Math.floor(Math.random() * 2);
@@ -47,10 +47,11 @@ const rndStructuredDoc = () => {
     const key = "subdoc-" + Math.floor(Math.random() * 2);
     doc[key] = rndStructuredDoc();
   }
+  return doc;
 };
 
 const testCase = (
-  label,
+  label: string,
   expr: (...args: any[]) => any,
   expected: (...args: any[]) => any
 ) =>
@@ -84,7 +85,7 @@ describe("JSON Merge Patch (RFC 7386)", () => {
 
   testCase(
     "case",
-    () => merge(0, {}),
+    () => merge<JSONArrayless>(0, {}),
     () => ({})
   );
 
@@ -102,7 +103,7 @@ describe("JSON Merge Patch (RFC 7386)", () => {
 
   testCase(
     "case",
-    () => merge(true, { a: {} }),
+    () => merge<JSONArrayless>(true, { a: {} }),
     () => ({ a: {} })
   );
 
@@ -114,7 +115,7 @@ describe("JSON Merge Patch (RFC 7386)", () => {
 
   testCase(
     "case",
-    () => merge({ a: false }, true),
+    () => merge<JSONArrayless>({ a: false }, true),
     () => true
   );
 
@@ -165,7 +166,7 @@ describe("JSON-merge-diff", () => {
 
   testCase(
     "case",
-    () => diff({}, 0),
+    () => diff<JSONArrayless>({}, 0),
     () => ({})
   );
 
@@ -200,17 +201,7 @@ describe("JSON-merge-diff", () => {
   );
 
   test(
-    "inverse: diff(a, diff(b, c)) == diff(diff(a, b), c) for structured docs",
-    repeat(() => {
-      const a = rndStructuredDoc();
-      const b = rndStructuredDoc();
-      const c = rndStructuredDoc();
-      expect(diff(a, diff(b, c))).toEqual(diff(diff(a, b), c));
-    })
-  );
-
-  test(
-    "associative: diff(a, b) = c <=> merge(b, c) = a",
+    "inverse: diff(a, b) = c <=> merge(b, c) = a",
     repeat(() => {
       const a = rndDoc();
       const b = rndDoc();

@@ -1,10 +1,7 @@
 import { isNull } from "node:sys";
 
-export type JSONArrayless =
-  | string
-  | number
-  | boolean
-  | { [x: string]: JSONArrayless };
+export type JSONArraylessObject = { [x: string]: JSONArrayless };
+export type JSONArrayless = string | number | boolean | JSONArraylessObject;
 
 export type JSONValue =
   | string
@@ -18,9 +15,13 @@ export const clone = <T>(state: T): T => JSON.parse(JSON.stringify(state));
 
 /**
  * JSON Merge Patch (RFC 7386)
- * Update target JSON with a merge patch
+ * Update target JSON with a merge patch.
+ * This routine does not support arrays
  */
-export function merge<T>(target: T, patch: Partial<T>): T {
+export function merge<T extends JSONArrayless>(
+  target: T | undefined,
+  patch: Partial<T> | null | undefined
+): T | undefined {
   // If patch is an array or a primitive, just return it
 
   if (patch === undefined) return target;
@@ -34,23 +35,34 @@ export function merge<T>(target: T, patch: Partial<T>): T {
     if (patch[key] === null) {
       delete combined[key];
     } else {
-      combined[key] = merge(target[key], patch[key]!);
+      combined[key] = merge<any>(target![key], patch[key]!);
     }
   }
   return <T>combined;
 }
 
-export function fold<T>(...patches: Partial<T>[]): Partial<T> {
-  return patches.reduce((acc, patch) => merge(acc, patch), <Partial<T>>{});
+export function fold<T extends JSONArrayless>(
+  ...patches: (Partial<T> | undefined)[]
+): Partial<T> | undefined {
+  return patches.reduce<Partial<T> | undefined>(
+    (acc, patch) => merge<T>(<T>acc, patch),
+    <Partial<T>>{}
+  );
 }
 
-export function diff<T>(target: T, source: T): Partial<T> {
+/**
+ * JSON Merge Diff
+ * The inverse of JSON-merge-patch
+ */
+export function diff<T extends JSONArrayless>(
+  target: T | undefined,
+  source: T | undefined
+): Partial<T> | undefined | null {
   if (source === target) return undefined;
   if (source !== undefined && target === undefined) return null;
-  if (typeof target !== "object") return target;
-  if (typeof source !== "object") return target;
+  if (typeof target !== "object" || typeof source !== "object") return target;
   // recursive diff against two objects
-  const patch = {};
+  const patch: Partial<T> & JSONArraylessObject = {};
   const targeKeys = Object.keys(target);
   const sourceKeys = Object.keys(source);
   for (let i = 0; i < Math.max(targeKeys.length, sourceKeys.length); i++) {
