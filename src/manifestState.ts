@@ -109,7 +109,7 @@ export class ManifestState {
         });
 
         if (step.data === undefined) {
-          await this.manifest.service._deleteObject({
+          this.manifest.service._deleteObject({
             operation: "CLEANUP",
             ref,
           });
@@ -127,7 +127,14 @@ export class ManifestState {
         const key = objects.Contents[index].Key!;
         if (key == this.manifest.ref.key) continue; // skip manifest read
         if (key < this.authoritative_key) {
-          // Its old we can skip
+          // Its old we can skip and GC asyncronously
+          await this.manifest.service._deleteObject({
+            operation: "CLEANUP",
+            ref: {
+              bucket: this.manifest.ref.bucket,
+              key,
+            },
+          });
           continue;
         }
 

@@ -6,6 +6,7 @@ import { clone } from "json";
 import { DOMParser } from "@xmldom/xmldom";
 import cloudflareCredentials from "../../credentials/cloudflare.json";
 import gcsCredentials from "../../credentials/gcs.json";
+import awsCredentials from "../../credentials/aws.json";
 import "fake-indexeddb/auto";
 
 describe("mps3", () => {
@@ -94,10 +95,7 @@ describe("mps3", () => {
         defaultBucket: `mps3-demo`,
         s3Config: {
           region: "eu-central-1",
-          credentials: {
-            accessKeyId: "AKIAT4VAYEMIUJGSMOXP",
-            secretAccessKey: "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",
-          },
+          credentials: awsCredentials,
         },
         parser: new DOMParser(),
       },

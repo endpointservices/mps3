@@ -507,7 +507,7 @@ export class MPS3 {
     this.config.log(
       `${dt}ms ${args.operation || "DELETE"} ${args.ref.bucket}/${
         args.ref.key
-      } => ${response.VersionId}`
+      } (${response.$metadata.httpStatusCode})}`
     );
     return response;
   }
