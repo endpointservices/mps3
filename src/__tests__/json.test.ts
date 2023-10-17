@@ -139,12 +139,12 @@ describe("JSON Merge Patch (RFC 7386)", () => {
     testCase(
       "idempotent",
       (a, b, c) => fold(a, b, c),
-      (a, b, c) => fold(fold(a, b, c), a, b, c)
+      (a, b, c) => fold<JSONArrayless>(fold(a, b, c), a, b, c)
     );
 
     testCase(
       "log repair",
-      (a, b, c) => fold(fold(a, c), b, c),
+      (a, b, c) => fold<JSONArrayless>(fold(a, c), b, c),
       (a, b, c) => fold(a, b, c)
     );
   });

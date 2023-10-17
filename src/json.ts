@@ -1,17 +1,17 @@
-import { isNull } from "node:sys";
-
 export type JSONArraylessObject = { [x: string]: JSONArrayless };
 export type JSONArrayless = string | number | boolean | JSONArraylessObject;
 
+export type JSONObject = { [x: string]: JSONValue };
 export type JSONValue =
   | string
   | number
   | boolean
   | null
-  | { [x: string]: JSONValue }
+  | JSONObject
   | Array<JSONValue>;
 
-export const clone = <T>(state: T): T => JSON.parse(JSON.stringify(state));
+export const clone = <T extends JSONValue>(state: T): T =>
+  JSON.parse(JSON.stringify(state));
 
 /**
  * JSON Merge Patch (RFC 7386)
@@ -62,13 +62,13 @@ export function diff<T extends JSONArrayless>(
   if (source !== undefined && target === undefined) return null;
   if (typeof target !== "object" || typeof source !== "object") return target;
   // recursive diff against two objects
-  const patch: Partial<T> & JSONArraylessObject = {};
+  const patch: Partial<T> = {};
   const targeKeys = Object.keys(target);
   const sourceKeys = Object.keys(source);
   for (let i = 0; i < Math.max(targeKeys.length, sourceKeys.length); i++) {
     const key = targeKeys[i] || sourceKeys[i];
     const val = diff(target[key], source[key]);
-    if (val !== undefined) patch[key] = val;
+    if (val !== undefined) (<any>patch)[key] = val;
   }
   return patch;
 }
