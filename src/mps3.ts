@@ -71,6 +71,10 @@ export interface MPS3Config {
   offlineStorage?: boolean;
 
   /**
+   * Should the client delete expired references?
+   */
+  autoclean?: boolean;
+  /**
    * Bring your own logger
    */
   log?: (...args: any) => void;
@@ -84,6 +88,7 @@ interface ResolvedMPS3Config extends MPS3Config {
   pollFrequency: number;
   online: boolean;
   offlineStorage: boolean;
+  autoclean: boolean;
   log: (...args: any) => void;
 }
 
@@ -125,6 +130,7 @@ export class MPS3 {
       ...config,
       label: config.label || "default",
       useChecksum: config.useChecksum === false ? false : true,
+      autoclean: config.autoclean === false ? false : true,
       online: config.online === false ? false : true,
       offlineStorage: config.offlineStorage === false ? false : true,
       useVersioning: config.useVersioning || false,

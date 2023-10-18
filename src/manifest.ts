@@ -2,7 +2,14 @@ import { OMap } from "OMap";
 import { MPS3 } from "mps3";
 import * as time from "time";
 import { OperationQueue } from "operationQueue";
-import { DeleteValue, ResolvedRef, VersionId, url, uuid } from "types";
+import {
+  DeleteValue,
+  ResolvedRef,
+  VersionId,
+  countKey,
+  url,
+  uuid,
+} from "types";
 import { JSONValue } from "json";
 import { UseStore } from "idb-keyval";
 import { ManifestState } from "manifestState";
@@ -36,6 +43,8 @@ class Subscriber {
 }
 
 export class Manifest {
+  session_id = uuid().substring(0, 3);
+  writes = 0;
   subscribers = new Set<Subscriber>();
   poller?: Timer;
   pollInProgress: boolean = false;
@@ -150,6 +159,14 @@ export class Manifest {
       isLoad: boolean;
     }
   ): Promise<unknown> {
+    // Manifest must be ordered by client operation time
+    const manifest_version =
+      time.upperTimeBound() +
+      "_" +
+      this.session_id +
+      "_" +
+      countKey(this.writes++);
+
     const localPersistence = this.operationQueue.propose(
       write,
       values,
@@ -176,8 +193,6 @@ export class Manifest {
           }
         }
         // put versioned write
-        const manifest_version =
-          time.upperTimeBound() + "_" + uuid().substring(0, 2);
         const manifest_key = this.ref.key + "@" + manifest_version;
         this.operationQueue.label(write, manifest_version, options.isLoad);
 

@@ -14,6 +14,7 @@ describe("mps3", () => {
   const minioConfig = {
     endpoint: "http://127.0.0.1:9102",
     region: "eu-central-1",
+    autoclean: false,
     credentials: {
       accessKeyId: "mps3",
       secretAccessKey: "ZOAmumEzdsUUcVlQ",
@@ -353,7 +354,7 @@ describe("mps3", () => {
         await mps3.get("cache_get");
       });
 
-      test("Subscribe to changes (single client, unseeen key)", async (done) => {
+      test("Subscribe to a single change (single client, unseeen key)", async (done) => {
         const mps3 = getClient();
         const rand_key = `subscribe_single_client/${uuid()}`;
         const rnd = uuid();
@@ -375,7 +376,7 @@ describe("mps3", () => {
         expect(mps3.subscriberCount).toEqual(1);
       });
 
-      test("Subscribe to changes (cross-client, unseeen key)", async (done) => {
+      test("Subscribe to a single change (cross-client, unseeen key)", async (done) => {
         const mps3 = getClient();
         const mps3_other = getClient();
         const rand_key = `subscribe_multi_client/${uuid()}`;
@@ -395,7 +396,39 @@ describe("mps3", () => {
         });
       });
 
-      test("Subscribe get notified of committed initial value first", async (done) => {
+      test("Subscribe to a converging monotonic stream of changes (cross-client)", async (done) => {
+        const mps3 = getClient();
+        const mps3_other = getClient();
+        const key = `subscribe_multi_client/${uuid()}`;
+        expect(mps3.subscriberCount).toEqual(0);
+        expect(mps3_other.subscriberCount).toEqual(0);
+
+        let i = 0;
+        let last_write = 0;
+        const check = (seen: any[], last_read: any) => {
+          console.log(seen, last_write, last_read);
+          if (seen.length >= 5 && last_read === last_write) {
+            unsubscribe();
+            expect(seen[0]).toEqual(undefined);
+            const numbers = seen.slice(1);
+            expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
+            done();
+          } else if (seen.length < 5) {
+            // write in bursts to shake out races
+            mps3.put(key, i++);
+            mps3.put(key, i++);
+            last_write = i - 1;
+          }
+        };
+
+        const seen: any[] = [];
+        var unsubscribe = mps3_other.subscribe(key, (value) => {
+          seen.push(value);
+          check(seen, value);
+        });
+      });
+
+      test("Subscribe notified of committed initial value first", async (done) => {
         const mps3 = getClient();
         const rnd = uuid();
         await mps3.put("subscribe_initial", rnd);
