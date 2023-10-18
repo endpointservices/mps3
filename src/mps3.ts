@@ -102,7 +102,7 @@ interface GetResponse<T> {
 }
 
 export class MPS3 {
-  static LOCAL_ENDPOINT = "indexdb://";
+  static vi = "indexdb:"; // (!) browser compatibility
 
   /** @internal */
   config: ResolvedMPS3Config;

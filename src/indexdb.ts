@@ -8,7 +8,6 @@ export const fetchFn = async (
   const segments = url.pathname.split("/");
   const bucket = segments[1];
   const key = segments.slice(2).join("/");
-
   const db = createStore(bucket, "v0");
   let body;
   let status = 200;

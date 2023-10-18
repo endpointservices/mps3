@@ -155,7 +155,6 @@ export class ManifestState {
           this.authoritative_state,
           step.data?.update
         )!;
-        this.authoritative_key = key;
         this.manifest.observeVersionId(stepVersionid);
       }
       if (this.db) set(MANIFEST_KEY, this.authoritative_state, this.db);
