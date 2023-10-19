@@ -74,6 +74,12 @@ export interface MPS3Config {
    * Should the client delete expired references?
    */
   autoclean?: boolean;
+
+  /**
+   * Clock offset in milliseconds
+   */
+  clockOffset?: number;
+
   /**
    * Bring your own logger
    */
@@ -89,6 +95,7 @@ interface ResolvedMPS3Config extends MPS3Config {
   online: boolean;
   offlineStorage: boolean;
   autoclean: boolean;
+  clockOffset: number;
   log: (...args: any) => void;
 }
 
@@ -102,8 +109,10 @@ interface GetResponse<T> {
 }
 
 export class MPS3 {
-  static vi = "indexdb:"; // (!) browser compatibility
-
+  /**
+   * Virtual endpoint for local-first operation
+   */
+  static LOCAL_ENDPOINT = "indexdb:"; // (!) browser compatibility
   /** @internal */
   config: ResolvedMPS3Config;
   /** @internal */
@@ -135,6 +144,7 @@ export class MPS3 {
       offlineStorage: config.offlineStorage === false ? false : true,
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
+      clockOffset: config.clockOffset || 0,
       defaultManifest: {
         bucket: (<Ref>config.defaultManifest)?.bucket || config.defaultBucket,
         key:

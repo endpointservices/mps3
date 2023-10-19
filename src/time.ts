@@ -1,5 +1,5 @@
-export const lowerTimeBound = () => `${Date.now() - 200}`.padStart(14, "0");
-export const upperTimeBound = () => `${Date.now() + 200}`.padStart(14, "0");
+export const timestamp = (offset_ms: number = 0) =>
+  `${Date.now() + offset_ms}`.padStart(14, "0");
 
 /**
  * Converts timestamps like LastModified to their seconds since UTC epoch

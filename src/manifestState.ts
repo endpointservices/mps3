@@ -93,7 +93,9 @@ export class ManifestState {
         return this.authoritative_state;
       }
 
-      const settledPoint = `${this.manifest.ref.key}@${time.lowerTimeBound()}`;
+      const settledPoint = `${this.manifest.ref.key}@${time.timestamp(
+        this.manifest.service.config.clockOffset
+      )}`;
 
       // Find the most recent patch, whose base state is settled, and that we have a record for
       for (let index = objects.Contents.length - 1; index >= 0; index--) {

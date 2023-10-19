@@ -121,6 +121,7 @@ describe("mps3", () => {
         new MPS3({
           label: args?.label,
           ...variant.config,
+          clockOffset: Math.random() * 2000 - 1000,
         });
       test(
         "causal consistency all-to-all, single key",

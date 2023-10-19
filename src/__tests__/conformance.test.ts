@@ -135,10 +135,11 @@ describe("mps3", () => {
           });
         }
       });
-      const getClient = (args?: { label?: string }) =>
+      const getClient = (args?: { label?: string; clockOffset?: number }) =>
         new MPS3({
           label: args?.label || uuid().substring(32),
           ...variant.config,
+          clockOffset: args?.clockOffset ?? Math.random() * 2000 - 1000,
         });
 
       test("Subscription deduplicate undefined", async (done) => {
@@ -163,10 +164,10 @@ describe("mps3", () => {
       });
 
       test("Can see other's mutations after populating cache", async () => {
-        const mps3 = getClient();
+        const mps3 = getClient({ clockOffset: 0 });
         const rnd = uuid();
         await mps3.put("rw", rnd);
-        await getClient().delete("rw");
+        await getClient({ clockOffset: 0 }).delete("rw");
 
         // pending cache masks server until committed
         while ((await mps3.get("rw")) !== undefined) {

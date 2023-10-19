@@ -160,8 +160,8 @@ export class Manifest {
     }
   ): Promise<unknown> {
     // Manifest must be ordered by client operation time
-    const manifest_version =
-      time.upperTimeBound() +
+    const manifest_version = 
+      time.timestamp(this.service.config.clockOffset) +
       "_" +
       this.session_id +
       "_" +

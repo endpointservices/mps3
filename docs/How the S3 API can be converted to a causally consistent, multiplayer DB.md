@@ -143,5 +143,4 @@ Postgres calls this a dirty read where state during a transaction is visible to 
 
 
 
-
 server reconciliation
