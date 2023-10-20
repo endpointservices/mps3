@@ -86,6 +86,7 @@ export class Syncer {
 
       // prune invalid objects
       const manifests = objects.Contents?.filter((obj) => {
+        if (obj.Key === this.manifest.ref.key) return false;
         const match = obj.Key!.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
         if (!match) {
           console.warn(`Rejecting manifest key ${obj.Key}`);
