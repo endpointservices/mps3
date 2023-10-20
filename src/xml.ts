@@ -20,19 +20,22 @@ export const parseListObjectsV2CommandOutput = (
   return {
     $metadata: {},
     //IsTruncated: val(results, "IsTruncated") === "true",
-    Contents: Array.from(contents).map((content) => ({
-      //ChecksumAlgorithm: [val(content, "ChecksumAlgorithm")!],
-      ETag: val(content, "ETag")!,
-      Key: val(content, "Key")!,
-      //LastModified: new Date(val(content, "LastModified")!),
-      /*
-      Owner: {
-        DisplayName: val(content, "DisplayName")!,
-        ID: val(content, "ID")!,
-      },*/
-      //Size: parseInt(val(content, "Size")!),
-      //StorageClass: val(content, "StorageClass")!,
-    })),
+    Contents: Array.from(contents).map((content) => {
+      const lm = val(content, "LastModified");
+      return {
+        //ChecksumAlgorithm: [val(content, "ChecksumAlgorithm")!],
+        ETag: val(content, "ETag")!,
+        Key: val(content, "Key")!,
+        LastModified: lm ? new Date(lm) : undefined,
+        /*
+        Owner: {
+          DisplayName: val(content, "DisplayName")!,
+          ID: val(content, "ID")!,
+        },*/
+        //Size: parseInt(val(content, "Size")!),
+        //StorageClass: val(content, "StorageClass")!,
+      };
+    }),
     //Name: val(doc, "Name")!,
     // Prefix: val(doc, "Prefix")!,
     //Delimiter: val(doc, "Delimiter")!,

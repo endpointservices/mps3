@@ -12,7 +12,7 @@ import {
 } from "types";
 import { JSONValue } from "json";
 import { UseStore } from "idb-keyval";
-import { ManifestState } from "manifestState";
+import { Syncer } from "syncer";
 
 class Subscriber {
   queue = Promise.resolve();
@@ -49,7 +49,7 @@ export class Manifest {
   poller?: Timer;
   pollInProgress: boolean = false;
 
-  manifestState: ManifestState = new ManifestState(this);
+  manifestState: Syncer = new Syncer(this);
   operationQueue = new OperationQueue();
 
   constructor(public service: MPS3, public ref: ResolvedRef) {
@@ -160,7 +160,7 @@ export class Manifest {
     }
   ): Promise<unknown> {
     // Manifest must be ordered by client operation time
-    const manifest_version = 
+    const manifest_version =
       time.timestamp(this.service.config.clockOffset) +
       "_" +
       this.session_id +

@@ -31,7 +31,7 @@ interface HttpCacheEntry<T> {
   data: T;
 }
 
-export class ManifestState {
+export class Syncer {
   authoritative_key: string = "";
   authoritative_state: ManifestFile = clone(INITIAL_STATE);
 
@@ -111,7 +111,7 @@ export class ManifestState {
         });
 
         if (step.data === undefined) {
-          if (this.manifest.service.autoclean) {
+          if (this.manifest.service.config.autoclean) {
             this.manifest.service._deleteObject({
               operation: "CLEANUP",
               ref,
@@ -132,7 +132,7 @@ export class ManifestState {
         if (key == this.manifest.ref.key) continue; // skip manifest read
         if (key < this.authoritative_key) {
           // Its old we can skip and GC asyncronously
-          if (this.manifest.service.autoclean) {
+          if (this.manifest.service.config.autoclean) {
             this.manifest.service._deleteObject({
               operation: "CLEANUP",
               ref: {

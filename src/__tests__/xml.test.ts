@@ -48,7 +48,7 @@ describe("XML parser", () => {
           //  ChecksumAlgorithm: ["checksum"],
           ETag: "1",
           Key: "key",
-          //  LastModified: new Date("2023-08-25T19:34:04.306Z"),
+          LastModified: new Date("2023-08-25T19:34:04.306Z"),
           //  Owner: {
           //    DisplayName: "string",
           //    ID: "string",
@@ -87,7 +87,7 @@ describe("XML parser", () => {
           //  ChecksumAlgorithm: [undefined],
           ETag: '"fb2a3ed15fa6e7ced42dc00d50132e62"',
           Key: "manifest.json",
-          //  LastModified: new Date("2023-08-25T19:34:04.316Z"),
+          LastModified: new Date("2023-08-25T19:34:04.316Z"),
           //  Owner: {
           //    DisplayName: undefined,
           //    ID: undefined,
@@ -99,7 +99,7 @@ describe("XML parser", () => {
           //  ChecksumAlgorithm: [undefined],
           ETag: '"6de2d545ee848a433040e045d0ed146f"',
           Key: "manifest.json@01692992046294_ac",
-          //  LastModified: new Date("2023-08-25T19:34:04.306Z"),
+          LastModified: new Date("2023-08-25T19:34:04.306Z"),
           //  Owner: {
           //    DisplayName: undefined,
           //    ID: undefined,
