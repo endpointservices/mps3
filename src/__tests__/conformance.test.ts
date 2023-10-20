@@ -166,14 +166,14 @@ describe("mps3", () => {
       test("Can see other's mutations after populating cache", async () => {
         const mps3 = getClient({ clockOffset: 0 });
         const rnd = uuid();
-        await mps3.put("rw", rnd);
-        await getClient({ clockOffset: 0 }).delete("rw");
+        await mps3.put("rw1", rnd);
+        await getClient({ clockOffset: 0 }).delete("rw1");
 
         // pending cache masks server until committed
-        while ((await mps3.get("rw")) !== undefined) {
+        while ((await mps3.get("rw1")) !== undefined) {
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
-        const read = await mps3.get("rw");
+        const read = await mps3.get("rw1");
         expect(read).toEqual(undefined);
       });
 

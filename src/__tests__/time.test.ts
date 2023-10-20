@@ -44,9 +44,11 @@ describe("clock behaviour", () => {
         secretAccessKey: "ZOAmumEzdsUUcVlQ",
       },
     });
-    await s3.createBucket({
-      Bucket: "clock",
-    });
+    try {
+      await s3.createBucket({
+        Bucket: "clock",
+      });
+    } catch (e) {}
   });
 
   test("Stale writes are ignored", async () => {

@@ -31,6 +31,7 @@ interface HttpCacheEntry<T> {
   data: T;
 }
 
+
 export class Syncer {
   authoritative_key: string = "";
   authoritative_state: ManifestFile = clone(INITIAL_STATE);
@@ -83,24 +84,43 @@ export class Syncer {
         })
       );
 
+      // prune invalid objects
+      const manifests = objects.Contents?.filter((obj) => {
+        const match = obj.Key!.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
+        if (!match) {
+          console.warn(`Rejecting manifest key ${obj.Key}`);
+          return false;
+        }
+        if (obj.LastModified === undefined) return true;
+        const manifestTimestamp = Number.parseInt(match[1]);
+        const s3Timestamp = obj.LastModified!;
+        // if the difference is greater than 5 seconds, ignore this update
+        const withinRange =
+          Math.abs(manifestTimestamp - s3Timestamp.getTime()) < 5000;
+        if (!withinRange) {
+          console.warn("Clock skew detected");
+        }
+        return withinRange;
+      });
+
       this.manifest.service.config.log(
         `${dt}ms LIST ${this.manifest.ref.bucket}/${this.manifest.ref.key}`
       );
 
       // Play the missing patches over the base state, oldest first
-      if (objects.Contents === undefined) {
+      if (manifests === undefined) {
         this.authoritative_state = clone(INITIAL_STATE);
         return this.authoritative_state;
       }
 
       const settledPoint = `${this.manifest.ref.key}@${time.timestamp(
-        this.manifest.service.config.clockOffset
+        this.manifest.service.config.clockOffset - 5000
       )}`;
 
       // Find the most recent patch, whose base state is settled, and that we have a record for
-      for (let index = objects.Contents.length - 1; index >= 0; index--) {
-        const key = objects.Contents[index].Key!;
-        if (key == this.manifest.ref.key) continue; // skip manifest read
+      let loadedFirst = false;
+      for (let index = manifests.length - 1; index >= 0; index--) {
+        const key = manifests[index].Key!;
         const ref = {
           bucket: this.manifest.ref.bucket,
           key,
@@ -118,19 +138,21 @@ export class Syncer {
             });
           }
           continue;
-        }
-        if (step.data.previous < settledPoint) {
-          this.authoritative_key = step.data.previous;
+        } else if (loadedFirst === false) {
           this.authoritative_state = step.data;
+          loadedFirst = true;
+        }
+
+        if (key < settledPoint) {
+          this.authoritative_key = key;
           break;
         }
       }
 
       // Play operations forward on oldest state
-      for (let index = 0; index < objects.Contents.length; index++) {
-        const key = objects.Contents[index].Key!;
-        if (key == this.manifest.ref.key) continue; // skip manifest read
-        if (key < this.authoritative_key) {
+      for (let index = 0; index < manifests.length; index++) {
+        const key = manifests[index].Key!;
+        if (key < this.authoritative_key && key < settledPoint) {
           // Its old we can skip and GC asyncronously
           if (this.manifest.service.config.autoclean) {
             this.manifest.service._deleteObject({

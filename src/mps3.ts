@@ -144,7 +144,7 @@ export class MPS3 {
       offlineStorage: config.offlineStorage === false ? false : true,
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
-      clockOffset: config.clockOffset || 0,
+      clockOffset: Math.floor(config.clockOffset!) || 0,
       defaultManifest: {
         bucket: (<Ref>config.defaultManifest)?.bucket || config.defaultBucket,
         key:
