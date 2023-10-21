@@ -17,7 +17,7 @@ describe("timestampToSecs", () => {
   });
 });
 
-describe("clock behaviour", () => {
+describe("clock behavior", () => {
   const getClient = (args: any = {}) =>
     new MPS3({
       parser: new DOMParser(),
@@ -51,16 +51,30 @@ describe("clock behaviour", () => {
     } catch (e) {}
   });
 
-  test("Stale writes are ignored", async () => {
+  test("Stale writes are dropped", async () => {
     const delayedClient = getClient({
       label: "delayed",
       clockOffset: -10000,
-      autoclocksync: false,
+      adaptiveClock: false,
     });
     const reader = getClient({ label: "reader" });
     const key = `delayed/${uuid()}`;
     await delayedClient.put(key, "");
     const result = await reader.get(key);
     expect(result).toBeUndefined();
+  });
+
+  test("Stale writes are retried and clock offset is updated with adaptiveClock", async () => {
+    const delayedClient = getClient({
+      label: "delayed",
+      clockOffset: -10000,
+      adaptiveClock: true,
+    });
+    const reader = getClient({ label: "reader" });
+    const key = `delayed/${uuid()}`;
+    await delayedClient.put(key, "");
+    const result = await reader.get(key);
+    expect(result).toBe("");
+    expect(delayedClient.config.clockOffset).toBeGreaterThan(-10000);
   });
 });

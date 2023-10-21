@@ -81,6 +81,11 @@ export interface MPS3Config {
   clockOffset?: number;
 
   /**
+   * Update clock on detection of skewed clock
+   */
+  adaptiveClock?: boolean;
+
+  /**
    * Bring your own logger
    */
   log?: (...args: any) => void;
@@ -96,6 +101,7 @@ interface ResolvedMPS3Config extends MPS3Config {
   offlineStorage: boolean;
   autoclean: boolean;
   clockOffset: number;
+  adaptiveClock: boolean;
   log: (...args: any) => void;
 }
 
@@ -145,6 +151,7 @@ export class MPS3 {
       useVersioning: config.useVersioning || false,
       pollFrequency: config.pollFrequency || 1000,
       clockOffset: Math.floor(config.clockOffset!) || 0,
+      adaptiveClock: config.adaptiveClock === false ? false : true,
       defaultManifest: {
         bucket: (<Ref>config.defaultManifest)?.bucket || config.defaultBucket,
         key:
@@ -457,7 +464,7 @@ export class MPS3 {
     ref: ResolvedRef;
     value: any;
     version?: string;
-  }): Promise<PutObjectCommandOutput> {
+  }): Promise<PutObjectCommandOutput & { Date: Date; latency: number }> {
     const content: string = JSON.stringify(args.value, null, 2);
     let command: PutObjectCommandInput;
     if (this.config.useVersioning) {
@@ -506,7 +513,7 @@ export class MPS3 {
       ).then(() => this.config.log(`STORE ${diskKey}`));
     }
 
-    return response;
+    return { ...response, latency: dt };
   }
   /** @internal */
   async _deleteObject(args: {

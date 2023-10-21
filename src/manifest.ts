@@ -160,12 +160,15 @@ export class Manifest {
     }
   ): Promise<unknown> {
     // Manifest must be ordered by client operation time
-    const manifest_version =
+    // (An exception is made for adjusting for clock skew)
+    const generate_manifest_key = () =>
       time.timestamp(this.service.config.clockOffset) +
       "_" +
       this.session_id +
       "_" +
       countKey(this.writes++);
+
+    let manifest_version = generate_manifest_key();
 
     const localPersistence = this.operationQueue.propose(
       write,
@@ -175,37 +178,57 @@ export class Manifest {
     const remotePersistency = localPersistence.then(async () => {
       try {
         const update = await write;
-        const state = await this.manifestState.getLatest();
-        state.previous = this.manifestState.authoritative_key;
-        state.update = {
-          files: {},
-        };
+        let response,
+          manifest_key,
+          retry = false;
+        do {
+          const state = await this.manifestState.getLatest();
+          state.previous = this.manifestState.authoritative_key;
+          state.update = {
+            files: {},
+          };
 
-        for (let [ref, version] of update) {
-          const fileUrl = url(ref);
-          if (version) {
-            const fileState = {
-              version: version,
-            };
-            state.update.files[fileUrl] = fileState;
-          } else {
-            state.update.files[fileUrl] = null;
+          for (let [ref, version] of update) {
+            const fileUrl = url(ref);
+            if (version) {
+              const fileState = {
+                version: version,
+              };
+              state.update.files[fileUrl] = fileState;
+            } else {
+              state.update.files[fileUrl] = null;
+            }
           }
-        }
-        // put versioned write
-        const manifest_key = this.ref.key + "@" + manifest_version;
-        this.operationQueue.label(write, manifest_version, options.isLoad);
+          // put versioned write
+          manifest_key = this.ref.key + "@" + manifest_version;
+          this.operationQueue.label(write, manifest_version, options.isLoad);
 
-        await this.service._putObject({
-          operation: "PUT_MANIFEST",
-          ref: {
-            key: manifest_key,
-            bucket: this.ref.bucket,
-          },
-          value: state,
-        });
-        // update pollers with write to known location
-        const response = await this.service._putObject({
+          const putResponse = await this.service._putObject({
+            operation: "PUT_MANIFEST",
+            ref: {
+              key: manifest_key,
+              bucket: this.ref.bucket,
+            },
+            value: state,
+          });
+
+          // Check the response leads to a valid write.
+          if (
+            this.service.config.adaptiveClock &&
+            !Syncer.isValid(manifest_key, putResponse.Date)
+          ) {
+            this.service.config.clockOffset =
+              putResponse.Date.getTime() - Date.now() + putResponse.latency;
+            console.log(this.service.config.clockOffset);
+            manifest_version = generate_manifest_key();
+            retry = true;
+          } else {
+            retry = false;
+          }
+        } while (retry);
+
+        // update poller with write to known location
+        response = await this.service._putObject({
           operation: "PUT_POLL",
           ref: {
             key: this.ref.key,

@@ -12,7 +12,5 @@ export const measure = async <Result>(
   work: Promise<Result>
 ): Promise<[Result, number]> => {
   const start = Date.now();
-  const result = await work;
-  const end = Date.now();
-  return [result, end - start];
+  return [await work, Date.now() - start];
 };

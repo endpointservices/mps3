@@ -42,6 +42,24 @@ export class Syncer {
 
   constructor(private manifest: Manifest) {}
 
+  static isValid(key: string, modified: Date): boolean {
+    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
+    if (!match) {
+      console.warn(`Rejecting manifest key ${key}`);
+      return false;
+    }
+    if (modified === undefined) return true;
+    const manifestTimestamp = Number.parseInt(match[1]);
+    const s3Timestamp = modified;
+    // if the difference is greater than 5 seconds, ignore this update
+    const withinRange =
+      Math.abs(manifestTimestamp - s3Timestamp.getTime()) < 5000;
+    if (!withinRange) {
+      console.warn("Clock skew detected");
+    }
+    return withinRange;
+  }
+
   async restore(db: UseStore) {
     this.db = db;
     this.loading = get(MANIFEST_KEY, db).then((loaded) => {
@@ -87,21 +105,7 @@ export class Syncer {
       // prune invalid objects
       const manifests = objects.Contents?.filter((obj) => {
         if (obj.Key === this.manifest.ref.key) return false;
-        const match = obj.Key!.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
-        if (!match) {
-          console.warn(`Rejecting manifest key ${obj.Key}`);
-          return false;
-        }
-        if (obj.LastModified === undefined) return true;
-        const manifestTimestamp = Number.parseInt(match[1]);
-        const s3Timestamp = obj.LastModified!;
-        // if the difference is greater than 5 seconds, ignore this update
-        const withinRange =
-          Math.abs(manifestTimestamp - s3Timestamp.getTime()) < 5000;
-        if (!withinRange) {
-          console.warn("Clock skew detected");
-        }
-        return withinRange;
+        return Syncer.isValid(obj.Key!, obj.LastModified!);
       });
 
       this.manifest.service.config.log(
