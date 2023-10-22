@@ -33,14 +33,23 @@ interface HttpCacheEntry<T> {
 
 
 export class Syncer {
-  authoritative_key: string = "";
-  authoritative_state: ManifestFile = clone(INITIAL_STATE);
+  latest_key: string = "";
+  latest_state: ManifestFile = clone(INITIAL_STATE);
 
   loading?: Promise<unknown>;
   cache?: HttpCacheEntry<ManifestFile>;
   db?: UseStore;
 
   constructor(private manifest: Manifest) {}
+
+  static manifestTimestamp = (key: string): number => {
+    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
+    if (!match) {
+      console.warn(`Rejecting manifest key ${key}`);
+      return 0;
+    }
+    return Number.parseInt(match[1]);
+  };
 
   static isValid(key: string, modified: Date): boolean {
     const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
@@ -64,7 +73,7 @@ export class Syncer {
     this.db = db;
     this.loading = get(MANIFEST_KEY, db).then((loaded) => {
       if (loaded) {
-        this.authoritative_state = loaded;
+        this.latest_state = loaded;
         this.manifest.service.config.log(`RESTORE ${MANIFEST_KEY}`);
       }
     });
@@ -75,7 +84,7 @@ export class Syncer {
     this.loading = undefined;
 
     if (!this.manifest.service.config.online) {
-      return this.authoritative_state;
+      return this.latest_state;
     }
     try {
       const poll = await this.manifest.service._getObject<string>({
@@ -85,20 +94,20 @@ export class Syncer {
         useCache: false,
       });
       if (poll.$metadata.httpStatusCode === 304) {
-        return this.authoritative_state;
+        return this.latest_state;
       }
 
       if (poll.data === undefined) {
-        this.authoritative_key = "."; // before digits
+        this.latest_key = "."; // before digits
       } else {
-        this.authoritative_key = poll.data;
+        this.latest_key = poll.data;
       }
 
       const [objects, dt] = await time.measure(
         this.manifest.service.s3ClientLite.listObjectV2({
           Bucket: this.manifest.ref.bucket,
           Prefix: this.manifest.ref.key,
-          StartAfter: this.authoritative_key, // could be null
+          StartAfter: this.latest_key, // could be null
         })
       );
 
@@ -114,13 +123,17 @@ export class Syncer {
 
       // Play the missing patches over the base state, oldest first
       if (manifests === undefined) {
-        this.authoritative_state = clone(INITIAL_STATE);
-        return this.authoritative_state;
+        this.latest_state = clone(INITIAL_STATE);
+        return this.latest_state;
       }
 
-      const settledPoint = `${this.manifest.ref.key}@${time.timestamp(
-        this.manifest.service.config.clockOffset - 5000
-      )}`;
+      // Go back a little before the latest key to accommodate writes in flight
+      const settledPoint = `${this.manifest.ref.key}@${Math.max(
+        Syncer.manifestTimestamp(this.latest_key) - 5000,
+        0
+      )
+        .toString()
+        .padStart(14, "0")}`;
 
       // Find the most recent patch, whose base state is settled, and that we have a record for
       let loadedFirst = false;
@@ -144,20 +157,16 @@ export class Syncer {
           }
           continue;
         } else if (loadedFirst === false) {
-          this.authoritative_state = step.data;
+          this.latest_state = step.data;
+          this.latest_key = key;
           loadedFirst = true;
-        }
-
-        if (key < settledPoint) {
-          this.authoritative_key = key;
-          break;
         }
       }
 
       // Play operations forward on oldest state
       for (let index = 0; index < manifests.length; index++) {
         const key = manifests[index].Key!;
-        if (key < this.authoritative_key && key < settledPoint) {
+        if (key < this.latest_key && key < settledPoint) {
           // Its old we can skip and GC asyncronously
           if (this.manifest.service.config.autoclean) {
             this.manifest.service._deleteObject({
@@ -180,19 +189,19 @@ export class Syncer {
           },
         });
         const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
-        this.authoritative_state = merge<ManifestFile>(
-          this.authoritative_state,
+        this.latest_state = merge<ManifestFile>(
+          this.latest_state,
           step.data?.update
         )!;
         this.manifest.observeVersionId(stepVersionid);
       }
-      if (this.db) set(MANIFEST_KEY, this.authoritative_state, this.db);
+      if (this.db) set(MANIFEST_KEY, this.latest_state, this.db);
 
-      return this.authoritative_state;
+      return this.latest_state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {
-        this.authoritative_state = INITIAL_STATE;
-        return this.authoritative_state;
+        this.latest_state = INITIAL_STATE;
+        return this.latest_state;
       } else {
         throw err;
       }

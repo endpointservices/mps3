@@ -183,7 +183,7 @@ export class Manifest {
           retry = false;
         do {
           const state = await this.manifestState.getLatest();
-          state.previous = this.manifestState.authoritative_key;
+          state.previous = this.manifestState.latest_key;
           state.update = {
             files: {},
           };
@@ -234,7 +234,7 @@ export class Manifest {
             key: this.ref.key,
             bucket: this.ref.bucket,
           },
-          value: this.manifestState.authoritative_key, // indicates how far we need to look back
+          value: this.manifestState.latest_key, // indicates how far we need to look back
         });
 
         this.poll();
