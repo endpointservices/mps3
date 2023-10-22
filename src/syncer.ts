@@ -64,7 +64,7 @@ export class Syncer {
     const withinRange =
       Math.abs(manifestTimestamp - s3Timestamp.getTime()) < 5000;
     if (!withinRange) {
-      console.warn("Clock skew detected");
+      console.warn(`Clock skew detected ${key} vs ${s3Timestamp.getTime()}`);
     }
     return withinRange;
   }
@@ -114,7 +114,20 @@ export class Syncer {
       // prune invalid objects
       const manifests = objects.Contents?.filter((obj) => {
         if (obj.Key === this.manifest.ref.key) return false;
-        return Syncer.isValid(obj.Key!, obj.LastModified!);
+        if (!Syncer.isValid(obj.Key!, obj.LastModified!)) {
+          if (this.manifest.service.config.autoclean) {
+            this.manifest.service._deleteObject({
+              operation: "CLEANUP",
+              ref: {
+                bucket: this.manifest.ref.bucket,
+                key: obj.Key!,
+              },
+            });
+          }
+
+          return false;
+        }
+        return true;
       });
 
       this.manifest.service.config.log(
