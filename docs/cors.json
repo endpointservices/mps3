@@ -4,7 +4,7 @@
       "AllowedHeaders": ["*"],
       "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
       "AllowedOrigins": ["*"],
-      "ExposeHeaders": ["X-Amz-Version-Id", "ETag"]
+      "ExposeHeaders": ["X-Amz-Version-Id", "ETag", "Date"]
     }
   ]
 }

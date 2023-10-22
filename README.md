@@ -63,9 +63,9 @@ For the client to work properly some CORS configuration is required on the bucke
 ```
 [{
     "AllowedHeaders": ["*"],
-    "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
+    "AllowedMethods": ["GET", "PUT", "DELETE"],
     "AllowedOrigins": ["*"],
-    "ExposeHeaders": ["X-Amz-Version-Id", "ETag"]
+    "ExposeHeaders": ["X-Amz-Version-Id", "ETag", "Date"]
 }]
 ```
 ### Authorization

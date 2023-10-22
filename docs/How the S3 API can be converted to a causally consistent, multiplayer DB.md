@@ -131,16 +131,3 @@ To help us deal with wild clock skew and as a step towards transaction support, 
 We can use the same clause evaluation at read to implement semantics like compare and set operations. And we can take compare and set operations to locks and transactions. You have to be slightly careful though when making a condition on assertion of the database state. Here we do have problems if the log has not settled. For instance, if we say, write a key value foo, if the current value is bar, and C, and then a client might see the sequence of manifest log records suggest that the clause evaluates true and expose the consequence to the client, but a client with clock skew might end up inserting a record after that breaks that condition, in which case now the database state would flip to not applying that change, and the effect would be reversed.
 
 Postgres calls this a dirty read where state during a transaction is visible to participants before the transaction has been finalized. In this case, the transaction should be aborted, but transiently, clients observed the intermediate state. So that's something we probably want to avoid, but to truly avoid that, you would have to delay effecting the transaction until the clock skew tolerance period had passed. So this has not been implemented yet. We might rethink that bit. But conditional writes work very well for clock skew rejection because the condition and data necessary is all hermetically deterministic from just a single record itself. So that does not have the same problem.
-
-
-
-
-
-
-
-
-
-
-
-
-server reconciliation

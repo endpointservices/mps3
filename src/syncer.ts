@@ -124,7 +124,6 @@ export class Syncer {
               },
             });
           }
-
           return false;
         }
         return true;

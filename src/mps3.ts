@@ -102,6 +102,7 @@ interface ResolvedMPS3Config extends MPS3Config {
   autoclean: boolean;
   clockOffset: number;
   adaptiveClock: boolean;
+  parser: DOMParser;
   log: (...args: any) => void;
 }
 
@@ -152,6 +153,7 @@ export class MPS3 {
       pollFrequency: config.pollFrequency || 1000,
       clockOffset: Math.floor(config.clockOffset!) || 0,
       adaptiveClock: config.adaptiveClock === false ? false : true,
+      parser: config.parser || new DOMParser(),
       defaultManifest: {
         bucket: (<Ref>config.defaultManifest)?.bucket || config.defaultBucket,
         key:
@@ -195,7 +197,7 @@ export class MPS3 {
     this.s3ClientLite = new S3ClientLite(
       this.config.online ? fetchFn : () => new Promise(() => {}),
       this.endpoint,
-      config.parser || new DOMParser()
+      this
     );
   }
   /** @internal */
