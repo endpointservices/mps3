@@ -21,7 +21,6 @@ describe("clock behavior", () => {
   const getClient = (args: any = {}) =>
     new MPS3({
       parser: new DOMParser(),
-      autoclean: false,
       offlineStorage: false,
       defaultBucket: "clock",
       s3Config: {

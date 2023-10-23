@@ -1,5 +1,4 @@
-export const timestamp = (offset_ms: number = 0) =>
-  `${Date.now() + offset_ms}`.padStart(14, "0");
+export const timestamp = (epoch: number = 0) => `${epoch}`.padStart(14, "0");
 
 /**
  * Converts timestamps like LastModified to their seconds since UTC epoch

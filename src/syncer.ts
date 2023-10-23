@@ -4,6 +4,14 @@ import { clone } from "json";
 import { JSONValue } from "json";
 import * as time from "time";
 import { UseStore, get, set } from "idb-keyval";
+import {
+  DeleteValue,
+  ResolvedRef,
+  VersionId,
+  countKey,
+  url,
+  uuid,
+} from "types";
 
 interface FileState extends JSONArraylessObject {
   version: string;
@@ -31,14 +39,17 @@ interface HttpCacheEntry<T> {
   data: T;
 }
 
-
 export class Syncer {
+  session_id = uuid().substring(0, 3);
   latest_key: string = "";
   latest_state: ManifestFile = clone(INITIAL_STATE);
 
   loading?: Promise<unknown>;
   cache?: HttpCacheEntry<ManifestFile>;
   db?: UseStore;
+
+  latest_timestamp = 0;
+  writes = 0;
 
   constructor(private manifest: Manifest) {}
 
@@ -147,6 +158,12 @@ export class Syncer {
         .toString()
         .padStart(14, "0")}`;
 
+      // Keep a record of the high water mark so we can ensure latest writes increment it.
+      this.latest_timestamp = Math.max(
+        this.latest_timestamp,
+        Syncer.manifestTimestamp(this.latest_key)
+      );
+
       // Find the most recent patch, whose base state is settled, and that we have a record for
       let loadedFirst = false;
       for (let index = manifests.length - 1; index >= 0; index--) {
@@ -217,6 +234,116 @@ export class Syncer {
       } else {
         throw err;
       }
+    }
+  }
+
+  updateContent(
+    values: Map<ResolvedRef, JSONValue | DeleteValue>,
+    write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>,
+    options: {
+      await: "local" | "remote";
+      isLoad: boolean;
+    }
+  ): Promise<unknown> {
+    // Manifest must be ordered by client operation time
+    // (An exception is made for adjusting for clock skew)
+    const generate_manifest_key = () =>
+      time.timestamp(
+        Math.max(
+          Date.now() + this.manifest.service.config.clockOffset,
+          this.latest_timestamp
+        )
+      ) +
+      "_" +
+      this.session_id +
+      "_" +
+      countKey(this.writes++);
+
+    let manifest_version = generate_manifest_key();
+
+    const localPersistence = this.manifest.operationQueue.propose(
+      write,
+      values,
+      options.isLoad
+    );
+    const remotePersistency = localPersistence.then(async () => {
+      try {
+        const update = await write;
+        let response,
+          manifest_key,
+          retry = false;
+        do {
+          const state = await this.getLatest();
+          state.previous = this.latest_key;
+          state.update = {
+            files: {},
+          };
+
+          for (let [ref, version] of update) {
+            const fileUrl = url(ref);
+            if (version) {
+              const fileState = {
+                version: version,
+              };
+              state.update.files[fileUrl] = fileState;
+            } else {
+              state.update.files[fileUrl] = null;
+            }
+          }
+          // put versioned write
+          manifest_key = this.manifest.ref.key + "@" + manifest_version;
+          this.manifest.operationQueue.label(
+            write,
+            manifest_version,
+            options.isLoad
+          );
+
+          const putResponse = await this.manifest.service._putObject({
+            operation: "PUT_MANIFEST",
+            ref: {
+              key: manifest_key,
+              bucket: this.manifest.ref.bucket,
+            },
+            value: state,
+          });
+
+          // Check the response leads to a valid write.
+          if (
+            this.manifest.service.config.adaptiveClock &&
+            !Syncer.isValid(manifest_key, putResponse.Date)
+          ) {
+            this.manifest.service.config.clockOffset =
+              putResponse.Date.getTime() - Date.now() + putResponse.latency;
+            console.log(this.manifest.service.config.clockOffset);
+            manifest_version = generate_manifest_key();
+            retry = true;
+          } else {
+            retry = false;
+          }
+        } while (retry);
+
+        // update poller with write to known location
+        response = await this.manifest.service._putObject({
+          operation: "PUT_POLL",
+          ref: {
+            key: this.manifest.ref.key,
+            bucket: this.manifest.ref.bucket,
+          },
+          value: this.latest_key, // indicates how far we need to look back
+        });
+
+        this.manifest.poll();
+        return response;
+      } catch (err) {
+        console.error(err);
+        this.manifest.operationQueue.cancel(write, options.isLoad);
+        throw err;
+      }
+    });
+    if (options.await === "local") {
+      return localPersistence;
+    } else {
+      return remotePersistency;
     }
   }
 }

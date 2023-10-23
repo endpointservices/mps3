@@ -11,6 +11,7 @@ import {
 import * as time from "time";
 import { MPS3 } from "mps3";
 import { parseListObjectsV2CommandOutput } from "xml";
+import { measure } from "time";
 
 export type FetchFn = (url: string, options?: object) => Promise<Response>;
 
@@ -117,38 +118,30 @@ export class S3ClientLite {
   }
 
   adjustClock(response: Promise<Response>): Promise<Response> {
-    // response.then(() => {});
-    return response;
     // TODO, observing the response seems to crash the catch handler in the retry
     if (this.mps3.config.adaptiveClock) {
-      response.then((response) => {
-        if (response.status !== 200) return;
+      return measure(response).then(([response, latency]) => {
+        if (response.status !== 200) return response;
         const date_str = response.headers.get("date");
         if (date_str) {
           let error = 0;
           const server_time = new Date(date_str).getTime();
           const local_time = Date.now() + this.mps3.config.clockOffset;
 
-          if (local_time < server_time) {
-            error = server_time - local_time;
-            this.mps3.config.clockOffset =
-              this.mps3.config.clockOffset + error * 0.1;
-
-            console.log(
-              "local_time",
-              local_time,
-              "server_time",
-              server_time,
-              "this.mps3.config.clockOffset",
-              this.mps3.config.clockOffset
-            );
+          if (local_time < server_time - latency) {
+            error = server_time - local_time - latency;
           } else if (local_time > server_time + 1000) {
             error = server_time + 1000 - local_time;
+          }
+          this.mps3.config.clockOffset =
+            this.mps3.config.clockOffset + error * 0.5;
 
-            this.mps3.config.clockOffset =
-              this.mps3.config.clockOffset + error * 0.1;
-
+          if (error !== 0) {
             console.log(
+              "latency",
+              latency,
+              "error",
+              error,
               "local_time",
               local_time,
               "server_time",
@@ -158,6 +151,7 @@ export class S3ClientLite {
             );
           }
         }
+        return response;
       });
     }
     return response;

@@ -1,15 +1,7 @@
 import { OMap } from "OMap";
 import { MPS3 } from "mps3";
-import * as time from "time";
 import { OperationQueue } from "operationQueue";
-import {
-  DeleteValue,
-  ResolvedRef,
-  VersionId,
-  countKey,
-  url,
-  uuid,
-} from "types";
+import { DeleteValue, ResolvedRef, VersionId, url } from "types";
 import { JSONValue } from "json";
 import { UseStore } from "idb-keyval";
 import { Syncer } from "syncer";
@@ -43,20 +35,18 @@ class Subscriber {
 }
 
 export class Manifest {
-  session_id = uuid().substring(0, 3);
-  writes = 0;
   subscribers = new Set<Subscriber>();
   poller?: Timer;
   pollInProgress: boolean = false;
 
-  manifestState: Syncer = new Syncer(this);
+  syncer: Syncer = new Syncer(this);
   operationQueue = new OperationQueue();
 
   constructor(public service: MPS3, public ref: ResolvedRef) {
     console.log("Create manifest", url(ref));
   }
   load(db: UseStore) {
-    this.manifestState.restore(db);
+    this.syncer.restore(db);
     this.operationQueue.restore(
       db,
       async (
@@ -107,7 +97,7 @@ export class Manifest {
       );
     }
 
-    const state = await this.manifestState.getLatest();
+    const state = await this.syncer.getLatest();
 
     if (state === undefined) {
       this.pollInProgress = false;
@@ -159,101 +149,11 @@ export class Manifest {
       isLoad: boolean;
     }
   ): Promise<unknown> {
-    // Manifest must be ordered by client operation time
-    // (An exception is made for adjusting for clock skew)
-    const generate_manifest_key = () =>
-      time.timestamp(this.service.config.clockOffset) +
-      "_" +
-      this.session_id +
-      "_" +
-      countKey(this.writes++);
-
-    let manifest_version = generate_manifest_key();
-
-    const localPersistence = this.operationQueue.propose(
-      write,
-      values,
-      options.isLoad
-    );
-    const remotePersistency = localPersistence.then(async () => {
-      try {
-        const update = await write;
-        let response,
-          manifest_key,
-          retry = false;
-        do {
-          const state = await this.manifestState.getLatest();
-          state.previous = this.manifestState.latest_key;
-          state.update = {
-            files: {},
-          };
-
-          for (let [ref, version] of update) {
-            const fileUrl = url(ref);
-            if (version) {
-              const fileState = {
-                version: version,
-              };
-              state.update.files[fileUrl] = fileState;
-            } else {
-              state.update.files[fileUrl] = null;
-            }
-          }
-          // put versioned write
-          manifest_key = this.ref.key + "@" + manifest_version;
-          this.operationQueue.label(write, manifest_version, options.isLoad);
-
-          const putResponse = await this.service._putObject({
-            operation: "PUT_MANIFEST",
-            ref: {
-              key: manifest_key,
-              bucket: this.ref.bucket,
-            },
-            value: state,
-          });
-
-          // Check the response leads to a valid write.
-          if (
-            this.service.config.adaptiveClock &&
-            !Syncer.isValid(manifest_key, putResponse.Date)
-          ) {
-            this.service.config.clockOffset =
-              putResponse.Date.getTime() - Date.now() + putResponse.latency;
-            console.log(this.service.config.clockOffset);
-            manifest_version = generate_manifest_key();
-            retry = true;
-          } else {
-            retry = false;
-          }
-        } while (retry);
-
-        // update poller with write to known location
-        response = await this.service._putObject({
-          operation: "PUT_POLL",
-          ref: {
-            key: this.ref.key,
-            bucket: this.ref.bucket,
-          },
-          value: this.manifestState.latest_key, // indicates how far we need to look back
-        });
-
-        this.poll();
-        return response;
-      } catch (err) {
-        console.error(err);
-        this.operationQueue.cancel(write, options.isLoad);
-        throw err;
-      }
-    });
-    if (options.await === "local") {
-      return localPersistence;
-    } else {
-      return remotePersistency;
-    }
+    return this.syncer.updateContent(values, write, options);
   }
 
   async getVersion(ref: ResolvedRef): Promise<string | undefined> {
-    return (await this.manifestState.getLatest()).files[url(ref)]?.version;
+    return (await this.syncer.getLatest()).files[url(ref)]?.version;
   }
 
   subscribe(
