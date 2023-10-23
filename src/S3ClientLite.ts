@@ -118,6 +118,7 @@ export class S3ClientLite {
   }
 
   adjustClock(response: Promise<Response>): Promise<Response> {
+    // return response;
     // TODO, observing the response seems to crash the catch handler in the retry
     if (this.mps3.config.adaptiveClock) {
       return measure(response).then(([response, latency]) => {
