@@ -128,7 +128,7 @@ describe("mps3", () => {
         "causal consistency all-to-all, single key",
         async (done) => {
           let testFailed = false;
-          const key = "causal";
+          const key = `causal-${uuid()}`;
           await getClient().delete(key);
 
           const system = new CentralisedOfflineFirstCausalSystem();

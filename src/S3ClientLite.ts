@@ -131,11 +131,10 @@ export class S3ClientLite {
 
           if (local_time < server_time - latency) {
             error = server_time - local_time - latency;
-          } else if (local_time > server_time + 1000) {
-            error = server_time + 1000 - local_time;
+          } else if (local_time > server_time + 1000 + latency) {
+            error = server_time + 1000 - local_time + latency;
           }
-          this.mps3.config.clockOffset =
-            this.mps3.config.clockOffset + error * 0.5;
+          this.mps3.config.clockOffset = this.mps3.config.clockOffset + error;
 
           if (error !== 0) {
             console.log(
