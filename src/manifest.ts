@@ -105,17 +105,14 @@ export class Manifest {
     }
 
     // calculate which values are set by optimistic updates
-    const mask: OMap<ResolvedRef, JSONValue | DeleteValue> =
+    const mask: OMap<ResolvedRef, [JSONValue | DeleteValue, number]> =
       await this.operationQueue.flatten();
 
     this.subscribers.forEach(async (subscriber) => {
       if (mask.has(subscriber.ref)) {
         // console.log("mask", url(subscriber.ref));
-        subscriber.notify(
-          this.service,
-          "local",
-          Promise.resolve(mask.get(subscriber.ref))
-        );
+        const [value, op] = mask.get(subscriber.ref)!;
+        subscriber.notify(this.service, `local-${op}`, Promise.resolve(value));
       } else {
         const fileState = state.files[url(subscriber.ref)];
         if (fileState) {

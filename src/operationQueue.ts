@@ -14,13 +14,13 @@ export class OperationQueue {
   private session = uuid();
   proposedOperations: Map<
     Operation,
-    Map<ResolvedRef, JSONValue | DeleteValue>
+    [Map<ResolvedRef, JSONValue | DeleteValue>, number]
   > = new Map();
   operationLabels: Map<string, Operation> = new Map();
   private db?: UseStore;
   private lastIndex: number = 0;
   private load?: Promise<unknown> = undefined;
-
+  private op: number = 0;
   constructor(store?: UseStore) {
     this.db = store;
   }
@@ -28,15 +28,15 @@ export class OperationQueue {
   async propose(
     write: Operation,
     values: Map<ResolvedRef, JSONValue | DeleteValue>,
-    isLoad: boolean = false,
+    isLoad: boolean = false
   ) {
-    this.proposedOperations.set(write, values);
+    this.proposedOperations.set(write, [values, this.op++]);
     if (this.db) {
       if (this.load && !isLoad) {
         await this.load;
         // Get operations in the right order
         this.proposedOperations.delete(write);
-        this.proposedOperations.set(write, values);
+        this.proposedOperations.set(write, [values, this.op - 1]);
       }
       this.lastIndex++;
       const key = entryKey(this.lastIndex);
@@ -44,7 +44,7 @@ export class OperationQueue {
       await set(
         key,
         [...values.entries()].map(([ref, val]) => [JSON.stringify(ref), val]),
-        this.db,
+        this.db
       );
       console.log(`STORE ${key} ${JSON.stringify([...values.entries()])}`);
     }
@@ -94,12 +94,12 @@ export class OperationQueue {
     }
   }
 
-  async flatten(): Promise<OMap<ResolvedRef, JSONValue | undefined>> {
+  async flatten(): Promise<OMap<ResolvedRef, [JSONValue | undefined, number]>> {
     if (this.load) await this.load;
-    const mask = new OMap<ResolvedRef, JSONValue | undefined>(url);
-    this.proposedOperations.forEach((values) => {
+    const mask = new OMap<ResolvedRef, [JSONValue | undefined, number]>(url);
+    this.proposedOperations.forEach(([values, op]) => {
       values.forEach((value: any, ref: ResolvedRef) => {
-        mask.set(ref, value);
+        mask.set(ref, [value, op]);
       });
     });
     return mask;
@@ -109,8 +109,8 @@ export class OperationQueue {
     store: UseStore,
     schedule: (
       write: Map<ResolvedRef, JSONValue | DeleteValue>,
-      label?: string,
-    ) => Promise<unknown>,
+      label?: string
+    ) => Promise<unknown>
   ) {
     this.db = store;
     this.proposedOperations.clear();

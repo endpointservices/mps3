@@ -114,17 +114,22 @@ export class Syncer {
         this.latest_key = poll.data;
       }
 
+      const timestamp = Syncer.manifestTimestamp(this.latest_key);
+      const lag = Date.now() + this.manifest.service.config.clockOffset - 10000;
+      const lookback_time = Math.min(timestamp, lag);
+      const start_at = `${this.manifest.ref.key}@${lookback_time
+        .toString()
+        .padStart(14, "0")}`;
       const [objects, dt] = await time.measure(
         this.manifest.service.s3ClientLite.listObjectV2({
           Bucket: this.manifest.ref.bucket,
-          Prefix: this.manifest.ref.key,
-          StartAfter: this.latest_key, // could be null
+          Prefix: this.manifest.ref.key + "@",
+          StartAfter: start_at,
         })
       );
 
       // prune invalid objects
       const manifests = objects.Contents?.filter((obj) => {
-        if (obj.Key === this.manifest.ref.key) return false;
         if (!Syncer.isValid(obj.Key!, obj.LastModified!)) {
           if (this.manifest.service.config.autoclean) {
             this.manifest.service._deleteObject({
@@ -141,7 +146,7 @@ export class Syncer {
       });
 
       this.manifest.service.config.log(
-        `${dt}ms LIST ${this.manifest.ref.bucket}/${this.manifest.ref.key}`
+        `${dt}ms LIST ${this.manifest.ref.bucket}/${this.manifest.ref.key} from ${start_at}`
       );
 
       // Play the missing patches over the base state, oldest first
@@ -151,7 +156,7 @@ export class Syncer {
       }
 
       // Go back a little before the latest key to accommodate writes in flight
-      const settledPoint = `${this.manifest.ref.key}@${Math.max(
+      const gcPoint = `${this.manifest.ref.key}@${Math.max(
         Syncer.manifestTimestamp(this.latest_key) - 5000,
         0
       )
@@ -195,7 +200,7 @@ export class Syncer {
       // Play operations forward on oldest state
       for (let index = 0; index < manifests.length; index++) {
         const key = manifests[index].Key!;
-        if (key < this.latest_key && key < settledPoint) {
+        if (key < this.latest_key && key < gcPoint) {
           // Its old we can skip and GC asyncronously
           if (this.manifest.service.config.autoclean) {
             this.manifest.service._deleteObject({

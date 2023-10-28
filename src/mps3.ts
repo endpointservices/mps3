@@ -91,7 +91,8 @@ export interface MPS3Config {
   log?: (...args: any) => void;
 }
 
-interface ResolvedMPS3Config extends MPS3Config {
+/** @internal */
+export interface ResolvedMPS3Config extends MPS3Config {
   label: string;
   defaultManifest: ResolvedRef;
   useVersioning: boolean;
@@ -237,7 +238,7 @@ export class MPS3 {
     const inflight = await manifest.operationQueue.flatten();
     if (inflight.has(contentRef)) {
       this.config.log(`GET (cached) ${contentRef} ${inflight.get(contentRef)}`);
-      return inflight.get(contentRef);
+      return inflight.get(contentRef)![0];
     }
     const version = await manifest.getVersion(contentRef);
     if (version === undefined) return undefined;

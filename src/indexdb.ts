@@ -12,8 +12,11 @@ export const fetchFn = async (
   let body;
   let status = 200;
   if (params.get("list-type")) {
-    const prefix = params.get("prefix") || "";
-    const list = (await keys(db)).filter((k) => `${k}`.startsWith(prefix));
+    const prefix = encodeURIComponent(params.get("prefix") || "");
+    const start_at = encodeURIComponent(params.get("start-after") || "");
+    const list = (await keys(db)).filter(
+      (k) => `${k}`.startsWith(prefix) && `${k}` > start_at
+    );
     body = `<ListBucketResult>${list.map(
       (key) => `<Contents><Key>${key}</Key></Contents>`
     )}</ListBucketResult>`;

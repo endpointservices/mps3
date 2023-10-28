@@ -150,19 +150,18 @@ describe("mps3", () => {
         await mps3.delete("dedupe", undefined);
 
         let notifications = 0;
-        listener.subscribe("dedupe", (value) => {
-          if (notifications === 0) expect(value).toEqual(undefined);
+        listener.subscribe("dedupe", async (value) => {
+          notifications++;
           if (notifications === 1) {
+            expect(value).toEqual(undefined);
+            await mps3.delete("dedupe");
+            mps3.put("dedupe", rnd);
+          } else if (notifications === 2) {
             expect(value).toEqual(rnd);
             done();
           }
-          notifications++;
         });
-        await mps3.delete("dedupe");
-        await listener.refresh();
-        await mps3.put("dedupe", rnd);
-        await listener.refresh();
-      });
+      }, 100000);
 
       test("Can see other's mutations after populating cache", async () => {
         const mps3 = getClient({ clockOffset: 0 });
@@ -281,6 +280,27 @@ describe("mps3", () => {
         await getClient().put("rw", rnd);
         const read = await getClient().get("rw");
         expect(read).toEqual(rnd);
+      });
+
+      test("Read own write twice", async (done) => {
+        const client = getClient();
+        const rnd1 = uuid();
+        const rnd2 = uuid();
+        let seenRnd1 = false;
+
+        client.subscribe("rwt", (val) => {
+          if (val === undefined && !seenRnd1) {
+            client.put("rwt", rnd1);
+          } else if (val == rnd1 && !seenRnd1) {
+            client.put("rwt", rnd2);
+            seenRnd1 = true;
+          } else if (val == rnd2 && seenRnd1) {
+            done();
+          } else {
+            console.error("val", val, "seenRnd1", seenRnd1);
+            expect(false).toBe(true);
+          }
+        });
       });
 
       test("Key encoding", async () => {

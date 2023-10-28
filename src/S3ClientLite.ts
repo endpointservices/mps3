@@ -54,7 +54,7 @@ export class S3ClientLite {
       const url = this.getUrl(
         command.Bucket!,
         undefined,
-        `/?list-type=2&prefix=${command.Prefix}`
+        `/?list-type=2&prefix=${command.Prefix}&start-after=${command.StartAfter}`
       );
       const response = await retry(() => this.fetch(url, {}));
 
@@ -83,7 +83,7 @@ export class S3ClientLite {
   }: PutObjectCommandInput): Promise<PutObjectCommandOutput & { Date: Date }> {
     const url = this.getUrl(Bucket!, Key);
     const response = await retry(() =>
-      this.adjustClock(
+      time.adjustClock(
         this.fetch(url, {
           method: "PUT",
           body: Body as string,
@@ -91,7 +91,8 @@ export class S3ClientLite {
             "Content-Type": "application/json",
             ...(ChecksumSHA256 && { "x-amz-content-sha256": ChecksumSHA256 }),
           },
-        })
+        }),
+        this.mps3.config
       )
     );
     if (response.status !== 200)
@@ -117,46 +118,6 @@ export class S3ClientLite {
     return { $metadata: { httpStatusCode: response.status } };
   }
 
-  adjustClock(response: Promise<Response>): Promise<Response> {
-    // return response;
-    // TODO, observing the response seems to crash the catch handler in the retry
-    if (this.mps3.config.adaptiveClock) {
-      return measure(response).then(([response, latency]) => {
-        if (response.status !== 200) return response;
-        const date_str = response.headers.get("date");
-        if (date_str) {
-          let error = 0;
-          const server_time = new Date(date_str).getTime();
-          const local_time = Date.now() + this.mps3.config.clockOffset;
-
-          if (local_time < server_time - latency) {
-            error = server_time - local_time - latency;
-          } else if (local_time > server_time + 1000 + latency) {
-            error = server_time + 1000 - local_time + latency;
-          }
-          this.mps3.config.clockOffset = this.mps3.config.clockOffset + error;
-
-          if (error !== 0) {
-            console.log(
-              "latency",
-              latency,
-              "error",
-              error,
-              "local_time",
-              local_time,
-              "server_time",
-              server_time,
-              "this.mps3.config.clockOffset",
-              this.mps3.config.clockOffset
-            );
-          }
-        }
-        return response;
-      });
-    }
-    return response;
-  }
-
   async getObject({
     Bucket,
     Key,
@@ -169,11 +130,12 @@ export class S3ClientLite {
       VersionId ? `?versionId=${VersionId}` : ""
     );
     const response = await retry(() =>
-      this.adjustClock(
+      time.adjustClock(
         this.fetch(url, {
           method: "GET",
           headers: { "If-None-Match": IfNoneMatch! },
-        })
+        }),
+        this.mps3.config
       )
     );
 
