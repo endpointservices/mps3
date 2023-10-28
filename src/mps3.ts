@@ -275,7 +275,7 @@ export class MPS3 {
         IfNoneMatch: args.ifNoneMatch,
       };
     }
-    const key = `${command.Bucket}${command.Key}${command.VersionId}`;
+    const key = `${command.Bucket}|${command.Key}|${command.VersionId}`;
     if (args.useCache !== false) {
       if (this.memCache.has(command)) {
         /*

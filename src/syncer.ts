@@ -54,7 +54,7 @@ export class Syncer {
   constructor(private manifest: Manifest) {}
 
   static manifestTimestamp = (key: string): number => {
-    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
+    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]{4}$/);
     if (!match) {
       console.warn(`Rejecting manifest key ${key}`);
       return 0;
@@ -63,7 +63,7 @@ export class Syncer {
   };
 
   static isValid(key: string, modified: Date): boolean {
-    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]+$/);
+    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]{4}$/);
     if (!match) {
       console.warn(`Rejecting manifest key ${key}`);
       return false;
