@@ -21,7 +21,6 @@ interface FileState extends JSONArraylessObject {
 type Merge = any;
 
 export interface ManifestFile extends JSONArraylessObject {
-  previous: string; // key of previous snapshot this change was based on
   files: {
     [url: string]: FileState;
   };
@@ -62,7 +61,7 @@ export class Syncer {
       console.warn(`Rejecting manifest key ${key}`);
       return 0;
     }
-    return str2uint(match[1], 42);
+    return str2uint(match[1]);
   };
 
   static isValid(key: string, modified: Date): boolean {
