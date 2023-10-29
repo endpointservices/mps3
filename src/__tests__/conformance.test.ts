@@ -426,8 +426,9 @@ describe("mps3", () => {
 
         let i = 0;
         let last_write = 0;
-        const check = (seen: any[], last_read: any) => {
-          console.log(seen, last_write, last_read);
+        const check = (last_read: any) => {
+          seen.push(last_read);
+          console.log("monotonic", seen, last_write, last_read);
           if (seen.length >= 5 && last_read === last_write) {
             unsubscribe();
             expect(seen[0]).toEqual(undefined);
@@ -443,11 +444,8 @@ describe("mps3", () => {
         };
 
         const seen: any[] = [];
-        var unsubscribe = mps3_other.subscribe(key, (value) => {
-          seen.push(value);
-          check(seen, value);
-        });
-      });
+        var unsubscribe = mps3_other.subscribe(key, check);
+      }, 99999);
 
       test("Subscribe notified of committed initial value first", async (done) => {
         const mps3 = getClient();

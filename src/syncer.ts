@@ -12,6 +12,7 @@ import {
   url,
   uuid,
   str2uint,
+  str2uintDesc,
 } from "types";
 
 interface FileState extends JSONArraylessObject {
@@ -50,7 +51,7 @@ export class Syncer {
   latest_timestamp = 0;
   writes = 0;
 
-  static manifestRegex = /@([0-9a-z]+)_[0-9a-z]+_[0-9a-z]{4}$/;
+  static manifestRegex = /@([0-9a-z]+)_[0-9a-z]+_[0-9a-z]{2}$/;
 
   constructor(private manifest: Manifest) {}
 
@@ -60,7 +61,7 @@ export class Syncer {
       console.warn(`Rejecting manifest key ${key}`);
       return 0;
     }
-    return str2uint(match[1]);
+    return str2uintDesc(match[1], 42);
   };
 
   static isValid(key: string, modified: Date): boolean {
@@ -115,11 +116,8 @@ export class Syncer {
         this.latest_key = poll.data;
       }
 
-      const timestamp = Syncer.manifestTimestamp(this.latest_key);
-      const lag = Date.now() + this.manifest.service.config.clockOffset - 10000;
-      const lookback_time = Math.min(timestamp, lag);
       const start_at = `${this.manifest.ref.key}@${time.timestamp(
-        lookback_time
+        Date.now() + this.manifest.service.config.clockOffset + 10000
       )}`;
       const [objects, dt] = await time.measure(
         this.manifest.service.s3ClientLite.listObjectV2({
@@ -156,14 +154,6 @@ export class Syncer {
         return this.latest_state;
       }
 
-      // Go back a little before the latest key to accommodate writes in flight
-      const gcPoint = `${this.manifest.ref.key}@${Math.max(
-        Syncer.manifestTimestamp(this.latest_key) - 5000,
-        0
-      )
-        .toString()
-        .padStart(14, "0")}`;
-
       // Keep a record of the high water mark so we can ensure latest writes increment it.
       this.latest_timestamp = Math.max(
         this.latest_timestamp,
@@ -171,37 +161,27 @@ export class Syncer {
       );
 
       // Find the most recent patch, whose base state is settled, and that we have a record for
-      let loadedFirst = false;
-      for (let index = manifests.length - 1; index >= 0; index--) {
-        const key = manifests[index].Key!;
-        const ref = {
-          bucket: this.manifest.ref.bucket,
-          key,
-        };
-        const step = await this.manifest.service._getObject<ManifestFile>({
-          operation: "LOOK_BACK",
-          ref,
+      if (manifests.length > 0) {
+        this.latest_key = manifests[0].Key!;
+        const latest = await this.manifest.service._getObject<ManifestFile>({
+          operation: "GET_LATEST",
+          ref: {
+            bucket: this.manifest.ref.bucket,
+            key: this.latest_key,
+          },
         });
-
-        if (step.data === undefined) {
-          if (this.manifest.service.config.autoclean) {
-            this.manifest.service._deleteObject({
-              operation: "CLEANUP",
-              ref,
-            });
-          }
-          continue;
-        } else if (loadedFirst === false) {
-          this.latest_state = step.data;
-          this.latest_key = key;
-          loadedFirst = true;
-        }
+        this.latest_state = latest.data!;
       }
 
-      // Play operations forward on oldest state
-      for (let index = 0; index < manifests.length; index++) {
+      // Go back a little before the latest key to accommodate writes in flight
+      const gcPoint = `${this.manifest.ref.key}@${time.timestamp(
+        Math.max(Syncer.manifestTimestamp(this.latest_key) - 5000, 0)
+      )}`;
+
+      // Play operations forward on latest state, oldest first
+      for (let index = manifests.length - 1; index >= 0; index--) {
         const key = manifests[index].Key!;
-        if (key < this.latest_key && key < gcPoint) {
+        if (key > this.latest_key && key > gcPoint) {
           // Its old we can skip and GC asyncronously
           if (this.manifest.service.config.autoclean) {
             this.manifest.service._deleteObject({

@@ -14,7 +14,7 @@ export type UUID = string;
 export type VersionId = string;
 
 export const uuid = (): UUID => crypto.randomUUID();
-export const countKey = (number: number): string => number.toString(36).padStart(4, "0");
+export const countKey = (number: number): string => uint2strDesc(number, 10);
 export const eq = (a: Ref, b: Ref) => a.bucket === b.bucket && a.key === b.key;
 export const url = (ref: Ref): string => `${ref.bucket}/${ref.key}`;
 export const parseUrl = (url: string): ResolvedRef => {
