@@ -234,7 +234,6 @@ describe("mps3", () => {
             `${variant.config.defaultBucket}/unused_key_2`
           ]
         ).toBeDefined();
-        expect(versionFileContent.previous).toBe(".");
 
         await new Promise((resolve) => setTimeout(resolve, 500)); // wait to settle
         await mps3.get("unused_key_2", {

@@ -118,9 +118,9 @@ export class Syncer {
       const timestamp = Syncer.manifestTimestamp(this.latest_key);
       const lag = Date.now() + this.manifest.service.config.clockOffset - 10000;
       const lookback_time = Math.min(timestamp, lag);
-      const start_at = `${this.manifest.ref.key}@${lookback_time
-        .toString()
-        .padStart(14, "0")}`;
+      const start_at = `${this.manifest.ref.key}@${time.timestamp(
+        lookback_time
+      )}`;
       const [objects, dt] = await time.measure(
         this.manifest.service.s3ClientLite.listObjectV2({
           Bucket: this.manifest.ref.bucket,
