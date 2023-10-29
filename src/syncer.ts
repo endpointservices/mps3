@@ -11,6 +11,7 @@ import {
   countKey,
   url,
   uuid,
+  str2uint,
 } from "types";
 
 interface FileState extends JSONArraylessObject {
@@ -51,25 +52,27 @@ export class Syncer {
   latest_timestamp = 0;
   writes = 0;
 
+  static manifestRegex = /@([0-9a-z]+)_[0-9a-z]+_[0-9a-z]{4}$/;
+
   constructor(private manifest: Manifest) {}
 
   static manifestTimestamp = (key: string): number => {
-    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]{4}$/);
+    const match = key.match(Syncer.manifestRegex);
     if (!match) {
       console.warn(`Rejecting manifest key ${key}`);
       return 0;
     }
-    return Number.parseInt(match[1]);
+    return str2uint(match[1], 42);
   };
 
   static isValid(key: string, modified: Date): boolean {
-    const match = key.match(/@([0-9]+)_[0-9a-f]+_[0-9a-z]{4}$/);
+    const match = key.match(Syncer.manifestRegex);
     if (!match) {
       console.warn(`Rejecting manifest key ${key}`);
       return false;
     }
     if (modified === undefined) return true;
-    const manifestTimestamp = Number.parseInt(match[1]);
+    const manifestTimestamp = this.manifestTimestamp(key);
     const s3Timestamp = modified;
     // if the difference is greater than 5 seconds, ignore this update
     const withinRange =

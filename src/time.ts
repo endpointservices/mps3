@@ -1,6 +1,7 @@
-import { MPS3Config, ResolvedMPS3Config } from "mps3";
+import { ResolvedMPS3Config } from "mps3";
+import {uint2str} from "types"
 
-export const timestamp = (epoch: number = 0) => `${epoch}`.padStart(14, "0");
+export const timestamp = (epoch: number = 0) => uint2str(epoch, 42);
 
 /**
  * Converts timestamps like LastModified to their seconds since UTC epoch
