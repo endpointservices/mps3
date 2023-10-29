@@ -29,7 +29,6 @@ export interface ManifestFile extends JSONArraylessObject {
 }
 const MANIFEST_KEY = "manifest";
 const INITIAL_STATE: ManifestFile & JSONValue = {
-  previous: ".",
   files: {},
   update: {},
 };
@@ -281,7 +280,6 @@ export class Syncer {
           retry = false;
         do {
           const state = await this.getLatest();
-          state.previous = this.latest_key;
           state.update = {
             files: {},
           };
