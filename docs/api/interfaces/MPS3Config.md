@@ -29,7 +29,7 @@ Update clock on detection of skewed clock
 
 #### Defined in
 
-[mps3.ts:86](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L86)
+[mps3.ts:86](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L86)
 
 ___
 
@@ -41,7 +41,7 @@ Should the client delete expired references?
 
 #### Defined in
 
-[mps3.ts:76](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L76)
+[mps3.ts:76](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L76)
 
 ___
 
@@ -53,7 +53,7 @@ Clock offset in milliseconds
 
 #### Defined in
 
-[mps3.ts:81](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L81)
+[mps3.ts:81](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L81)
 
 ___
 
@@ -65,7 +65,7 @@ Bucket to use by default
 
 #### Defined in
 
-[mps3.ts:25](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L25)
+[mps3.ts:25](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L25)
 
 ___
 
@@ -84,7 +84,7 @@ operation's options
 
 #### Defined in
 
-[mps3.ts:31](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L31)
+[mps3.ts:31](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L31)
 
 ___
 
@@ -110,7 +110,7 @@ Bring your own logger
 
 #### Defined in
 
-[mps3.ts:91](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L91)
+[mps3.ts:91](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L91)
 
 ___
 
@@ -122,7 +122,7 @@ Should the client store writes locally?
 
 #### Defined in
 
-[mps3.ts:71](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L71)
+[mps3.ts:71](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L71)
 
 ___
 
@@ -134,7 +134,7 @@ Should the client write to upstreams?
 
 #### Defined in
 
-[mps3.ts:66](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L66)
+[mps3.ts:66](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L66)
 
 ___
 
@@ -153,7 +153,7 @@ new window.DOMParser()
 
 #### Defined in
 
-[mps3.ts:61](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L61)
+[mps3.ts:61](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L61)
 
 ___
 
@@ -173,7 +173,7 @@ due to If-None-Match request optimizations.
 
 #### Defined in
 
-[mps3.ts:48](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L48)
+[mps3.ts:48](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L48)
 
 ___
 
@@ -195,7 +195,7 @@ https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfa
 
 #### Defined in
 
-[mps3.ts:54](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L54)
+[mps3.ts:54](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L54)
 
 ___
 
@@ -215,4 +215,4 @@ false
 
 #### Defined in
 
-[mps3.ts:38](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L38)
+[mps3.ts:38](https://github.com/endpointservices/mps3/blob/8f2a5d4/src/mps3.ts#L38)

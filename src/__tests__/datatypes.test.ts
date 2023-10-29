@@ -1,4 +1,4 @@
-import { uint2str, str2uint, uint2strDesc } from "../types";
+import { uint2str, str2uint, uint2strDesc, str2uintDesc } from "../types";
 import { expect, describe, it } from "bun:test";
 
 describe("datatypes", () => {
@@ -53,6 +53,16 @@ describe("datatypes", () => {
       [1, 3, 8, 10, 16].forEach((bits) => {
         for (let i = 1; i < Math.pow(2, bits); i++) {
           expect(uint2strDesc(i - 1, bits) < uint2strDesc(i, bits)).toBe(false);
+        }
+      });
+    });
+  });
+
+  describe("str2uintDesc", () => {
+    it("should be the inverse of uint2strDesc for uintX", () => {
+      [1, 3, 8, 10, 16].forEach((bits) => {
+        for (let i = 1; i < Math.pow(2, bits); i++) {
+          expect(str2uintDesc(uint2strDesc(i, bits), bits)).toBe(i);
         }
       });
     });

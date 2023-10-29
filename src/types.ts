@@ -40,3 +40,9 @@ export const uint2strDesc = (num: number, bits: number): string => {
   return uint2str(maxValue - num, bits);
 };
 
+export const str2uintDesc = (str: string, bits: number): number => {
+  const maxValue = Math.pow(2, bits) - 1;
+  const num = parseInt(str, 32); // Convert base32 string to number
+  return maxValue - num;
+};
+
