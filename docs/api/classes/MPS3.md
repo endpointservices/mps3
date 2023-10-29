@@ -34,17 +34,19 @@
 
 #### Defined in
 
-[mps3.ts:123](https://github.com/endpointservices/mps3/blob/569c609/src/mps3.ts#L123)
+[mps3.ts:145](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L145)
 
 ## Properties
 
 ### LOCAL\_ENDPOINT
 
-▪ `Static` **LOCAL\_ENDPOINT**: `string` = `"indexdb://"`
+▪ `Static` **LOCAL\_ENDPOINT**: `string` = `"indexdb:"`
+
+Virtual endpoint for local-first operation
 
 #### Defined in
 
-[mps3.ts:100](https://github.com/endpointservices/mps3/blob/569c609/src/mps3.ts#L100)
+[mps3.ts:123](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L123)
 
 ## Methods
 
@@ -66,7 +68,7 @@
 
 #### Defined in
 
-[mps3.ts:322](https://github.com/endpointservices/mps3/blob/569c609/src/mps3.ts#L322)
+[mps3.ts:348](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L348)
 
 ___
 
@@ -88,7 +90,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:193](https://github.com/endpointservices/mps3/blob/569c609/src/mps3.ts#L193)
+[mps3.ts:219](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L219)
 
 ___
 
@@ -112,7 +114,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:331](https://github.com/endpointservices/mps3/blob/569c609/src/mps3.ts#L331)
+[mps3.ts:357](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L357)
 
 ___
 
@@ -136,7 +138,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:342](https://github.com/endpointservices/mps3/blob/569c609/src/mps3.ts#L342)
+[mps3.ts:368](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L368)
 
 ___
 
@@ -173,4 +175,4 @@ unsubscribe function
 
 #### Defined in
 
-[mps3.ts:521](https://github.com/endpointservices/mps3/blob/569c609/src/mps3.ts#L521)
+[mps3.ts:547](https://github.com/endpointservices/mps3/blob/3127fb5/src/mps3.ts#L547)
