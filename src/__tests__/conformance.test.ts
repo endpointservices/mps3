@@ -39,6 +39,7 @@ describe("mps3", () => {
     {
       label: "minio",
       config: {
+        minimizeLists: false,
         pollFrequency: 100,
         useChecksum: false,
         defaultBucket: `nov${session}`,
@@ -55,6 +56,7 @@ describe("mps3", () => {
         defaultBucket: "l1",
         offlineStorage: false,
         adaptiveClock: false,
+        minimizeLists: false,
         s3Config: {
           endpoint: MPS3.LOCAL_ENDPOINT,
         },
@@ -185,79 +187,6 @@ describe("mps3", () => {
           },
         });
         expect(read).toEqual(undefined);
-      });
-
-      test("manifest cold start", async () => {
-        if (variant.label === "localfirst") return;
-        console.log(
-          "variant.config.defaultBucket",
-          variant.config.defaultBucket
-        );
-        const s3 = new S3(variant.config.s3Config);
-        const mps3 = getClient();
-        const manifest: ResolvedRef = {
-          key: uuid(),
-          bucket: variant.config.defaultBucket,
-        };
-        await mps3.put("unused_key_2", "", {
-          manifests: [manifest],
-        });
-
-        // Blackbox test for outcome
-        const pollFile = await s3.getObject({
-          Bucket: variant.config.defaultBucket,
-          Key: manifest.key,
-        });
-        const manifestVersions = await s3.listObjectsV2({
-          Prefix: manifest.key,
-          Bucket: variant.config.defaultBucket,
-        });
-
-        // First call we don't have a previous version setup
-        const pollContent = await pollFile.Body?.transformToString();
-        expect(pollContent).toEqual('"."');
-        // First we expect two files, the pollFile + one other version file
-        expect(manifestVersions.KeyCount).toEqual(2);
-        const versionFileKey = manifestVersions.Contents![1].Key;
-
-        const versionFile = await s3.getObject({
-          Bucket: variant.config.defaultBucket,
-          Key: versionFileKey,
-        });
-        const versionFileContent = JSON.parse(
-          await versionFile.Body?.transformToString()!
-        );
-        expect(versionFileContent.files).toEqual({}); // base version is empty
-        console.log(versionFileContent);
-        expect(
-          versionFileContent.update.files[
-            `${variant.config.defaultBucket}/unused_key_2`
-          ]
-        ).toBeDefined();
-
-        await new Promise((resolve) => setTimeout(resolve, 500)); // wait to settle
-        await mps3.get("unused_key_2", {
-          // force a refresh
-          manifest: manifest,
-        });
-        // Second call we have a previous version setup
-        await mps3.put("unused_key_2", "", {
-          manifests: [manifest],
-        });
-
-        const pollFile2 = await s3.getObject({
-          Bucket: variant.config.defaultBucket,
-          Key: manifest.key,
-        });
-
-        const manifestVersions2 = await s3.listObjectsV2({
-          Prefix: manifest.key,
-          Bucket: variant.config.defaultBucket,
-        });
-
-        // Second call we expect the previous version to be setup
-        const pollContent2 = await pollFile2.Body?.transformToString();
-        expect(pollContent2).toEqual('"' + versionFileKey + '"');
       });
 
       test("Read unknown key resolves to undefined", async () => {

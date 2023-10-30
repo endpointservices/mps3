@@ -41,7 +41,7 @@ interface HttpCacheEntry<T> {
 
 export class Syncer {
   session_id = uuid().substring(0, 3);
-  latest_key: string = "";
+  latest_key: string = ".";
   latest_state: ManifestFile = clone(INITIAL_STATE);
 
   loading?: Promise<unknown>;
@@ -97,20 +97,22 @@ export class Syncer {
       return this.latest_state;
     }
     try {
-      const poll = await this.manifest.service._getObject<string>({
-        operation: "POLL_TIME",
-        ref: this.manifest.ref,
-        ifNoneMatch: this.cache?.etag,
-        useCache: false,
-      });
-      if (poll.$metadata.httpStatusCode === 304) {
-        return this.latest_state;
-      }
+      if (this.manifest.service.config.minimizeLists) {
+        const poll = await this.manifest.service._getObject<string>({
+          operation: "POLL_TIME",
+          ref: this.manifest.ref,
+          ifNoneMatch: this.cache?.etag,
+          useCache: false,
+        });
+        if (poll.$metadata.httpStatusCode === 304) {
+          return this.latest_state;
+        }
 
-      if (poll.data === undefined) {
-        this.latest_key = "."; // before digits
-      } else {
-        this.latest_key = poll.data;
+        if (poll.data === undefined) {
+          this.latest_key = "."; // before digits
+        } else {
+          this.latest_key = poll.data;
+        }
       }
 
       const start_at = `${this.manifest.ref.key}@${time.timestamp(
@@ -306,14 +308,16 @@ export class Syncer {
         } while (retry);
 
         // update poller with write to known location
-        response = await this.manifest.service._putObject({
-          operation: "PUT_POLL",
-          ref: {
-            key: this.manifest.ref.key,
-            bucket: this.manifest.ref.bucket,
-          },
-          value: this.latest_key, // indicates how far we need to look back
-        });
+        if (this.manifest.service.config.minimizeLists) {
+          response = await this.manifest.service._putObject({
+            operation: "PUT_POLL",
+            ref: {
+              key: this.manifest.ref.key,
+              bucket: this.manifest.ref.bucket,
+            },
+            value: this.latest_key, // indicates how far we need to look back
+          });
+        }
 
         this.manifest.poll();
         return response;
