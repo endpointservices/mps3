@@ -7,7 +7,7 @@ This is a focussed explanation of the core sync protocol of MPS3. The sync proto
 
 3. Flexibility. Database are one of the least portable parts of a stack. Decoupling storage from the database enables many more options like self-hosting with ceph or minio or pick hosting on one of a myriad of cloud vendors that support the S3 API.
 
-### S3 features used by MPS3
+## S3 features used by MPS3
 
 ### `PUT and GET /<bucket>/<key>
 
@@ -21,14 +21,13 @@ There are additional features using standard HTTP features like `etag` which hel
 
 To list the objects you `GET <endpoint>/<bucket>` which returns XML and is ordered and paginated. The result set includes the keys and the etags of the resource. By providing a prefix you target a subset of the buckets contents.
 
-
 ### S3 Strong Consistency Guarantees
 
 S3 states strong consistency between its GET, PUT and list operations.
 
 *After a successful write of a new object, or an overwrite or delete of an existing object, any subsequent read request immediately receives the latest version of the object. S3 also provides strong consistency for list operations, so after a write, you can immediately perform a listing of the objects in a bucket with any changes reflected.* -- [S3 docs](https://aws.amazon.com/s3/consistency/)
 
-## S3 is an Immutable Key-Value store with a single index
+### S3 is an Immutable Key-Value store with a single index
 
 S3 is an immutable key value store for (potentially very large) binary blobs. The keys are limited in size (1kb), but you can to range queries by prefix query in one direction only.
 
@@ -40,35 +39,40 @@ MPS3 is a Key Value store. The values are stored in versioned storage locations 
 
 ### Atomic Multi key Operations
 
-To enable consistent atomic updates of multiple keys, *first* the client writes the new values, then it updates the *manifest*, not dissimilar to write-ahead-logging. Other clients use the manifest to access the DB, thus, because individual S3 file updates are atomic, writing a new manifest file is also an atomic operation that can reveal a multiple of key updates at once.
+To enable consistent atomic updates of multiple keys, *first* the client writes the new values, then it updates the *manifest*, not dissimilar to write-ahead-logging. Other clients use the manifest to access the DB, thus, because individual S3 file updates are atomic, writing a new manifest file is also an atomic operation that can flip the visibility a multiple of key updates at once.
+
+The manifest is a layer of *indirection* enabling bulk atomic operation (and more)
 
 ### Multiplayer Safe
 
-Concurrent writes would conflict if all clients wrote to the *same* manifest location. There is no conditional writes in S3 so some updates would just be lost. To support multiplayer each client updates a *different* file ordered by time.
+Concurrent writes would conflict if all clients wrote to the *same* manifest location. There is no conditional writes in S3 so some updates would just be lost. To support multiplayer each client updates a *different* manifest file ordered by time.
+
+![](attachments/Pasted%20image%2020231030223200.png)
+
 
 The manifest records several major pieces of imperfect information.
 - The time of the write, encoded in the key, as measured at the client. Client clocks are subject to clock skew so it might be a bit off.
-- The state of the database, but this also might be lagging because a client doesn't know what writes are also in flight when it writes it. But it's the client's best guess.
 - The operation that was applied, encoded a JSON merge patch to the DB state.
+- The state of the database, but this also might be lagging because a client doesn't know what writes are also in flight when it writes it. But it's the client's best guess.
 
 ```
 // manifest.json@01698260777020_53a_0001
 {
-	state: { // Best *guess* of current state
-		keys: {
-			"myBucket/myKey": {
-				version: "2eefe4fb-c540-4482-abb7-f3dfedfc424d"
-			}
-		}
-	},
-	operation: { // JSON-merge-PATCH
+	operation: { // Exact JSON-merge-PATCH representation of manifest operation
 		keys: {
 			"myBucket/oldKey": null, // DELETE
 			"myBucket/myKey": {
 				version: "2eefe4fb-c540-4482-abb7-f3dfedfc424d"
 			}
 		}
-	}
+	},
+	state: { // Approximation current state
+		keys: {
+			"myBucket/myKey": {
+				version: "2eefe4fb-c540-4482-abb7-f3dfedfc424d"
+			}
+		}
+	},
 }
 ```
 
@@ -81,7 +85,7 @@ Note the client sends the operation as a [JSON_merge_patch](JSON_merge_patch.md)
 $$state_t = \sum_{i=0}^{t} merge(patch_i)$$
 Now it is inefficient for a client to replay the entire DB history every time it connects. But we can use the [idempotency property of JSON-merge-patch](JSON_merge_patch.md#a-list-of-patches-forms-an-ordered-log#Ordered Logs can be replayed multiple times) to avoid it.
 
-A client only needs to read an imperfect guess of the latest state, then replay all patches within the lag window to integrate an improved estimate of the final state (see [Ordered Logs with missing entries can be repaired with replay](JSON_merge_patch.md#Ordered Logs with missing entries can be repaired with replay))
+A client only needs to read an imperfect guess of the latest state, then replay all patches within a *lag* window to integrate an improved estimate of the final state (see [Ordered Logs with missing entries can be repaired with replay](JSON_merge_patch.md#Ordered Logs with missing entries can be repaired with replay))
 
 $$\begin{eqnarray} 
 state_t &=& state_{t-lag} + \sum_{i=lag}^{t} merge(patch_i) \\
@@ -92,13 +96,13 @@ So this is the key insight encoded within MPS3 manifest representation. The stat
 
 ### Causal Consistency
 
-If clients clocks are skewed, their manifest keys will not order between them correctly. This does not matter though! As clients are always repairing the logs and preserving order, delayed entries will be integrated at the appropriate place, just delayed. As long as client writes are written in order (i.e. their clock is monotonic) clock skew does not break causal consistency. Ultimately clock skew is no different to network latency.
+If clients clocks are skewed, their manifest keys will not order between them correctly. This does not matter though! As clients are always repairing the logs and preserving order, delayed entries will be integrated at the appropriate place, just delayed. As long as client writes are written in client order (i.e. their clock is monotonic) clock skew does not break causal consistency. Ultimately clock skew is no different to network latency.
 
 ### Mitigating Large clock skew
 
-Clock skew becomes a consistency threatening problem if exceeding the *lag* parameter. Then clients *might* miss an update. Client clocks are not reliable. However, S3 records a `LastModified` header for each object which is an immutable server provided time source.
+Clock skew becomes a consistency threatening problem if exceeding the *lag* window. Then clients *might* miss an update. Client clocks are not reliable. However, S3 records a `LastModified` header for each object which is an immutable server provided time source.
 
-Large clock skew can be detected by every client by comparing the manifest key  timestamp against the server provided `LastModified` time. If the skew is above a *stale* write threshold it can be ignore from the log. As long as the *stale* write threshold is sufficiently below the *lag* parameter, all clients will converge to the same state regardless of clock skew.
+Large clock skew can be detected by every client by comparing the manifest key timestamp against the server provided `LastModified` time. If the skew is above a *stale* write threshold it is ignored. As long as the *stale* write threshold is sufficiently below the *lag* parameter, all clients will converge to the same state regardless of clock skew.
 
 ### Automatic Clock Adjustment
 
@@ -112,11 +116,26 @@ The manifest key is primarily time ordered, but some extra information is needed
 <TIMESTAMP>_<SESSION>_<COUNTER>
 ```
 
+Furthermore, because S3's `list-objects-v2` operation can only query in ascending lexicographical order, and its more efficient for the algorithm to look backwards in descending order, both the timestamp and counter elements are encoded with a reverse lexicanographically ordered string. Key length is a limited resource, so we use a Javascripts native base-32 string representation, padded and subtracted from the max value to reverse the directions
+
+```js
+export const uint2strDesc = (num: number, bits: number): string => {
+  const maxValue = Math.pow(2, bits) - 1;
+  return uint2str(maxValue - num, bits);
+};
+
+const uint2str = (num: number, bits: number) => {
+  const maxBase32Length = Math.ceil(bits / 5);
+  const base32Representation = num.toString(32);
+  return base32Representation.padStart(maxBase32Length, "0");
+};
+```
+
 ### Minimising list-object-v2 calls
 
-List API calls are costly on S3. To avoid polling the list API, a further optimisation is enabled by default. After writing a manifest with key *k*, clients upload the key to a `last_change` file. Clients with active subscriptions poll this file and only if the content changes (efficiently detected with `If-None-Match` header), does the algorithm proceed to syncing the latest state via the list-object-v2 API call.
+List API calls are costly on S3. As the subscription features of MPS3 rely on polling, we want to avoid having the list-object-v2 API calls being part of the poll loop. After writing a new manifest entry touch a `last_change`. Clients with active subscriptions poll this file and only if the content changes (efficiently detected with `If-None-Match` header), does the algorithm proceed to syncing the latest state via the `list-object-v2` API call.
 
-For APIs where listing is cheap (e.g. local-first/IndexDB), this optimisation is disabled. 
+For APIs where listing is cheap (e.g. local-first/IndexDB), this optimisation can be disabled via the `minimizeListObjectsCalls` flag. 
 
 ## The Sync Algorithm
 

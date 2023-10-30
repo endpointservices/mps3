@@ -6,6 +6,7 @@ import cloudflareCredentials from "../../credentials/cloudflare.json";
 import gcsCredentials from "../../credentials/gcs.json";
 import awsCredentials from "../../credentials/aws.json";
 import "fake-indexeddb/auto";
+import { uuid } from "types";
 
 describe("mps3", () => {
   let session = uuid().substring(0, 8);

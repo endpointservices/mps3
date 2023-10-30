@@ -99,19 +99,13 @@ export class Syncer {
     try {
       if (this.manifest.service.config.minimizeListObjectsCalls) {
         const poll = await this.manifest.service._getObject<string>({
-          operation: "POLL_TIME",
+          operation: "POLL_LATEST_CHANGE",
           ref: this.manifest.ref,
           ifNoneMatch: this.cache?.etag,
           useCache: false,
         });
         if (poll.$metadata.httpStatusCode === 304) {
           return this.latest_state;
-        }
-
-        if (poll.data === undefined) {
-          this.latest_key = "."; // before digits
-        } else {
-          this.latest_key = poll.data;
         }
       }
 
@@ -196,7 +190,7 @@ export class Syncer {
 
         // this.manifest.service.config(`step ${key} from ${this.authoritative_key}`);
         const step = await this.manifest.service._getObject<ManifestFile>({
-          operation: "SWEEP",
+          operation: "REPLAY",
           ref: {
             bucket: this.manifest.ref.bucket,
             key,
@@ -310,12 +304,12 @@ export class Syncer {
         // update poller with write to known location
         if (this.manifest.service.config.minimizeListObjectsCalls) {
           response = await this.manifest.service._putObject({
-            operation: "PUT_POLL",
+            operation: "TOUCH_LATEST_CHANGE",
             ref: {
               key: this.manifest.ref.key,
               bucket: this.manifest.ref.bucket,
             },
-            value: this.latest_key, // indicates how far we need to look back
+            value: undefined,
           });
         }
 
