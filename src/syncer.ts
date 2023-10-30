@@ -210,6 +210,7 @@ export class Syncer {
         )!;
         this.manifest.observeVersionId(stepVersionid);
       }
+
       if (this.db) set(MANIFEST_KEY, this.latest_state, this.db);
 
       return this.latest_state;
