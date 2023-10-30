@@ -59,9 +59,10 @@ describe("mps3", () => {
       },
     },
     {
-      label: "noVersioning",
+      label: "minio",
       config: {
         pollFrequency: 100,
+        minimizeLists: false,
         useChecksum: false,
         defaultBucket: `nov${session}`,
         s3Config: unstableConfig,
@@ -73,6 +74,7 @@ describe("mps3", () => {
       createBucket: false,
       config: {
         pollFrequency: 10,
+        minimizeLists: false,
         parser: new DOMParser(),
         defaultBucket: "l1",
         offlineStorage: false,
