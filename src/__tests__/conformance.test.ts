@@ -37,7 +37,7 @@ describe("mps3", () => {
     {
       label: "minio",
       config: {
-        minimizeLists: false,
+        minimizeListObjectsCalls: false,
         pollFrequency: 100,
         useChecksum: false,
         defaultBucket: `nov${session}`,
@@ -54,7 +54,7 @@ describe("mps3", () => {
         defaultBucket: "l1",
         offlineStorage: false,
         adaptiveClock: false,
-        minimizeLists: false,
+        minimizeListObjectsCalls: false,
         s3Config: {
           endpoint: MPS3.LOCAL_ENDPOINT,
         },

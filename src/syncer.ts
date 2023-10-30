@@ -97,7 +97,7 @@ export class Syncer {
       return this.latest_state;
     }
     try {
-      if (this.manifest.service.config.minimizeLists) {
+      if (this.manifest.service.config.minimizeListObjectsCalls) {
         const poll = await this.manifest.service._getObject<string>({
           operation: "POLL_TIME",
           ref: this.manifest.ref,
@@ -308,7 +308,7 @@ export class Syncer {
         } while (retry);
 
         // update poller with write to known location
-        if (this.manifest.service.config.minimizeLists) {
+        if (this.manifest.service.config.minimizeListObjectsCalls) {
           response = await this.manifest.service._putObject({
             operation: "PUT_POLL",
             ref: {

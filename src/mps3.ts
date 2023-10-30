@@ -91,10 +91,10 @@ export interface MPS3Config {
   adaptiveClock?: boolean;
 
   /**
-   * Minimize the number of list operations by polling a last_change file first
+   * Minimize the number of list-object-v2 operations by polling a last_change file first
    * (default true)
    */
-  minimizeLists?: boolean;
+  minimizeListObjectsCalls?: boolean;
 
   /**
    * Bring your own logger
@@ -114,7 +114,7 @@ export interface ResolvedMPS3Config extends MPS3Config {
   autoclean: boolean;
   clockOffset: number;
   adaptiveClock: boolean;
-  minimizeLists: boolean;
+  minimizeListObjectsCalls: boolean;
   parser: DOMParser;
   log: (...args: any) => void;
 }
@@ -166,7 +166,8 @@ export class MPS3 {
       pollFrequency: config.pollFrequency || 1000,
       clockOffset: Math.floor(config.clockOffset!) || 0,
       adaptiveClock: config.adaptiveClock === false ? false : true,
-      minimizeLists: config.minimizeLists === false ? false : true,
+      minimizeListObjectsCalls:
+        config.minimizeListObjectsCalls === false ? false : true,
       parser: config.parser || new DOMParser(),
       defaultManifest: {
         bucket: (<Ref>config.defaultManifest)?.bucket || config.defaultBucket,
