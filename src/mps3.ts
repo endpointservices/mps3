@@ -61,29 +61,40 @@ export interface MPS3Config {
   parser?: DOMParser;
 
   /**
-   * Should the client write to upstreams?
+   * Should the client attempt to upstreams?
+   * (default false)
    */
   online?: boolean;
 
   /**
-   * Should the client store writes locally?
+   * Should the client cache writes locally?
+   * (default true)
    */
   offlineStorage?: boolean;
 
   /**
    * Should the client delete expired references?
+   * (default true)
    */
   autoclean?: boolean;
 
   /**
    * Clock offset in milliseconds
+   * (default 0)
    */
   clockOffset?: number;
 
   /**
    * Update clock on detection of skewed clock
+   * (default true)
    */
   adaptiveClock?: boolean;
+
+  /**
+   * Minimize the number of list operations by polling a last_change file first
+   * (default true)
+   */
+  minimizeLists?: boolean;
 
   /**
    * Bring your own logger
@@ -103,6 +114,7 @@ export interface ResolvedMPS3Config extends MPS3Config {
   autoclean: boolean;
   clockOffset: number;
   adaptiveClock: boolean;
+  minimizeLists: boolean;
   parser: DOMParser;
   log: (...args: any) => void;
 }
@@ -154,6 +166,7 @@ export class MPS3 {
       pollFrequency: config.pollFrequency || 1000,
       clockOffset: Math.floor(config.clockOffset!) || 0,
       adaptiveClock: config.adaptiveClock === false ? false : true,
+      minimizeLists: config.minimizeLists === false ? false : true,
       parser: config.parser || new DOMParser(),
       defaultManifest: {
         bucket: (<Ref>config.defaultManifest)?.bucket || config.defaultBucket,

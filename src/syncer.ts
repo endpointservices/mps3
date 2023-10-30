@@ -57,10 +57,7 @@ export class Syncer {
 
   static manifestTimestamp = (key: string): number => {
     const match = key.match(Syncer.manifestRegex);
-    if (!match) {
-      console.warn(`Rejecting manifest key ${key}`);
-      return 0;
-    }
+    if (!match) return 0;
     return str2uintDesc(match[1], 42);
   };
 
