@@ -5,9 +5,9 @@ This is a focussed explanation of the core sync protocol of MPS3. The sync proto
 
 1. Minimalism. Why bother maintaining server-side code or a database when the bucket holding the website is a serviceable persistent state store. 
 
-2. Curiosity. Is it even possible to build a database on the S3 API? This project is a demonstration that yes it is.
+2. Curiosity. Is it even possible to build a database on the S3 API? This project demonstrates that yes it is.
 
-3. Flexibility. Database are one of the least portable parts of a stack. Decoupling storage from the database enables many more options like self-hosting with ceph or minio or pick hosting on one of a myriad of cloud vendors that support the S3 API.
+3. Flexibility. Database are one of the least portable parts of a stack. Decoupling storage from the database enables many more options like self-hosting with minio or using a specialist storage vendor that supports the S3 API.
 
 ## MPS3
 
@@ -21,7 +21,7 @@ The manifest is a layer of *indirection* enabling bulk atomic operation (and mor
 
 ### Multiplayer Safe
 
-Concurrent writes would conflict if all clients wrote to the *same* manifest location. There is no conditional writes in S3 so some updates would just be lost. To support multiplayer each client updates a *different* manifest file ordered by time.
+Concurrent writes would conflict if all clients wrote to the *same* manifest location. There is no conditional writes in S3 so some updates would just be lost. To support multiplayer each client updates a *different* manifest entry ordered by time.
 
 ![manifests over time](diagrams/manifest.excalidraw.png)
 
@@ -119,9 +119,11 @@ For APIs where listing is cheap (e.g. local-first/IndexDB), this optimisation ca
 Loop:
 1. Poll the `last_change` file using `If-None-Match` headers, if it hasn't changed go no further
 2. List objects backwards in time from the `now + lag`
-3. Filter out entries whose `abs(timestamp - LastModified) > stale` 
-4. json-merge-patch all `operations` in order into the most recent `state`
-5. notify subscribers of changes
+3. Exclude entries whose `abs(timestamp - LastModified) > stale` 
+4. Let the first entry encountered be `latest_state`
+5. json-merge-patch all `operations` with `timestamp - lag > latest_state` in order into  `latest_state`
+6. garbage collect entries with `timestamp - lag < latest_state`
+7. notify subscribers of changes
 
 Operations observed on S3 are exposed to clients as soon as they are read, there is no waiting. The existence of clock skew neither compromises causal consistency nor end-to-end latency.
 ### Summary
