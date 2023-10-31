@@ -8,7 +8,7 @@
     - no infra to setup and manage apart from the storage bucket.
 - Designed for correctness
     - sync protocol is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
-- Web optimized, 10x smaller than the AWS S3 browser client (300kb).
+- Web optimized, 10x smaller than the AWS S3 browser client.
 - Offline-first
 
 
@@ -21,7 +21,7 @@ MPS3 is a key-value document store. A manifest lists all keys in the DB as refer
 
 ### Read more
 
-MPS3 is built on strong theoretical foundations. Technical articles are written in [/docs](https://github.com/endpointservices/mps3/tree/main/docs) 
+MPS3 is built on strong theoretical foundations. Technical articles are written in [/docs](https://github.com/endpointservices/mps3/tree/main/docs), some highlights:- 
 
 - [Randomized, Efficient, Causal consistency checking](https://github.com/endpointservices/mps3/blob/main/docs/causal_consistency_checking.md)
 - [JSON Merge Patch: Algebra and Applications](https://github.com/endpointservices/mps3/blob/main/docs/JSON_merge_patch.md) 
