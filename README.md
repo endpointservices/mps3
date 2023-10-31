@@ -1,27 +1,31 @@
 # MPS3
 ⚠️ Under development
 
-## Vendorless Database over any s3 storage API. 
-
-An offline-first browser database over any S3-compatible API.
+## Vendorless Multiplayer Database over *any* s3-compatible storage API. 
 
 - Avoid vendor lock-in, your data stays with you.
 - Built for operational simplicity
     - no infra to setup and manage apart from the storage bucket.
-    - intuitive storage representation that can be manipulated directly
 - Designed for correctness
     - sync protocol is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
-- Web optimized, it's currently 25kb, making it significantly lighter-weight than the AWS S3 browser client (300kb).
-- Offline-first (WIP)
+- Web optimized, 10x smaller than the AWS S3 browser client (300kb).
+- Offline-first
 
 
-Tested with S3, Backblaze, R2 and self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)).
+Tested with S3, Backblaze, R2 and self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)). Interactive demo available on [Observable](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)
+
 
 ## Concepts
 
 MPS3 is a key-value document store. A manifest lists all keys in the DB as references to files hosted on s3. Setting a key first writes the content to storage, then updates the manifest. To enable subscriptions, the client polls the manifest for changes. To enable causally consistent concurrent writes, the manifest is represented as a time indexed log of patches and checkpoints which is resolved on read.
 
-Manifests should not contain too many keys as it adds overheads. A manifest should encapsule a single consistency boundary (e.g. a channel in a chat). You can share keys between multiple manifests and move keys in, out and across, manifests lightly ([TODO](https://github.com/endpointservices/mps3/issues/12)).
+### Read more
+
+MPS3 is built on strong theoretical foundations. Technical articles are written in [/docs](https://github.com/endpointservices/mps3/tree/main/docs) 
+
+- [Randomized, Efficient, Causal consistency checking](https://github.com/endpointservices/mps3/blob/main/docs/causal_consistency_checking.md)
+- [JSON Merge Patch: Algebra and Applications](https://github.com/endpointservices/mps3/blob/main/docs/JSON_merge_patch.md) 
+- [The sync protocol for a client-side, causally consistent, multiplayer DB over the S3 API.md](https://github.com/endpointservices/mps3/blob/main/docs/The%20sync%20protocol%20for%20a%20client-side%2C%20causally%20consistent%2C%20multiplayer%20DB%20over%20the%20S3%20API.md)
 
 
 ## API
