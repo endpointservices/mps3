@@ -1,7 +1,7 @@
 
-<center>
-![](diagrams/sync_protocol_header.svg)
-</center>
+<p align="center" width="100%">
+    <img width="33%" src="diagrams/sync_protocol_header.svg">
+</p>
 This is a focussed explanation of the core sync protocol of MPS3. The sync protocol upgrades an S3 API into a causally consistent, multiplayer datastore without the use of intermediate servers.
 ## Why build over S3?
 
