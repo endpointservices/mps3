@@ -71,7 +71,7 @@ state_t &=& state_{t-lag} + \sum_{i=lag}^{t} merge(patch_i) \\
 &=& est_t + \sum_{i=lag}^{t} merge(patch_i)
 \end{eqnarray}$$
 
-So this is the key insight encoded within MPS3 manifest representation. The state field provides a good guess, but clients need to look back "a bit" and apply a sequence of operations to correct for missing writes.
+So this is the key insight encoded within MPS3 manifest representation. The state field provides a good guess, but clients need to around "a bit" and reapply nearby operations to correct for inflight writes.
 
 ### Causal Consistency
 
