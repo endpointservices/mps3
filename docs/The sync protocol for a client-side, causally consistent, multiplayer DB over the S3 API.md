@@ -110,22 +110,22 @@ const uint2str = (num: number, bits: number) => {
 
 ### Minimising list-object-v2 calls
 
-List API calls are costly on S3. As the subscription features of MPS3 rely on polling, we want to avoid having the list-object-v2 API calls being part of the poll loop. After writing a new manifest entry, the client touches a `last_change` file. Clients with active subscriptions poll this file and only if the content changes (efficiently detected with `If-None-Match` header), does the algorithm proceed to syncing the latest state via the `list-object-v2` API call.
+List API calls are costly on S3, they are charged at the same rate as PUTs which are 10x more expensive than GETs. As the subscription features of MPS3 rely on polling, we want to avoid having the list-object-v2 API calls being the hot end of a poll loop. 
+
+So after writing a new manifest entry, the client then touches a `last_change` file. Clients with active subscriptions poll this file, and only if the content changes (efficiently detected with `If-None-Match` header), does the algorithm proceed to syncing the latest state via the `list-object-v2` API call.
 
 For APIs where listing is cheap (e.g. local-first/IndexDB), this optimisation can be disabled by the `minimizeListObjectsCalls` flag to `false`. 
 
 ## The Sync Algorithm
 
-Loop:
 1. Poll the `last_change` file using `If-None-Match` headers, if it hasn't changed go no further
-2. List objects backwards in time from the `now + lag`
-3. Exclude entries whose `abs(timestamp - LastModified) > stale` 
+2. List objects backwards in time from the `now + lag` timestamp
+3. Exclude entries whose `abs(timestamp - LastModified) > stale` because they were created by a client with significant clock skew
 4. Let the first entry encountered be `latest_state`
-5. json-merge-patch all `operations` with `timestamp - lag > latest_state` in order into  `latest_state`
+5. json-merge-patch all `operations` with `operations.timestamp - lag > latest_state.timestamp` in order into  `latest_state`
 6. garbage collect entries with `timestamp - lag < latest_state`
 7. notify subscribers of changes
 
-Operations observed on S3 are exposed to clients as soon as they are read, there is no waiting. The existence of clock skew neither compromises causal consistency nor end-to-end latency.
 ### Summary
 
 The algorithm is deceptively simply in implementation but leans heavily on the algebraic property of JSON-merge-patch and wiggle room in causal consistency to accommodate client-side clock_skew. The same algorithm is used also to synchronise state transfer between tabs in the local-first setting. By designing for a relatively small set of underlying primitives, it is to apply this sync protocol to more expressive storage system.
