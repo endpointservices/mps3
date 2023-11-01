@@ -11,12 +11,12 @@
 - Built for operational simplicity
     - no infra to setup and manage apart from the storage bucket.
 - Designed for correctness
-    - [sync protocol](docs/The sync protocol for a client-side, causally consistent, multiplayer DB over the S3 API.md) is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
+    - [sync protocol](docs/sync_protocol.md) is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
 - Web optimized, 10x smaller than the AWS S3 browser client.
 - Offline-first, fast page loads and no lost writes.
 
 
-Tested with S3, Backblaze, R2 and self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)). Interactive demo available on [Observable](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)
+Tested with S3, Backblaze, R2 and self-hosted solutions like Minio. Interactive demo available on [Observable](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)
 
 
 ## Concepts
@@ -25,11 +25,11 @@ MPS3 is a key-value document store. A manifest lists all keys in the DB as refer
 
 ### Read more
 
-MPS3 is built on strong theoretical foundations. Technical articles are written in [/docs](https://github.com/endpointservices/mps3/tree/main/docs), some highlights:- 
+MPS3 is built on strong theoretical foundations. Technical articles are written in [/docs](docs/), some highlights:- 
 
-- [Randomized, Efficient, Causal consistency checking](https://github.com/endpointservices/mps3/blob/main/docs/causal_consistency_checking.md)
-- [JSON Merge Patch: Algebra and Applications](https://github.com/endpointservices/mps3/blob/main/docs/JSON_merge_patch.md) 
-- [The sync protocol for a client-side, causally consistent, multiplayer DB over the S3 API.md](https://github.com/endpointservices/mps3/blob/main/docs/The%20sync%20protocol%20for%20a%20client-side%2C%20causally%20consistent%2C%20multiplayer%20DB%20over%20the%20S3%20API.md)
+- [Randomized, Efficient, Causal consistency checking](docs/causal_consistency_checking.md)
+- [JSON Merge Patch: Algebra and Applications](docs/JSON_merge_patch.md) 
+- [The sync protocol for a client-side, causally consistent, multiplayer DB over the S3 API.md](docs/sync_protocol.md))
 
 
 ## API
