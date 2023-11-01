@@ -1,3 +1,7 @@
+<p align="center" width="100%">
+    <img width="50%%" src="docs/diagrams/vendorless_db_over_s3.svg">
+</p>
+
 # MPS3
 ⚠️ Under development
 
