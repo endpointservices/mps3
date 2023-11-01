@@ -2,7 +2,9 @@
 <p align="center" width="100%">
     <img width="50%%" src="diagrams/sync_protocol_header.svg">
 </p>
+
 This is a focussed explanation of the core sync protocol of MPS3. The sync protocol upgrades an S3 API into a causally consistent, multiplayer datastore without the use of intermediate servers.
+
 ## Why build over S3?
 
 1. Minimalism. Why bother maintaining server-side code or a database when the bucket holding the website is a serviceable persistent state store. 
