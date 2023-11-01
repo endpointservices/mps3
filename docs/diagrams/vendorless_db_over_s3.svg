@@ -1989,7 +1989,7 @@ Z" dur="0.3s" repeatCount="indefinite"></animate>
 
 
   <text y="0.0065283621064848" fill="url(#rainbowFill)" stroke="url(#rainbowFill)" stroke-width="0.005" text-anchor="middle" style="font-weight: bold; font-size:  0.15px; font-family: arial; letter-spacing: 0px;">
-    Verdorless DB over S3
+    Vendorless DB over S3
   </text>
 
 
