@@ -123,12 +123,19 @@ For APIs where listing is cheap (e.g. local-first/IndexDB), this optimization ca
 ## The Sync Algorithm
 
 1. Poll the `last_change` file using `If-None-Match` headers, if it hasn't changed go no further
+	- [syncer.ts#L101](https://github.com/endpointservices/mps3/blob/fb052d712ed12e89a37cce0113b89d07c706c502/src/syncer.ts#L101)
 2. List objects backward in time from the `now + lag` timestamp
+	-  [syncer.ts#L116](https://github.com/endpointservices/mps3/blob/fb052d712ed12e89a37cce0113b89d07c706c502/src/syncer.ts#L116)
 3. Exclude entries whose `abs(timestamp - LastModified) > stale` because they were created by a client with significant clock skew
+	-  [syncer.ts#L125](https://github.com/endpointservices/mps3/blob/fb052d712ed12e89a37cce0113b89d07c706c502/src/syncer.ts#L125)
 4. Let the first entry encountered be `latest_state`
+	-  [syncer.ts#L159](https://github.com/endpointservices/mps3/blob/fb052d712ed12e89a37cce0113b89d07c706c502/src/syncer.ts#L159)
 5. json-merge-patch all `operations` with `operations.timestamp - lag > latest_state.timestamp` in order into  `latest_state`
+	- [syncer.ts#L200](https://github.com/endpointservices/mps3/blob/fb052d712ed12e89a37cce0113b89d07c706c502/src/syncer.ts#L200)
 6. garbage collect entries with `timestamp - lag < latest_state`
+	- [syncer.ts#L177](https://github.com/endpointservices/mps3/blob/fb052d712ed12e89a37cce0113b89d07c706c502/src/)
 7. notify subscribers of changes
+	-  [manifest.ts#L111](https://github.com/endpointservices/mps3/blob/fb052d712ed12e89a37cce0113b89d07c706c502/src/manifest.ts#L111)
 
 ### Summary
 
