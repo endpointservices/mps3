@@ -11,9 +11,9 @@
 - Built for operational simplicity
     - no infra to setup and manage apart from the storage bucket.
 - Designed for correctness
-    - sync protocol is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
+    - [sync protocol](docs/The sync protocol for a client-side, causally consistent, multiplayer DB over the S3 API.md) is [causally consistent](docs/causal_consistency_checking.md) under concurrent writes.
 - Web optimized, 10x smaller than the AWS S3 browser client.
-- Offline-first
+- Offline-first, fast page loads and no lost writes.
 
 
 Tested with S3, Backblaze, R2 and self-hosted solutions like Minio ([running examples](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)). Interactive demo available on [Observable](https://observablehq.com/@tomlarkworthy/mps3-vendor-examples)
