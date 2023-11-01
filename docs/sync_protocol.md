@@ -79,6 +79,8 @@ If client's clocks are skewed, their manifest keys will not order between them c
 
 The sync protocol is eager, exposing all operations as soon as they are visible, so clock skew does not affect end-to-end latency either. The only effect is on ordering within the log which can be observed when writing to the same key. Delayed clients will appear to be affecting the database in the past, which means their operations are more easily masked by other clients.
 
+See [Checking Causal Consistency the Easy Way](causal_consistency_checking.md) describing the randomized property checking used for validating causal consistency.
+
 ### Mitigating Large clock skew
 
 Clock skew becomes a consistency-threatening problem if exceeding the *lag* window. Then the reconciliation algorithm will not be looking far enough back and will miss operations. Client clocks cannot be trusted. 
