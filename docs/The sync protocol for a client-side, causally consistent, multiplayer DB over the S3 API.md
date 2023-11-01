@@ -1,4 +1,4 @@
-# The sync protocol for a client-side, causally consistent, multiplayer DB over the S3 API
+![](diagrams/sync_protocol_header.svg)
 
 This is a focussed explanation of the core sync protocol of MPS3. The sync protocol upgrades an S3 API into a causally consistent, multiplayer datastore without the use of intermediate servers.
 ## Why build over S3?
