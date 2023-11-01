@@ -62,9 +62,9 @@ Much of the engineering of the MPS3 sync protocol is about transforming that imp
 Note the client sends the operation as a [JSON_merge_patch](JSON_merge_patch.md). The database state at time *t* is the merge concatenation of all the operations up to *t* (see [a list of patches forms an ordered log](JSON_merge_patch.md#a-list-of-patches-forms-an-ordered-log))
 
 $$state_t = \sum_{i=0}^{t} merge(patch_i)$$
-Now it is inefficient for a client to replay the entire DB history. But we can use the [idempotency property of JSON-merge-patch](JSON_merge_patch.md#a-list-of-patches-forms-an-ordered-log#Ordered Logs can be replayed multiple times) to avoid it.
+Now it is inefficient for a client to replay the entire DB history. But we can use the [idempotency property of JSON-merge-patch](JSON_merge_patch.md#) to avoid it.
 
-A client only needs to read an imperfect guess of the latest state, then replay all patches within a *lag* window to correct an estimate of the final state (see [Ordered Logs with missing entries can be repaired with replay](JSON_merge_patch.md#Ordered Logs with missing entries can be repaired with replay))
+A client only needs to read an imperfect guess of the latest state, then replay all patches within a *lag* window to correct an estimate of the final state (see [Ordered Logs with missing entries can be repaired with replay](JSON_merge_patch.md#ordered-logs-with-missing-entries-can-be-repaired-with-replay))
 
 $$\begin{eqnarray} 
 state_t &=& state_{t-lag} + \sum_{i=lag}^{t} merge(patch_i) \\
