@@ -34,7 +34,7 @@
 
 #### Defined in
 
-[mps3.ts:145](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L145)
+[mps3.ts:157](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L157)
 
 ## Properties
 
@@ -46,7 +46,7 @@ Virtual endpoint for local-first operation
 
 #### Defined in
 
-[mps3.ts:123](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L123)
+[mps3.ts:135](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L135)
 
 ## Methods
 
@@ -68,7 +68,7 @@ Virtual endpoint for local-first operation
 
 #### Defined in
 
-[mps3.ts:348](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L348)
+[mps3.ts:362](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L362)
 
 ___
 
@@ -90,7 +90,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:219](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L219)
+[mps3.ts:233](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L233)
 
 ___
 
@@ -114,7 +114,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:357](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L357)
+[mps3.ts:371](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L371)
 
 ___
 
@@ -138,7 +138,7 @@ ___
 
 #### Defined in
 
-[mps3.ts:368](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L368)
+[mps3.ts:382](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L382)
 
 ___
 
@@ -175,4 +175,4 @@ unsubscribe function
 
 #### Defined in
 
-[mps3.ts:547](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L547)
+[mps3.ts:562](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L562)

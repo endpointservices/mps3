@@ -479,7 +479,7 @@ export class MPS3 {
   async _putObject(args: {
     operation: string;
     ref: ResolvedRef;
-    value: any;
+    value: JSONValue;
     version?: string;
   }): Promise<PutObjectCommandOutput & { Date: Date; latency: number }> {
     const content: string = JSON.stringify(args.value, null, 2);
@@ -517,6 +517,7 @@ export class MPS3 {
       const diskKey = `${command.Bucket}${command.Key}${
         args.version || response.VersionId
       }`;
+      const data = JSON.parse(content);
       await set(
         diskKey,
         {
@@ -524,7 +525,7 @@ export class MPS3 {
             httpStatusCode: 200,
           },
           etag: response.ETag,
-          data: JSON.parse(content),
+          data,
         },
         this.diskCache
       ).then(() => this.config.log(`STORE ${diskKey}`));
@@ -611,15 +612,16 @@ export class MPS3 {
 }
 /** @internal */
 async function sha256(message: string) {
-  // TODO: this code is actually already in aws4fetch
-  // encode as UTF-8
   const msgBuffer = new TextEncoder().encode(message);
 
   // hash the message
   const arrayBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
 
   // convert ArrayBuffer to base64-encoded string
+  return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  /*
   return [...new Uint8Array(arrayBuffer)]
     .map((bytes) => bytes.toString(16).padStart(2, "0"))
     .join("");
+  */
 }

@@ -89,7 +89,7 @@ export class S3ClientLite {
           body: Body as string,
           headers: {
             "Content-Type": "application/json",
-            ...(ChecksumSHA256 && { "x-amz-content-sha256": ChecksumSHA256 }),
+            //...(ChecksumSHA256 && { "x-amz-content-sha256": ChecksumSHA256 }),
           },
         }),
         this.mps3.config

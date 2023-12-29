@@ -202,7 +202,7 @@ describe("mps3", () => {
         expect(read).toEqual(undefined);
       });
 
-      test("Can read a write", async () => {
+      test("Can read a write only", async () => {
         const rnd = uuid();
         await getClient().put("rw", rnd);
         const read = await getClient().get("rw");

@@ -12,6 +12,7 @@
 - [defaultBucket](MPS3Config.md#defaultbucket)
 - [defaultManifest](MPS3Config.md#defaultmanifest)
 - [log](MPS3Config.md#log)
+- [minimizeListObjectsCalls](MPS3Config.md#minimizelistobjectscalls)
 - [offlineStorage](MPS3Config.md#offlinestorage)
 - [online](MPS3Config.md#online)
 - [parser](MPS3Config.md#parser)
@@ -26,10 +27,11 @@
 • `Optional` **adaptiveClock**: `boolean`
 
 Update clock on detection of skewed clock
+(default true)
 
 #### Defined in
 
-[mps3.ts:86](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L86)
+[mps3.ts:91](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L91)
 
 ___
 
@@ -38,10 +40,11 @@ ___
 • `Optional` **autoclean**: `boolean`
 
 Should the client delete expired references?
+(default true)
 
 #### Defined in
 
-[mps3.ts:76](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L76)
+[mps3.ts:79](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L79)
 
 ___
 
@@ -50,10 +53,11 @@ ___
 • `Optional` **clockOffset**: `number`
 
 Clock offset in milliseconds
+(default 0)
 
 #### Defined in
 
-[mps3.ts:81](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L81)
+[mps3.ts:85](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L85)
 
 ___
 
@@ -65,7 +69,7 @@ Bucket to use by default
 
 #### Defined in
 
-[mps3.ts:25](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L25)
+[mps3.ts:25](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L25)
 
 ___
 
@@ -84,7 +88,7 @@ operation's options
 
 #### Defined in
 
-[mps3.ts:31](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L31)
+[mps3.ts:31](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L31)
 
 ___
 
@@ -110,7 +114,20 @@ Bring your own logger
 
 #### Defined in
 
-[mps3.ts:91](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L91)
+[mps3.ts:102](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L102)
+
+___
+
+### minimizeListObjectsCalls
+
+• `Optional` **minimizeListObjectsCalls**: `boolean`
+
+Minimize the number of list-object-v2 operations by polling a last_change file first
+(default true)
+
+#### Defined in
+
+[mps3.ts:97](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L97)
 
 ___
 
@@ -118,11 +135,12 @@ ___
 
 • `Optional` **offlineStorage**: `boolean`
 
-Should the client store writes locally?
+Should the client cache writes locally?
+(default true)
 
 #### Defined in
 
-[mps3.ts:71](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L71)
+[mps3.ts:73](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L73)
 
 ___
 
@@ -130,11 +148,12 @@ ___
 
 • `Optional` **online**: `boolean`
 
-Should the client write to upstreams?
+Should the client attempt to upstreams?
+(default false)
 
 #### Defined in
 
-[mps3.ts:66](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L66)
+[mps3.ts:67](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L67)
 
 ___
 
@@ -153,7 +172,7 @@ new window.DOMParser()
 
 #### Defined in
 
-[mps3.ts:61](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L61)
+[mps3.ts:61](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L61)
 
 ___
 
@@ -173,7 +192,7 @@ due to If-None-Match request optimizations.
 
 #### Defined in
 
-[mps3.ts:48](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L48)
+[mps3.ts:48](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L48)
 
 ___
 
@@ -195,7 +214,7 @@ https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfa
 
 #### Defined in
 
-[mps3.ts:54](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L54)
+[mps3.ts:54](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L54)
 
 ___
 
@@ -215,4 +234,4 @@ false
 
 #### Defined in
 
-[mps3.ts:38](https://github.com/endpointservices/mps3/blob/bfb2e03/src/mps3.ts#L38)
+[mps3.ts:38](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L38)

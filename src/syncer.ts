@@ -309,7 +309,7 @@ export class Syncer {
               key: this.manifest.ref.key,
               bucket: this.manifest.ref.bucket,
             },
-            value: undefined,
+            value: "",
           });
         }
 

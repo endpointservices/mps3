@@ -22,7 +22,7 @@
     "@types/json-merge-patch": "^0.0.8",
     "@xmldom/xmldom": "^0.8.10",
     "aws4fetch": "1.0.17",
-    "bun": "0.8.1",
+    "bun": "^1.0.20",
     "bun-types": "0.8.1",
     "fake-indexeddb": "^4.0.2",
     "idb-keyval": "^6.2.1",
