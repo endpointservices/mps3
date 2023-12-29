@@ -216,7 +216,10 @@ describe("mps3", () => {
         let seenRnd1 = false;
 
         client.subscribe("rwt", (val) => {
-          if (val === undefined && !seenRnd1) {
+          if (
+            (val === undefined || (val !== rnd1 && val !== rnd2)) &&
+            !seenRnd1
+          ) {
             client.put("rwt", rnd1);
           } else if (val == rnd1 && !seenRnd1) {
             client.put("rwt", rnd2);
