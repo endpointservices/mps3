@@ -140,8 +140,6 @@ export class S3ClientLite {
     );
 
     switch (response.status) {
-      case 304:
-        throw new Error("304");
       case 404:
         return { $metadata: { httpStatusCode: 404 } };
       case 403:

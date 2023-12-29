@@ -31,7 +31,7 @@ Update clock on detection of skewed clock
 
 #### Defined in
 
-[mps3.ts:91](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L91)
+[mps3.ts:91](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L91)
 
 ___
 
@@ -44,7 +44,7 @@ Should the client delete expired references?
 
 #### Defined in
 
-[mps3.ts:79](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L79)
+[mps3.ts:79](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L79)
 
 ___
 
@@ -57,7 +57,7 @@ Clock offset in milliseconds
 
 #### Defined in
 
-[mps3.ts:85](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L85)
+[mps3.ts:85](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L85)
 
 ___
 
@@ -69,7 +69,7 @@ Bucket to use by default
 
 #### Defined in
 
-[mps3.ts:25](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L25)
+[mps3.ts:25](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L25)
 
 ___
 
@@ -88,7 +88,7 @@ operation's options
 
 #### Defined in
 
-[mps3.ts:31](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L31)
+[mps3.ts:31](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L31)
 
 ___
 
@@ -114,7 +114,7 @@ Bring your own logger
 
 #### Defined in
 
-[mps3.ts:102](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L102)
+[mps3.ts:102](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L102)
 
 ___
 
@@ -127,7 +127,7 @@ Minimize the number of list-object-v2 operations by polling a last_change file f
 
 #### Defined in
 
-[mps3.ts:97](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L97)
+[mps3.ts:97](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L97)
 
 ___
 
@@ -140,7 +140,7 @@ Should the client cache writes locally?
 
 #### Defined in
 
-[mps3.ts:73](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L73)
+[mps3.ts:73](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L73)
 
 ___
 
@@ -153,7 +153,7 @@ Should the client attempt to upstreams?
 
 #### Defined in
 
-[mps3.ts:67](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L67)
+[mps3.ts:67](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L67)
 
 ___
 
@@ -172,7 +172,7 @@ new window.DOMParser()
 
 #### Defined in
 
-[mps3.ts:61](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L61)
+[mps3.ts:61](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L61)
 
 ___
 
@@ -192,7 +192,7 @@ due to If-None-Match request optimizations.
 
 #### Defined in
 
-[mps3.ts:48](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L48)
+[mps3.ts:48](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L48)
 
 ___
 
@@ -214,7 +214,7 @@ https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/interfa
 
 #### Defined in
 
-[mps3.ts:54](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L54)
+[mps3.ts:54](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L54)
 
 ___
 
@@ -234,4 +234,4 @@ false
 
 #### Defined in
 
-[mps3.ts:38](https://github.com/endpointservices/mps3/blob/93bced7/src/mps3.ts#L38)
+[mps3.ts:38](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L38)

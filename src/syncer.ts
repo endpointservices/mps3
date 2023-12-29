@@ -97,6 +97,7 @@ export class Syncer {
       return this.latest_state;
     }
     try {
+      let pollEtag: string | undefined = undefined;
       if (this.manifest.service.config.minimizeListObjectsCalls) {
         const poll = await this.manifest.service._getObject<string>({
           operation: "POLL_LATEST_CHANGE",
@@ -107,6 +108,7 @@ export class Syncer {
         if (poll.$metadata.httpStatusCode === 304) {
           return this.latest_state;
         }
+        pollEtag = poll.ETag;
       }
 
       const start_at = `${this.manifest.ref.key}@${time.timestamp(
@@ -205,7 +207,13 @@ export class Syncer {
       }
 
       if (this.db) set(MANIFEST_KEY, this.latest_state, this.db);
-
+      /*
+      if (pollEtag) {
+        this.cache = {
+          etag: pollEtag,
+          data: this.latest_state,
+        };
+      }*/
       return this.latest_state;
     } catch (err: any) {
       if (err.name === "NoSuchKey") {
