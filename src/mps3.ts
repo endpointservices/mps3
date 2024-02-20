@@ -99,7 +99,7 @@ export interface MPS3Config {
   /**
    * Bring your own logger
    */
-  log?: (...args: any) => void;
+  log?: ((...args: any) => void) | boolean;
 }
 
 /** @internal */
@@ -176,7 +176,11 @@ export class MPS3 {
             ? config.defaultManifest
             : config.defaultManifest?.key || "manifest.json",
       },
-      log: (...args) => (config.log || console.log)(this.config.label, ...args),
+      log: (...args) =>
+        (config.log === true ? console.log : config.log || (() => {}))(
+          this.config.label,
+          ...args
+        ),
     };
 
     if (this.config.s3Config?.credentials instanceof Function)
