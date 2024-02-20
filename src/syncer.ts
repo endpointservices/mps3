@@ -16,7 +16,7 @@ import {
 } from "types";
 
 interface FileState extends JSONArraylessObject {
-  version: string;
+  version: VersionId;
 }
 
 type Merge = any;
@@ -198,12 +198,14 @@ export class Syncer {
             key,
           },
         });
-        const stepVersionid = key.substring(key.lastIndexOf("@") + 1);
+        const stepVersionId = <VersionId>(
+          key.substring(key.lastIndexOf("@") + 1)
+        );
         this.latest_state = merge<ManifestFile>(
           this.latest_state,
           step.data?.update
         )!;
-        this.manifest.observeVersionId(stepVersionid);
+        this.manifest.observeVersionId(stepVersionId);
       }
 
       if (this.db) set(MANIFEST_KEY, this.latest_state, this.db);
@@ -236,16 +238,18 @@ export class Syncer {
     // Manifest must be ordered by client operation time
     // (An exception is made for adjusting for clock skew)
     const generate_manifest_key = () =>
-      time.timestamp(
-        Math.max(
-          Date.now() + this.manifest.service.config.clockOffset,
-          this.latest_timestamp
-        )
-      ) +
-      "_" +
-      this.session_id +
-      "_" +
-      countKey(this.writes++);
+      <VersionId>(
+        (time.timestamp(
+          Math.max(
+            Date.now() + this.manifest.service.config.clockOffset,
+            this.latest_timestamp
+          )
+        ) +
+          "_" +
+          this.session_id +
+          "_" +
+          countKey(this.writes++))
+      );
 
     let manifest_version = generate_manifest_key();
 

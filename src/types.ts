@@ -1,3 +1,7 @@
+declare const __brand: unique symbol
+type Brand<B> = { [__brand]: B }
+export type Branded<T, B> = T & Brand<B>
+
 export type DeleteValue = undefined;
 
 export interface Ref {
@@ -10,10 +14,10 @@ export interface ResolvedRef extends Ref {
   key: string;
 }
 
-export type UUID = string;
-export type VersionId = string;
+export type UUID = Branded<string, "UUID">;
+export type VersionId = Branded<string, "VersionId">;
 
-export const uuid = (): UUID => crypto.randomUUID();
+export const uuid = (): UUID => <UUID>crypto.randomUUID();
 export const countKey = (number: number): string => uint2strDesc(number, 10);
 export const eq = (a: Ref, b: Ref) => a.bucket === b.bucket && a.key === b.key;
 export const url = (ref: Ref): string => `${ref.bucket}/${ref.key}`;

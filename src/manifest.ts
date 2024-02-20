@@ -40,7 +40,7 @@ export class Manifest {
   pollInProgress: boolean = false;
 
   syncer: Syncer = new Syncer(this);
-  operationQueue = new OperationQueue();
+  operationQueue = new OperationQueue<VersionId>();
 
   constructor(public service: MPS3, public ref: ResolvedRef) {
     console.log("Create manifest", url(ref));
@@ -51,7 +51,7 @@ export class Manifest {
       db,
       async (
         values: Map<ResolvedRef, JSONValue | DeleteValue>,
-        label?: string
+        label?: VersionId
       ) => {
         if (!label) {
           // this write has not been attempted at all
@@ -112,7 +112,11 @@ export class Manifest {
       if (mask.has(subscriber.ref)) {
         // console.log("mask", url(subscriber.ref));
         const [value, op] = mask.get(subscriber.ref)!;
-        subscriber.notify(this.service, `local-${op}`, Promise.resolve(value));
+        subscriber.notify(
+          this.service,
+          <VersionId>`local-${op}`,
+          Promise.resolve(value)
+        );
       } else {
         const fileState = state.files[url(subscriber.ref)];
         if (fileState) {

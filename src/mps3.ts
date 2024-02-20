@@ -11,7 +11,7 @@ import { AwsClient } from "aws4fetch";
 import { FetchFn, S3ClientLite } from "S3ClientLite";
 import { OMap } from "OMap";
 import { Manifest } from "manifest";
-import { DeleteValue, Ref, ResolvedRef, url, uuid } from "types";
+import { DeleteValue, Ref, ResolvedRef, VersionId, url, uuid } from "types";
 import { JSONValue } from "json";
 import { UseStore, createStore, get, set } from "idb-keyval";
 import * as time from "time";
@@ -426,13 +426,15 @@ export class MPS3 {
     }
   ) {
     const webValues: Map<ResolvedRef, JSONValue | DeleteValue> = new Map();
-    const contentVersions: Promise<Map<ResolvedRef, string | DeleteValue>> =
+    const contentVersions: Promise<Map<ResolvedRef, VersionId | DeleteValue>> =
       new Promise(async (resolve, reject) => {
-        const results = new Map<ResolvedRef, string | DeleteValue>();
+        const results = new Map<ResolvedRef, VersionId | DeleteValue>();
         const contentOperations: Promise<any>[] = [];
         values.forEach((value, contentRef) => {
           if (value !== undefined) {
-            let version = this.config.useVersioning ? undefined : uuid(); // TODO timestamped versions
+            let version: VersionId | undefined = this.config.useVersioning
+              ? undefined
+              : <VersionId>(<unknown>uuid()); // TODO timestamped versions
             webValues.set(contentRef, value);
 
             contentOperations.push(
@@ -449,7 +451,7 @@ export class MPS3 {
                       `Bucket ${contentRef.bucket} is not version enabled!`
                     );
                   } else {
-                    version = fileUpdate.VersionId;
+                    version = <VersionId>fileUpdate.VersionId;
                   }
                 }
                 results.set(contentRef, version);

@@ -6,7 +6,7 @@ import { createStore } from "idb-keyval";
 import "fake-indexeddb/auto";
 
 const requeue = (
-  q: OperationQueue
+  q: OperationQueue<string>
 ): ((
   values: Map<ResolvedRef, JSONValue | DeleteValue>,
   label?: string

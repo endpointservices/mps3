@@ -10,7 +10,7 @@ const PADDING = 6;
 const entryKey = (index: number): string =>
   `write-${index.toString().padStart(PADDING, "0")}`;
 
-export class OperationQueue {
+export class OperationQueue<L extends string> {
   private session = uuid();
   proposedOperations: Map<
     Operation,
@@ -50,7 +50,7 @@ export class OperationQueue {
     }
   }
 
-  async label(write: Operation, label: string, isLoad: boolean = false) {
+  async label(write: Operation, label: L, isLoad: boolean = false) {
     this.operationLabels.set(label, write);
 
     if (this.db) {
@@ -65,7 +65,7 @@ export class OperationQueue {
     }
   }
 
-  async confirm(label: string, isLoad: boolean = false) {
+  async confirm(label: L, isLoad: boolean = false) {
     if (this.operationLabels.has(label)) {
       const operation = this.operationLabels.get(label)!;
       this.proposedOperations.delete(operation);
@@ -109,7 +109,7 @@ export class OperationQueue {
     store: UseStore,
     schedule: (
       write: Map<ResolvedRef, JSONValue | DeleteValue>,
-      label?: string
+      label?: L
     ) => Promise<unknown>
   ) {
     this.db = store;
@@ -136,7 +136,7 @@ export class OperationQueue {
           JSON.parse(ref),
           val,
         ]);
-        const label = await get<string>(`label-${index}`, this.db);
+        const label = await get<L>(`label-${index}`, this.db);
         if (!entry) continue;
         const values = new Map<ResolvedRef, JSONValue | DeleteValue>(entry);
         await schedule(values, label);
