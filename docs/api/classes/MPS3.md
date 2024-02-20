@@ -24,7 +24,7 @@
 
 ### constructor
 
-• **new MPS3**(`config`)
+• **new MPS3**(`config`): [`MPS3`](MPS3.md)
 
 #### Parameters
 
@@ -32,9 +32,13 @@
 | :------ | :------ |
 | `config` | [`MPS3Config`](../interfaces/MPS3Config.md) |
 
+#### Returns
+
+[`MPS3`](MPS3.md)
+
 #### Defined in
 
-[mps3.ts:157](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L157)
+[mps3.ts:157](https://github.com/endpointservices/mps3/blob/fd7d8f8/src/mps3.ts#L157)
 
 ## Properties
 
@@ -46,13 +50,13 @@ Virtual endpoint for local-first operation
 
 #### Defined in
 
-[mps3.ts:135](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L135)
+[mps3.ts:135](https://github.com/endpointservices/mps3/blob/fd7d8f8/src/mps3.ts#L135)
 
 ## Methods
 
 ### delete
 
-▸ **delete**(`ref`, `options?`): `Promise`<`unknown`[]\>
+▸ **delete**(`ref`, `options?`): `Promise`\<`unknown`[]\>
 
 #### Parameters
 
@@ -64,17 +68,17 @@ Virtual endpoint for local-first operation
 
 #### Returns
 
-`Promise`<`unknown`[]\>
+`Promise`\<`unknown`[]\>
 
 #### Defined in
 
-[mps3.ts:362](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L362)
+[mps3.ts:362](https://github.com/endpointservices/mps3/blob/fd7d8f8/src/mps3.ts#L362)
 
 ___
 
 ### get
 
-▸ **get**(`ref`, `options?`): `Promise`<`undefined` \| `JSONValue`\>
+▸ **get**(`ref`, `options?`): `Promise`\<`undefined` \| `JSONValue`\>
 
 #### Parameters
 
@@ -86,17 +90,17 @@ ___
 
 #### Returns
 
-`Promise`<`undefined` \| `JSONValue`\>
+`Promise`\<`undefined` \| `JSONValue`\>
 
 #### Defined in
 
-[mps3.ts:233](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L233)
+[mps3.ts:233](https://github.com/endpointservices/mps3/blob/fd7d8f8/src/mps3.ts#L233)
 
 ___
 
 ### put
 
-▸ **put**(`ref`, `value`, `options?`): `Promise`<`unknown`[]\>
+▸ **put**(`ref`, `value`, `options?`): `Promise`\<`unknown`[]\>
 
 #### Parameters
 
@@ -110,23 +114,23 @@ ___
 
 #### Returns
 
-`Promise`<`unknown`[]\>
+`Promise`\<`unknown`[]\>
 
 #### Defined in
 
-[mps3.ts:371](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L371)
+[mps3.ts:371](https://github.com/endpointservices/mps3/blob/fd7d8f8/src/mps3.ts#L371)
 
 ___
 
 ### putAll
 
-▸ **putAll**(`values`, `options?`): `Promise`<`unknown`[]\>
+▸ **putAll**(`values`, `options?`): `Promise`\<`unknown`[]\>
 
 #### Parameters
 
 | Name | Type |
 | :------ | :------ |
-| `values` | `Map`<`string` \| `Ref`, `undefined` \| `JSONValue`\> |
+| `values` | `Map`\<`string` \| `Ref`, `undefined` \| `JSONValue`\> |
 | `options` | `Object` |
 | `options.await?` | ``"local"`` \| ``"remote"`` |
 | `options.isLoad?` | `boolean` |
@@ -134,11 +138,11 @@ ___
 
 #### Returns
 
-`Promise`<`unknown`[]\>
+`Promise`\<`unknown`[]\>
 
 #### Defined in
 
-[mps3.ts:382](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L382)
+[mps3.ts:382](https://github.com/endpointservices/mps3/blob/fd7d8f8/src/mps3.ts#L382)
 
 ___
 
@@ -165,14 +169,10 @@ unsubscribe function
 
 ▸ (): `void`
 
-Listen to a key for changes
-
 ##### Returns
 
 `void`
 
-unsubscribe function
-
 #### Defined in
 
-[mps3.ts:562](https://github.com/endpointservices/mps3/blob/7ba67d1/src/mps3.ts#L562)
+[mps3.ts:562](https://github.com/endpointservices/mps3/blob/fd7d8f8/src/mps3.ts#L562)

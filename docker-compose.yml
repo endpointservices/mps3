@@ -2,6 +2,7 @@ version: '3'
 services:
   minio:
     image: 'minio/minio:latest'
+    platform: linux/amd64
     ports:
       - '9102:9000'
       - '9103:9090'
@@ -12,6 +13,7 @@ services:
 
   toxiproxy:
     image: "ghcr.io/shopify/toxiproxy"
+    platform: linux/amd64
     ports:
       - '9104:9104'
       - '8474:8474' # toxiproxy admin
