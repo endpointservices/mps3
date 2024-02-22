@@ -44,7 +44,7 @@ two-way sync to remote s3 API
 This ends up mirroring the primary DB locally. Not always what you want to do so the remote -> local should be filterable.
 
 
-### One-way-sync
+### One-way mirror
 
 sync log at position a,
 read all operations from a to infinity. 

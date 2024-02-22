@@ -14,6 +14,7 @@ export interface ResolvedRef extends Ref {
   key: string;
 }
 
+export type ManifestKey = Branded<string, "Manifest">;
 export type UUID = Branded<string, "UUID">;
 export type VersionId = Branded<string, "VersionId">;
 

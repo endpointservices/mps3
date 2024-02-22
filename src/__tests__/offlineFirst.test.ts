@@ -12,228 +12,227 @@ import { DOMParser } from "@xmldom/xmldom";
 import { uuid } from "types";
 import "fake-indexeddb/auto";
 
-describe("mps3", () => {
-  let s3: S3;
-  let session = uuid().substring(31);
-  const stableConfig = {
-    endpoint: "http://127.0.0.1:9102",
-    region: "eu-central-1",
-    credentials: {
-      accessKeyId: "mps3",
-      secretAccessKey: "ZOAmumEzdsUUcVlQ",
-    },
-  };
+describe("offlinefirst", () => {
+    let s3: S3;
+    let session = uuid().substring(31);
+    const stableConfig = {
+        endpoint: "http://127.0.0.1:9102",
+        region: "eu-central-1",
+        credentials: {
+            accessKeyId: "mps3",
+            secretAccessKey: "ZOAmumEzdsUUcVlQ",
+        },
+    };
 
-  const unstableConfig = {
-    endpoint: "http://127.0.0.1:9104",
-    region: "eu-central-1",
-    credentials: {
-      accessKeyId: "mps3",
-      secretAccessKey: "ZOAmumEzdsUUcVlQ",
-    },
-  };
+    const unstableConfig = {
+        endpoint: "http://127.0.0.1:9104",
+        region: "eu-central-1",
+        credentials: {
+            accessKeyId: "mps3",
+            secretAccessKey: "ZOAmumEzdsUUcVlQ",
+        },
+    };
 
-  const configs: {
-    label: string;
-    config: MPS3Config;
-  }[] = [
-    {
-      label: "useVersioning",
-      config: {
-        pollFrequency: 100,
-        useVersioning: true,
-        defaultBucket: `ver${session}`,
-        s3Config: unstableConfig,
-        parser: new DOMParser(),
-      },
-    },
-    {
-      label: "noVersioning",
-      config: {
-        pollFrequency: 100,
-        defaultBucket: `nov${session}`,
-        s3Config: unstableConfig,
-        parser: new DOMParser(),
-      },
-    },
-  ];
-
-  const setOnline = async (state: boolean) => {
-    fetch("localhost:8474/proxies/minio", {
-      method: "POST",
-      body: JSON.stringify({
-        enabled: state,
-      }),
-    });
-  };
-
-  configs.map((variant) =>
-    describe(variant.label, () => {
-      beforeAll(async () => {
-        s3 = new S3(stableConfig);
-
-        await s3.createBucket({
-          Bucket: variant.config.defaultBucket,
-        });
-
-        if (variant.config.useVersioning) {
-          await s3.putBucketVersioning({
-            Bucket: variant.config.defaultBucket,
-            VersioningConfiguration: {
-              Status: "Enabled",
+    const configs: {
+        label: string;
+        config: MPS3Config;
+    }[] = [
+        {
+            label: "useVersioning",
+            config: {
+                pollFrequency: 100,
+                useVersioning: true,
+                defaultBucket: `ver${session}`,
+                s3Config: unstableConfig,
+                parser: new DOMParser(),
             },
-          });
-        }
-      });
+        },
+        {
+            label: "noVersioning",
+            config: {
+                pollFrequency: 100,
+                defaultBucket: `nov${session}`,
+                s3Config: unstableConfig,
+                parser: new DOMParser(),
+            },
+        },
+    ];
 
-      beforeEach(async () => {
-        await setOnline(true);
-      });
-
-      afterEach(async () => {
-        await setOnline(true);
-      });
-
-      const getClient = (args?: { label?: string; online?: boolean }) =>
-        new MPS3({
-          label: args?.label,
-          online: args?.online ?? true,
-          ...variant.config,
+    const setOnline = async (state: boolean) => {
+        fetch("localhost:8474/proxies/minio", {
+            method: "POST",
+            body: JSON.stringify({
+                enabled: state,
+            }),
         });
+    };
 
-      test("Online client commits messages", async () => {
-        const writer = getClient({
-          online: true,
-        });
-        await writer.put("online", true);
+    configs.map((variant) =>
+        describe(variant.label, () => {
+            beforeAll(async () => {
+                s3 = new S3(stableConfig);
 
-        const reader = getClient({
-          online: true,
-        });
-        expect(await reader.get("online")).toBe(true);
-      });
+                await s3.createBucket({
+                    Bucket: variant.config.defaultBucket,
+                });
 
-      test("Offline client does not commit messages", async () => {
-        const writer = getClient({
-          online: false,
-        });
-        await writer.put("offline", true);
+                if (variant.config.useVersioning) {
+                    await s3.putBucketVersioning({
+                        Bucket: variant.config.defaultBucket,
+                        VersioningConfiguration: {
+                            Status: "Enabled",
+                        },
+                    });
+                }
+            });
 
-        const reader = getClient({
-          label: "other",
-          online: true,
-        });
-        expect(await reader.get("offline")).toBe(undefined);
-      });
+            beforeEach(async () => {
+                await setOnline(true);
+            });
 
-      test("Restored online client has populated cache", async () => {
-        const ID = "restore-1";
-        const writer = getClient({
-          label: ID,
-          online: false,
-        });
-        await writer.put(ID, "foo");
+            afterEach(async () => {
+                await setOnline(true);
+            });
 
-        console.log("Restore");
-        const restored = getClient({
-          label: ID,
-          online: false,
-        });
+            const getClient = (args?: { label?: string; online?: boolean }) =>
+                new MPS3({
+                    label: args?.label,
+                    online: args?.online ?? true,
+                    ...variant.config,
+                });
 
-        expect(await restored.get(ID)).toBe("foo");
-      });
+            test("Online client commits messages", async () => {
+                const writer = getClient({
+                    online: true,
+                });
+                await writer.put("online", true);
 
-      test("Restored online respects ordering", async () => {
-        const ID = "restore-2";
-        const writer = getClient({
-          label: ID,
-          online: false,
-        });
-        await writer.put(ID, "1");
+                const reader = getClient({
+                    online: true,
+                });
+                expect(await reader.get("online")).toBe(true);
+            });
 
-        console.log("Restore");
-        const restored = getClient({
-          label: ID,
-          online: false,
-        });
+            test("Offline client does not commit messages", async () => {
+                const writer = getClient({
+                    online: false,
+                });
+                await writer.put("offline", true);
 
-        writer.put(ID, "2");
-        expect(await restored.get(ID)).toBe("2");
-      });
+                const reader = getClient({
+                    label: "other",
+                    online: true,
+                });
+                expect(await reader.get("offline")).toBe(undefined);
+            });
 
-      test("Restored client remembers committed keys", async () => {
-        const ID = "restore-3";
-        const writer = getClient({
-          label: ID,
-        });
-        writer.subscribe(ID, () => {});
-        await writer.put(ID, "1");
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        await writer.refresh();
+            test("Restored online client has populated cache", async () => {
+                const ID = "restore-1";
+                const writer = getClient({
+                    label: ID,
+                    online: false,
+                });
+                await writer.put(ID, "foo");
 
-        console.log("Restore");
-        const restored = getClient({
-          label: ID,
-          online: false,
-        });
+                console.log("Restore");
+                const restored = getClient({
+                    label: ID,
+                    online: false,
+                });
 
-        expect(await restored.get(ID)).toBe("1");
-      });
+                expect(await restored.get(ID)).toBe("foo");
+            });
 
+            test("Restored online respects ordering", async () => {
+                const ID = "restore-2";
+                const writer = getClient({
+                    label: ID,
+                    online: false,
+                });
+                await writer.put(ID, "1");
 
-      test("Read your write", async () => {
-        const client = await getClient({
-          label: "rw-1",
-          online: false,
-        });
+                console.log("Restore");
+                const restored = getClient({
+                    label: ID,
+                    online: false,
+                });
 
-        client.put("key", "value");
-        expect(await client.get("key")).toBe("value");
-      });
+                writer.put(ID, "2");
+                expect(await restored.get(ID)).toBe("2");
+            });
 
-      test("Subscribe to non-cached key is undefined", async (done) => {
-        await getClient({
-          label: "hang-1",
-          online: false,
-        }).subscribe("hang-1", (val) => {
-          expect(val).toBeUndefined();
-          done();
-        });
-      });
+            test("Restored client remembers committed keys", async () => {
+                const ID = "restore-3";
+                const writer = getClient({
+                    label: ID,
+                });
+                writer.subscribe(ID, () => {});
+                await writer.put(ID, "1");
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                await writer.refresh();
 
-      test("Restored client remembers subscribed keys", async () => {
-        const ID = "restore-4";
-        await getClient({
-          label: `setup-4`,
-        }).put(ID, "1");
+                console.log("Restore");
+                const restored = getClient({
+                    label: ID,
+                    online: false,
+                });
 
-        const read = await new Promise(async (resolve) => {
-          await getClient({
-            label: ID,
-          }).subscribe(ID, (val) => {
-            resolve(val);
-          });
-        });
+                expect(await restored.get(ID)).toBe("1");
+            });
 
-        // confirm we have subscribed to the value
-        // so it should be cached
-        expect(read).toBe("1");
+            test("Read your write", async () => {
+                const client = await getClient({
+                    label: "rw-1",
+                    online: false,
+                });
 
-        await new Promise((resolve) => setTimeout(resolve, 100));
+                client.put("key", "value");
+                expect(await client.get("key")).toBe("value");
+            });
 
-        // now subscribe with an offline client
-        const offlineRead = await new Promise((resolve, reject) => {
-          getClient({
-            label: ID,
-            online: false,
-          }).subscribe(ID, (val, err) => {
-            if (err) reject(err);
-            resolve(val);
-          });
-        });
+            test("Subscribe to non-cached key is undefined", async (done) => {
+                await getClient({
+                    label: "hang-1",
+                    online: false,
+                }).subscribe("hang-1", (val) => {
+                    expect(val).toBeUndefined();
+                    done();
+                });
+            });
 
-        expect(offlineRead).toBe("1");
-      });
-    }),
-  );
+            test("Restored client remembers subscribed keys", async () => {
+                const ID = "restore-4";
+                await getClient({
+                    label: `setup-4`,
+                }).put(ID, "1");
+
+                const read = await new Promise(async (resolve) => {
+                    await getClient({
+                        label: ID,
+                    }).subscribe(ID, (val) => {
+                        resolve(val);
+                    });
+                });
+
+                // confirm we have subscribed to the value
+                // so it should be cached
+                expect(read).toBe("1");
+
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
+                // now subscribe with an offline client
+                const offlineRead = await new Promise((resolve, reject) => {
+                    getClient({
+                        label: ID,
+                        online: false,
+                    }).subscribe(ID, (val, err) => {
+                        if (err) reject(err);
+                        resolve(val);
+                    });
+                });
+
+                expect(offlineRead).toBe("1");
+            });
+        })
+    );
 });

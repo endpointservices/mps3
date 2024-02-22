@@ -32,5 +32,8 @@
   },
   "files": [
     "dist"
-  ]
+  ],
+  "prettier": {
+    "tabWidth": 4
+  }
 }
