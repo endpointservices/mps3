@@ -382,6 +382,7 @@ export class MPS3 {
         ref: string | Ref,
         value: JSONValue | DeleteValue,
         options: {
+            meta?: Record<string, string>;
             manifests?: Ref[];
             await?: "local" | "remote";
         } = {}
@@ -392,6 +393,7 @@ export class MPS3 {
     public async putAll(
         values: Map<string | Ref, JSONValue | DeleteValue>,
         options: {
+            metadata?: Record<string, string>;
             manifests?: Ref[];
             await?: "local" | "remote";
             isLoad?: boolean;
@@ -419,6 +421,7 @@ export class MPS3 {
 
         return this._putAll(resolvedValues, {
             manifests,
+            metadata: options.metadata,
             await: options.await || this.config.online ? "remote" : "local",
         });
     }
@@ -426,6 +429,7 @@ export class MPS3 {
     async _putAll(
         values: Map<ResolvedRef, JSONValue | DeleteValue>,
         options: {
+            metadata?: Record<string, string>;
             manifests: ResolvedRef[];
             await: "local" | "remote";
             isLoad?: boolean;
@@ -483,6 +487,7 @@ export class MPS3 {
             options.manifests.map((ref) => {
                 const manifest = this.getOrCreateManifest(ref);
                 return manifest.updateContent(webValues, contentVersions, {
+                    metadata: options.metadata,
                     await: options.await,
                     isLoad: options.isLoad === true,
                 });
@@ -495,30 +500,21 @@ export class MPS3 {
         ref: ResolvedRef;
         value: JSONValue;
         version?: string;
+        metadata?: Record<string, string>;
     }): Promise<PutObjectCommandOutput & { Date: Date; latency: number }> {
         const content: string = JSON.stringify(args.value, null, 2);
-        let command: PutObjectCommandInput;
-        if (this.config.useVersioning) {
-            command = {
-                Bucket: args.ref.bucket,
-                Key: args.ref.key,
-                ContentType: "application/json",
-                Body: content,
-                ...(this.config.useChecksum && {
-                    ChecksumSHA256: await sha256b64(content),
-                }),
-            };
-        } else {
-            command = {
-                Bucket: args.ref.bucket,
-                Key: `${args.ref.key}${args.version ? `@${args.version}` : ""}`,
-                ContentType: "application/json",
-                Body: content,
-                ...(this.config.useChecksum && {
-                    ChecksumSHA256: await sha256b64(content),
-                }),
-            };
-        }
+        let command: PutObjectCommandInput = {
+            Bucket: args.ref.bucket,
+            Key: this.config.useVersioning
+                ? args.ref.key
+                : `${args.ref.key}${args.version ? `@${args.version}` : ""}`,
+            ContentType: "application/json",
+            Body: content,
+            Metadata: args.metadata,
+            ...(this.config.useChecksum && {
+                ChecksumSHA256: await sha256b64(content),
+            }),
+        };
 
         const [response, dt] = await time.measure(
             this.s3ClientLite.putObject(command)

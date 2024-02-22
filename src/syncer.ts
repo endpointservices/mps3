@@ -257,6 +257,7 @@ export class Syncer {
         values: Map<ResolvedRef, JSONValue | DeleteValue>,
         write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>,
         options: {
+            metadata: Record<string, string>;
             await: "local" | "remote";
             isLoad: boolean;
         }
@@ -307,6 +308,7 @@ export class Syncer {
                             bucket: this.manifest.ref.bucket,
                         },
                         value: state,
+                        metadata: options.metadata,
                     });
 
                     // Check the response leads to a valid write.
