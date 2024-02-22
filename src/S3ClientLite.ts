@@ -11,7 +11,6 @@ import {
 import * as time from "time";
 import { MPS3 } from "mps3";
 import { parseListObjectsV2CommandOutput } from "xml";
-import { measure } from "time";
 
 export type FetchFn = (url: string, options?: object) => Promise<Response>;
 

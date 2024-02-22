@@ -625,4 +625,12 @@ export class MPS3 {
             0
         );
     }
+
+    shutdown(): void {
+        this.manifests.forEach((manifest) => {
+            manifest.subscribers.forEach((subscriber) => {
+                manifest.subscribers.delete(subscriber);
+            });
+        });
+    }
 }
