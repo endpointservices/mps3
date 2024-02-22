@@ -9,31 +9,23 @@ import { timestamp } from "time";
 import { LAG_WINDOW_MILLIS } from "../constants";
 
 describe("mirror", () => {
-    const target = new MPS3({
-        pollFrequency: 1,
-        parser: new DOMParser(),
-        defaultBucket: "target",
-        offlineStorage: false,
-        adaptiveClock: false,
-        minimizeListObjectsCalls: false,
-        s3Config: {
-            endpoint: MPS3.LOCAL_ENDPOINT,
-        },
-    });
-
-    const source = new MPS3({
-        pollFrequency: 1,
-        parser: new DOMParser(),
-        defaultBucket: "l2",
-        offlineStorage: false,
-        adaptiveClock: false,
-        minimizeListObjectsCalls: false,
-        s3Config: {
-            endpoint: MPS3.LOCAL_ENDPOINT,
-        },
-    });
+    const client = () =>
+        new MPS3({
+            pollFrequency: 1,
+            parser: new DOMParser(),
+            defaultBucket: uuid().substring(0, 8),
+            offlineStorage: false,
+            adaptiveClock: false,
+            minimizeListObjectsCalls: false,
+            s3Config: {
+                endpoint: MPS3.LOCAL_ENDPOINT,
+            },
+        });
 
     test.only("smoke", async () => {
+        const target = client();
+        const source = client();
+
         await source.put("a", true);
 
         const before = timestamp(Date.now() - LAG_WINDOW_MILLIS);
@@ -74,6 +66,8 @@ describe("mirror", () => {
                 ops: (string | undefined)[],
                 expected: string | undefined
             ) => {
+                const target = client();
+                const source = client();
                 const key = uuid();
                 const sourceManifest = source.getOrCreateManifest(
                     source.config.defaultManifest
@@ -87,8 +81,15 @@ describe("mirror", () => {
                     last_put = source.put(key, op);
                 }
                 await last_put;
-                await mirror(target, sourceManifest, currentState);
+                const mirrorLog = await mirror(
+                    target,
+                    sourceManifest,
+                    currentState
+                );
                 expect(await target.get(key)).toBe(expected);
+                expect(Object.keys(mirrorLog.operations).length).toBe(
+                    ops.length
+                );
             }
         );
     });

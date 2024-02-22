@@ -1,8 +1,8 @@
 
-An single homed MPS3 setup ensures that multiple clients can read and write to the same S3 compatible storage API without dataloss. However, it is possible for each device to sync the same storage to multiple S3 compatible APIs.
+An **single** homed MPS3 setup ensures that multiple clients can read and write to the same S3 compatible storage API without dataloss. However, it is possible for each device to sync the same storage to **multiple** S3 compatible APIs.
 
-This can be useful for several situation
-- a secondary sync to local storage. Local storage is faster and network independent
+This can be useful for several situations
+- local-first with cloud fallback. Local storage is faster and network independent but single device only. With a cloud fallback you get have the performance of local but be able to switch devices.
 - sync to regional storage, for faster multiplayer within geographic areas
 - reliability, particular across different vendors with different failure modes
 
@@ -69,7 +69,21 @@ sync log
 ```
 
 
-Ccyle breaking
+Preventing Self-triggering write Cycles
 
-If two one-way syncs are deployed in a cycle, they can self trigger.
+If two one-way syncs are deployed in a cycle, they can self trigger. A replicates to b with a new write C, then B replicate that write back to A with a new write D, then A replicates to B with new write E etc.
+
+#### Preventing replicating the same operation to the same storage twice
+
+Replicated writes are stamped with their source storage encoded as a hash sha256
+
+For each hop on the replication network, the replication header is bitwise unioned with the storage location header.
+
+To query if a storage location has been visited the bits are checked for subset
+
+
+
+
+
+
 

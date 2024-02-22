@@ -118,7 +118,7 @@ export async function mirror(
     const openOperations: Array<ManifestKey> = toSync
         .map((o) => o.key)
         .concat(Object.keys(currentState.operations) as ManifestKey[])
-        .filter((key) => key > newMark);
+        .filter((key) => key < newMark);
 
     const newState: MirrorState = {
         mark: newMark,
