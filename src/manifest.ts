@@ -5,33 +5,36 @@ import { DeleteValue, ResolvedRef, VersionId, url } from "types";
 import { JSONValue } from "json";
 import { UseStore } from "idb-keyval";
 import { Syncer } from "syncer";
+import { b64 } from "hashing";
 
 class Subscriber {
-  queue = Promise.resolve();
+    queue = Promise.resolve();
 
-  constructor(
-    public ref: ResolvedRef,
-    public handler: (value: JSONValue | DeleteValue) => void,
-    public lastVersion?: VersionId
-  ) {}
+    constructor(
+        public ref: ResolvedRef,
+        public handler: (value: JSONValue | DeleteValue) => void,
+        public lastVersion?: VersionId
+    ) {}
 
-  notify(
-    service: MPS3,
-    version: VersionId | undefined,
-    content: Promise<JSONValue | DeleteValue>
-  ) {
-    this.queue = this.queue
-      .then(() => content)
-      .then((response) => {
-        if (version !== this.lastVersion) {
-          service.config.log(
-            `${service.config.label} NOTIFY ${url(this.ref)} ${version}`
-          );
-          this.lastVersion = version;
-          this.handler(response);
-        }
-      });
-  }
+    notify(
+        service: MPS3,
+        version: VersionId | undefined,
+        content: Promise<JSONValue | DeleteValue>
+    ) {
+        this.queue = this.queue
+            .then(() => content)
+            .then((response) => {
+                if (version !== this.lastVersion) {
+                    service.config.log(
+                        `${service.config.label} NOTIFY ${url(
+                            this.ref
+                        )} ${version}`
+                    );
+                    this.lastVersion = version;
+                    this.handler(response);
+                }
+            });
+    }
 }
 
 export class Manifest {
@@ -146,7 +149,12 @@ export class Manifest {
         values: Map<ResolvedRef, JSONValue | DeleteValue>,
         write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>,
         options: {
-            metadata?: Record<string, string>;
+            keys: OMap<
+                ResolvedRef,
+                {
+                    replication?: b64;
+                }
+            >;
             await: "local" | "remote";
             isLoad: boolean;
         }

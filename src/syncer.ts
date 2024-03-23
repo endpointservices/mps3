@@ -14,9 +14,13 @@ import {
     uuid,
     str2uintDesc,
 } from "types";
+import { b64 } from "hashing";
+import { OMap } from "OMap";
 
 export interface FileState extends JSONArraylessObject {
     version: VersionId;
+    /** Field used to track progression through replication graph */
+    replication: b64;
 }
 
 type Merge = any;
@@ -257,7 +261,12 @@ export class Syncer {
         values: Map<ResolvedRef, JSONValue | DeleteValue>,
         write: Promise<Map<ResolvedRef, VersionId | DeleteValue>>,
         options: {
-            metadata: Record<string, string>;
+            keys: OMap<
+                ResolvedRef,
+                {
+                    replication?: b64;
+                }
+            >;
             await: "local" | "remote";
             isLoad: boolean;
         }
@@ -286,6 +295,8 @@ export class Syncer {
                         if (version) {
                             const fileState = {
                                 version: version,
+                                replication:
+                                    options.keys.get(ref)?.replication || "",
                             };
                             state.update.files[fileUrl] = fileState;
                         } else {
@@ -308,7 +319,6 @@ export class Syncer {
                             bucket: this.manifest.ref.bucket,
                         },
                         value: state,
-                        metadata: options.metadata,
                     });
 
                     // Check the response leads to a valid write.

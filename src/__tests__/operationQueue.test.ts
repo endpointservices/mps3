@@ -92,13 +92,10 @@ describe("operation_queue", () => {
     const key = DEFAULT_KEY;
     values.set(key, "b");
     q.propose(op, values);
-    console.log("here");
     expect((await q.flatten()).get(key)).toBe("b");
     const restored = new OperationQueue();
-    console.log("here2");
     await restored.restore(store, requeue(restored));
 
-    console.log("here4");
     expect((await restored.flatten()).get(key)).toBe("b");
   });
 

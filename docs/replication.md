@@ -81,6 +81,8 @@ For each hop on the replication network, the replication header is bitwise union
 
 To query if a storage location has been visited the bits are checked for subset
 
+the replication metadata is stored in the op log
+
 
 
 

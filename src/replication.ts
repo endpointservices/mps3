@@ -1,42 +1,47 @@
 // Mirroring copes writes from one S3 API to another and records progress in a sync log
-
-import { S3ClientLite } from "S3ClientLite";
 import { MPS3 } from "mps3";
-import { DeleteValue, ManifestKey, ResolvedRef, parseUrl } from "types";
+import { DeleteValue, ManifestKey, parseUrl } from "types";
 import { timestamp } from "time";
 import { LAG_WINDOW_MILLIS } from "./constants";
 import { Manifest } from "manifest";
 import { FileState, ManifestFile, Syncer } from "syncer";
 import { JSONArraylessObject, JSONValue, merge } from "json";
+import { b64, sha256b64, toB64, or, inside } from "hashing";
 
-interface MirrorState extends JSONArraylessObject {
+interface ReplicationCheckpoint extends JSONArraylessObject {
     /**
      * How far the mirror progress from the target
      */
     mark: ManifestKey;
     /**
-     * Additional writes that have occurred afterwards
+     * Additional writes that have synced after the mark
      */
     operations: Record<ManifestKey, {}>;
 }
 
-export async function mirror(
+export async function replicate(
     target: MPS3,
     sourceManifest: Manifest,
-    currentState: MirrorState
-): Promise<MirrorState> {
+    currentState: ReplicationCheckpoint
+): Promise<ReplicationCheckpoint> {
     const toSync: Array<{
         key: ManifestKey;
         manifest: Promise<ManifestFile>;
     }> = [];
     const source = sourceManifest.service;
+    const source_replication = await sha256b64(
+        sourceManifest.ref.bucket + sourceManifest.ref.key
+    );
+    const target_replication = await sha256b64(
+        target.config.defaultManifest.bucket + target.config.defaultManifest.key
+    );
     const newMark = <ManifestKey>(
         `${sourceManifest.ref.key}@${timestamp(
             Date.now() + source.config.clockOffset - LAG_WINDOW_MILLIS
         )}`
     );
 
-    // Read all mutations from source, after mark
+    // Read all mutations from source, after previous mark
     await source.s3ClientLite
         .listObjectV2({
             Bucket: sourceManifest.ref.bucket,
@@ -78,6 +83,7 @@ export async function mirror(
         files: {},
         update: {},
     });
+
     for (const { key, manifest } of toSync) {
         manifestUpdate = manifestUpdate.then((delta) => {
             return manifest.then((manifest) => {
@@ -88,11 +94,21 @@ export async function mirror(
 
     // Now read all contents of key changes
     const values = new Map<string, JSONValue | DeleteValue>();
+    const perKeyOptions = new Map<
+        string,
+        {
+            replication: b64;
+        }
+    >();
 
+    // Build a big atomic commit
     const contentReads: Promise<unknown>[] = [];
     await manifestUpdate.then((delta: ManifestFile) => {
         for (const [url, state] of Object.entries(delta.files)) {
             const sourceRef = parseUrl(url);
+            if (inside(target_replication, state.replication || <b64>""))
+                continue; // already synced, no action
+
             if (state === undefined) {
                 // delete case
                 values.set(sourceRef.key, undefined);
@@ -111,6 +127,12 @@ export async function mirror(
                     })
                 );
             }
+            perKeyOptions.set(sourceRef.key, {
+                replication: or(
+                    source_replication,
+                    state.replication || <b64>""
+                ),
+            });
         }
     });
 
@@ -120,7 +142,7 @@ export async function mirror(
         .concat(Object.keys(currentState.operations) as ManifestKey[])
         .filter((key) => key < newMark);
 
-    const newState: MirrorState = {
+    const newState: ReplicationCheckpoint = {
         mark: newMark,
         operations: Object.fromEntries(openOperations.map((key) => [key, {}])),
     };
@@ -130,7 +152,11 @@ export async function mirror(
     await Promise.all(contentReads);
 
     // Bulk write changes
-    await target.putAll(values);
+
+    // TODO replication id needs to OR sources
+    await target.putAll(values, {
+        keys: perKeyOptions,
+    });
 
     return newState;
 }

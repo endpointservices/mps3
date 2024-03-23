@@ -31,7 +31,7 @@ export const or = (a: b64, b: b64): b64 => {
 };
 
 /**
- * Test if the 1s in bitstring a are all present in B
+ * Test if the 1s in bitstring A are all present in B
  */
 export const inside = (a: b64, b: b64): boolean => {
     /** A   B   A in B  A & B  A ^ b   ~A   ~A | (A & B)

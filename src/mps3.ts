@@ -16,7 +16,7 @@ import { JSONValue } from "json";
 import { UseStore, createStore, get, set } from "idb-keyval";
 import * as time from "time";
 import * as offlineFetch from "indexdb";
-import { sha256b64 } from "hashing";
+import { b64, sha256b64 } from "hashing";
 export interface MPS3Config {
     /** @internal */
     label?: string;
@@ -382,7 +382,7 @@ export class MPS3 {
         ref: string | Ref,
         value: JSONValue | DeleteValue,
         options: {
-            meta?: Record<string, string>;
+            replication?: b64;
             manifests?: Ref[];
             await?: "local" | "remote";
         } = {}
@@ -393,7 +393,12 @@ export class MPS3 {
     public async putAll(
         values: Map<string | Ref, JSONValue | DeleteValue>,
         options: {
-            metadata?: Record<string, string>;
+            keys?: Map<
+                string | Ref,
+                {
+                    replication?: b64;
+                }
+            >;
             manifests?: Ref[];
             await?: "local" | "remote";
             isLoad?: boolean;
@@ -419,9 +424,30 @@ export class MPS3 {
             ...ref,
         }));
 
+        const keys = options.keys
+            ? new OMap(
+                  url,
+                  [...options.keys].map(([ref, key]) => [
+                      {
+                          bucket:
+                              (<Ref>ref).bucket ||
+                              this.config.defaultBucket ||
+                              this.config.defaultManifest.bucket,
+                          key: typeof ref === "string" ? ref : ref.key,
+                      },
+                      key,
+                  ])
+              )
+            : new OMap<
+                  ResolvedRef,
+                  {
+                      replication?: b64;
+                  }
+              >(url);
+
         return this._putAll(resolvedValues, {
             manifests,
-            metadata: options.metadata,
+            keys,
             await: options.await || this.config.online ? "remote" : "local",
         });
     }
@@ -429,7 +455,12 @@ export class MPS3 {
     async _putAll(
         values: Map<ResolvedRef, JSONValue | DeleteValue>,
         options: {
-            metadata?: Record<string, string>;
+            keys: OMap<
+                ResolvedRef,
+                {
+                    replication?: b64;
+                }
+            >;
             manifests: ResolvedRef[];
             await: "local" | "remote";
             isLoad?: boolean;
@@ -487,7 +518,7 @@ export class MPS3 {
             options.manifests.map((ref) => {
                 const manifest = this.getOrCreateManifest(ref);
                 return manifest.updateContent(webValues, contentVersions, {
-                    metadata: options.metadata,
+                    keys: options.keys,
                     await: options.await,
                     isLoad: options.isLoad === true,
                 });
@@ -500,7 +531,6 @@ export class MPS3 {
         ref: ResolvedRef;
         value: JSONValue;
         version?: string;
-        metadata?: Record<string, string>;
     }): Promise<PutObjectCommandOutput & { Date: Date; latency: number }> {
         const content: string = JSON.stringify(args.value, null, 2);
         let command: PutObjectCommandInput = {
@@ -510,7 +540,6 @@ export class MPS3 {
                 : `${args.ref.key}${args.version ? `@${args.version}` : ""}`,
             ContentType: "application/json",
             Body: content,
-            Metadata: args.metadata,
             ...(this.config.useChecksum && {
                 ChecksumSHA256: await sha256b64(content),
             }),

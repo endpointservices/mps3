@@ -4,11 +4,12 @@ import { DOMParser } from "@xmldom/xmldom";
 import { ManifestKey, uuid } from "types";
 import "fake-indexeddb/auto";
 
-import { mirror } from "mirror";
+import { replicate } from "replication";
 import { timestamp } from "time";
 import { LAG_WINDOW_MILLIS } from "../constants";
+import { ManifestFile } from "syncer";
 
-describe("mirror", () => {
+describe("replicate", () => {
     const client = () =>
         new MPS3({
             pollFrequency: 1,
@@ -22,7 +23,7 @@ describe("mirror", () => {
             },
         });
 
-    test.only("smoke", async () => {
+    test("smoke", async () => {
         const target = client();
         const source = client();
 
@@ -30,7 +31,7 @@ describe("mirror", () => {
 
         const before = timestamp(Date.now() - LAG_WINDOW_MILLIS);
 
-        const mirrorResult = await mirror(
+        const mirrorResult = await replicate(
             target,
             source.getOrCreateManifest(source.config.defaultManifest),
             {
@@ -55,6 +56,7 @@ describe("mirror", () => {
 
     describe("ordering", () => {
         it.each<[(string | undefined)[], string | undefined]>([
+            // op list to expected final value in mirror
             [["a", "b"], "b"],
             [["a", undefined], undefined],
             [[undefined, "a"], "a"],
@@ -76,12 +78,8 @@ describe("mirror", () => {
                     mark: <ManifestKey>`${source.config.defaultManifest.key}@.`,
                     operations: {},
                 };
-                let last_put = undefined;
-                for (const op of ops) {
-                    last_put = source.put(key, op);
-                }
-                await last_put;
-                const mirrorLog = await mirror(
+                await Promise.all(ops.map((op) => source.put(key, op)));
+                const mirrorLog = await replicate(
                     target,
                     sourceManifest,
                     currentState
@@ -90,6 +88,54 @@ describe("mirror", () => {
                 expect(Object.keys(mirrorLog.operations).length).toBe(
                     ops.length
                 );
+            }
+        );
+    });
+
+    describe("loop breaking", () => {
+        it.each<[(string | undefined)[], string | undefined]>([
+            // op list to expected final value in mirror
+            [["a", undefined], undefined],
+            [[undefined, "a"], "a"],
+            [["a", undefined, "b"], "b"],
+            [["a", "b", undefined], undefined],
+            [["a", "b"], "b"],
+        ])(
+            "Write values %p mirror to %p and back again",
+            async (
+                ops: (string | undefined)[],
+                expected: string | undefined
+            ) => {
+                const target = client();
+                const source = client();
+                const key = uuid();
+                const sourceManifest = source.getOrCreateManifest(
+                    source.config.defaultManifest
+                );
+                const targetManifest = source.getOrCreateManifest(
+                    target.config.defaultManifest
+                );
+                const currentState = {
+                    mark: <ManifestKey>`${source.config.defaultManifest.key}@.`,
+                    operations: {},
+                };
+                await Promise.all(ops.map((op) => source.put(key, op)));
+                const replicationLog = await replicate(
+                    target,
+                    sourceManifest,
+                    currentState
+                );
+                expect(
+                    Object.keys(replicationLog.operations).length
+                ).toBeGreaterThan(0);
+                // replicate the other way
+                const otherWayLog = await replicate(
+                    source,
+                    targetManifest,
+                    currentState
+                );
+                // changes should be de-duped and not cause operations
+                expect(Object.keys(otherWayLog.operations).length).toBe(0);
             }
         );
     });
