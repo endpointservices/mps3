@@ -40,7 +40,7 @@ To use this library you construct an MP3S class.
 [mps3 class](docs/api/classes/MPS3.md)
 
 ### Quick start ([Codepen](https://codepen.io/tomlarkworthy/pen/QWzybxd))
-```
+```js
 import {MPS3} from 'https://cdn.skypack.dev/mps3@0.0.58?min';
 
 const mps3 = new MPS3({
@@ -68,7 +68,7 @@ const value = await mps3.get("key"); // read-after-write consist
 For the client to work properly some CORS configuration is required on the bucket so the Javascript environment can observe relevant
  metadata.
 
-```
+```ini
 [{
     "AllowedHeaders": ["*"],
     "AllowedMethods": ["GET", "PUT", "DELETE"],
